@@ -130,7 +130,8 @@ operations cannot return:
 |---|---|
 | `Graph::try_send` | `Stale`, `ForeignGraph`, `DoubleSend`, `Poisoned` |
 | `Transaction::try_send` | `Stale`, `ForeignGraph`, `DoubleSend`; poisoning is checked once, when the transaction is opened |
-| `Graph::try_transaction`, `try_collect_garbage`, `try_pump`, `try_remote` | `Poisoned` |
+| `Graph::try_transaction`, `try_collect_garbage`, `try_remote` | `Poisoned` |
+| `Graph::try_pump` | `Poisoned`, `DoubleSend`; whether an input coalesces is graph knowledge, so a double send inside a remote transaction is only discoverable when the driver pumps; the offending transaction is dropped and the rest stay queued |
 | `Graph::try_listen`, `try_listen_cell`, `try_pin`, `try_sample` | `Stale`, `ForeignGraph`, `Poisoned` |
 | `Remote::try_send` | `ForeignGraph`, `InsideTransaction` |
 | `Remote::try_transaction` | `InsideTransaction` |

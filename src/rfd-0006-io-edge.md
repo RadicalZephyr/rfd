@@ -51,7 +51,7 @@ which are `Send`, and forwards. The user writes no channel plumbing
 for inputs.
 
 ```rust
-let (mut graph, ports) = Graph::<Threaded>::build(|b| { ... });
+let (mut graph, ports) = Graph::build_threaded(|b| { ... });
 let remote = graph.remote();
 let notify = Arc::new(Notify::new());
 graph.set_waker({ let n = notify.clone(); Arc::new(move || n.notify_one()) });
@@ -96,7 +96,12 @@ every value and closure the graph stores must be `Send`, checked once
 per materialization and at `listen` through a per-mode `Accepts<T>`
 trait, and `Graph<Threaded>` is `Send`. Single-threaded users never
 see the parameter, and their `Rc<RefCell<UiState>>` captures keep
-compiling. Tokens are plain integers and `Send` in every mode;
+compiling. `Graph::build` builds a `Local` graph and
+`Graph::build_threaded` a `Threaded` one, two constructors rather than
+one, because a defaulted type parameter takes no part in inferring an
+associated function: `Graph::build(|b| ...)` with a generic `build` is
+"type annotations needed", and two inherent `build`s are ambiguous,
+as a stub of the API confirmed. Tokens are plain integers and `Send` in every mode;
 `Remote`, `Listener` and `Pin` do not carry the mode.
 
 Requiring `Send` everywhere would have killed the UI case, where

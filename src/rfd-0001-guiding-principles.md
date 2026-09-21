@@ -71,7 +71,7 @@ oracle with random programs and random input occurrences, comparing
 occurrences and steps at every instant. The port is cross-checked once
 against the fixed vectors in `denotational/sodium.hs` and
 `common-tests/SemanticTests.hs`; GHC does not run in CI. Behaviour the
-semantics cannot express (listeners, pins, collection, runtime inputs)
+semantics cannot express (listeners, roots, collection, runtime inputs)
 gets its own property tests with random observation patterns, and the
 public live-node count is the leak assertion.
 

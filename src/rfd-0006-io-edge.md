@@ -102,7 +102,7 @@ one, because a defaulted type parameter takes no part in inferring an
 associated function: `Graph::build(|b| ...)` with a generic `build` is
 "type annotations needed", and two inherent `build`s are ambiguous,
 as a stub of the API confirmed. Tokens are plain integers and `Send` in every mode;
-`Remote`, `Listener` and `Pin` do not carry the mode.
+`Remote`, `Listener` and `Root` do not carry the mode.
 
 Requiring `Send` everywhere would have killed the UI case, where
 toolkit handles are not `Send`. A non-`Send`-only graph would have

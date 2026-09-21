@@ -189,7 +189,7 @@ order of listeners within a transaction is the evaluation order of
 their streams, ties by registration order, and is documented as not
 something to rely on.
 
-`listen`, `listen_cell` and `pin` return a `Listener` or a `Pin`. A
+`listen`, `listen_cell` and `root` return a `Listener` or a `Root`. A
 handle borrows nothing from the graph: it shares a flag with its node,
 and dropping it flips the flag, so the graph can be driven while
 handles are held and a handle can be dropped inside a listener.
@@ -296,9 +296,11 @@ declare here, hand tokens to user code, close there.
 
 ### The I/O API
 
-`Graph` has `send`, `transaction`, `listen`, `listen_cell`, `pin`,
-`sample`, `collect_garbage`, `pump` and `remote`. `pin` takes a root
-on a token the I/O world wants to hold without listening to it.
+`Graph` has `send`, `transaction`, `listen`, `listen_cell`, `root`,
+`sample`, `collect_garbage`, `pump` and `remote`. `root` keeps a node
+alive that the I/O world wants to hold without listening to it, and
+returns the `Root` handle that holds it; the first name for it was
+`Pin`, which is an unrelated concept in `std::pin`.
 `collect_garbage` runs a collection now, for the manual policy;
 `collect` was the obvious name and is exactly the name the table below
 retires because it means something else to a Rust reader.
@@ -365,6 +367,6 @@ Kept as is: `never`, `constant`, `map`, `map_to`, `filter`, `merge`,
 `defer`, `listen`.
 
 New, with no Sodium counterpart: `share` and `Shared`, `node`,
-`input_coalescing`, `input_cell_coalescing`, `pin`, `keep`,
+`input_coalescing`, `input_cell_coalescing`, `root` and `Root`, `keep`,
 `collect_garbage`, `pump`, `remote` and `Remote`, `Build`, `Graph`,
 `Transaction`.

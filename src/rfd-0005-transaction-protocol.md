@@ -132,14 +132,14 @@ operations cannot return:
 | `Transaction::try_send` | `Stale`, `ForeignGraph`, `DoubleSend`; poisoning is checked once, when the transaction is opened |
 | `Graph::try_transaction`, `try_collect_garbage`, `try_remote` | `Poisoned` |
 | `Graph::try_pump` | `Poisoned`, `DoubleSend`; whether an input coalesces is graph knowledge, so a double send inside a remote transaction is only discoverable when the driver pumps; the offending transaction is dropped and the rest stay queued |
-| `Graph::try_listen`, `try_listen_cell`, `try_pin`, `try_sample` | `Stale`, `ForeignGraph`, `Poisoned` |
+| `Graph::try_listen`, `try_listen_cell`, `try_root`, `try_sample` | `Stale`, `ForeignGraph`, `Poisoned` |
 | `Remote::try_send` | `ForeignGraph`, `InsideTransaction` |
 | `Remote::try_transaction` | `InsideTransaction` |
 
 The panicking variants panic on misuse in both build modes, with one
 class excepted. An operation on a collected node whose effect is
 unobservable by the semantics, meaning sending to a collected input,
-listening to a collected stream, or pinning a collected node, is a
+listening to a collected stream, or rooting a collected node, is a
 debug-mode panic and a release-mode no-op in the panicking variant,
 following the integer-overflow precedent, and is counted on the graph
 so a release build can report that it is dropping sends. A remote send

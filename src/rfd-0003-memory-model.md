@@ -34,8 +34,9 @@ three kinds of root:
 1. whatever the build closure returned, which is why that type must
    implement `Trace`;
 2. every live listener;
-3. every live pin, an RAII root the I/O world takes on a token it wants
-   to hold without listening to it.
+3. every live `Root` handle, which the I/O world takes with
+   `graph.root(&token)` on a token it wants to hold without listening
+   to it.
 
 Edges are a node's inputs, the tokens a `Trace` walk finds inside a
 hold's committed value, a switch's currently selected inner (which is
@@ -45,8 +46,8 @@ Collection is mark from the roots, sweep the arena, bump the
 generation of every freed slot, and prune dead nodes out of their
 inputs' dependents lists. Nothing is counted, so a cycle through
 values is collected like anything else. A node reachable only from a
-token the I/O world holds but neither pinned nor listened to is
-collected, and the next use of that token is an error: pin it or lose
+token the I/O world holds but neither rooted nor listened to is
+collected, and the next use of that token is an error: root it or lose
 it. This is semantically right. A deselected inner cell that something
 still names keeps accumulating, because it is reachable; one that
 nothing names can never be observed again.
@@ -120,8 +121,8 @@ high-rate shape wants to choose.
 ## Handles
 
 A handle borrows nothing from the graph, so the graph can be driven
-while handles are held. `Listener` and `Pin` are RAII: dropping the
-handle unlistens or unpins by flipping a flag the node shares, so dropping one inside a listener
+while handles are held. `Listener` and `Root` are RAII: dropping the
+handle unlistens or unroots by flipping a flag the node shares, so dropping one inside a listener
 callback needs no graph access. `keep()` turns a handle into an
 app-lifetime root without a struct to hold it, because every real
 application has process-lifetime listeners and a field called
@@ -136,7 +137,7 @@ documentation note, not machinery.
 ## Operations on Collected Nodes
 
 Sending to a collected input, listening to a collected stream, or
-pinning a collected node has no effect the semantics can observe. In
+rooting a collected node has no effect the semantics can observe. In
 the panicking variants these are a debug-mode panic and a release-mode
 no-op, counted on the graph so a release build can still report that
 it is dropping sends; the `try_` variants return `Err(Stale)` in both

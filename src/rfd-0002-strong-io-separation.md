@@ -220,7 +220,7 @@ event-loop iterations. Threaded and async I/O reach the graph through
 ### Reading a Cell
 
 `c.sample(b)` in graph code and `graph.sample(c)` in I/O both return
-`&A` borrowed from the context, so the borrow ends at the semicolon
+`&A` borrowed from the context, so the borrow ends at the end of scope
 and a caller that wants to keep the value clones it. Both take the
 context by `&mut`, because reading a lazy derived cell may compute and
 memoize. There is no `Clone` bound and no closure-taking variant; the

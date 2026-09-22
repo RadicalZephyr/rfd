@@ -370,7 +370,7 @@ manual for those. These change, following the naming policy in
 | `switchS`, `switchC` | `switch_stream`, `switch_cell` | The suffix letters mean nothing to someone who has not read the book. |
 | `updates` | `Graph::listen_steps` | An operational primitive, so it is a listener on `Graph`, not a stream on `Cell`. Fires on every step, including a step to an equal value. |
 | `value` | `Graph::listen_cell` | An operational primitive, so it is a listener on `Graph`. Fires once at registration with the current value, then on every step. |
-| `collect` | `scan` | It is exactly `Iterator::scan`, and `collect` means something else to every Rust reader. |
+| `collect` | `scan` | It is the FRP analogue to `Iterator::scan`, and `collect` means something else to every Rust reader. |
 | `filterOptional` | `filter_map(\|o\| o)` | `filter_map` takes a function and covers the map-then-filter pair; the identity closure moves the `Option` through by value, so this needs no `Clone`. |
 | `apply` on cells | `lift` with `\|f, a\| f(a)` | The oracle's `Apply` is a cell of functions applied to a cell; `lift` covers it with an identity-shaped function, and the oracle tests exercise it that way. |
 | `lift` (arities 2 to 6) | `lift`, binary, chained | Rust has no variadics. `a.lift(b, x, f).lift(b, y, g)` composes through read-through cells at no cost; a tuple form can follow if it earns its place. |

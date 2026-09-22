@@ -39,7 +39,7 @@ difference between "FRP build time" and "I/O event sending time" in
 the API. The denotational semantics already draw this line: `hold`,
 `sample`, `value` and `switchC` live in the `Reactive` monad, the pure
 combinators do not, and `Execute` is the only way to run construction
-at occurrence time. We map `Reactive` onto a `Build` context that
+at event time. We map `Reactive` onto a `Build` context that
 every node-creating operation requires and that also carries `sample`,
 and we put sending, listening, sampling from outside, and garbage
 collection on a `Graph`, which only exists once the build closure has
@@ -92,13 +92,13 @@ graph.transaction(|tx| { tx.send(ports.clicks_in, Click); });        // several 
 
 The example compiles against a stub of this API. `graph` is `mut`
 because every I/O operation takes `&mut self`, and the listener owns a
-clone of the UI handle because a listener is `'static`.
+clone of the shared UI state because a listener is `'static`.
 
 ### Tokens
 
 Streams and cells are inert tokens: an index, a generation, and a
 graph id. They have no method that creates a node without a `Build`
-context, so the I/O world can hold and pass them around but cannot
+context, so I/O code can hold and pass them around but cannot
 build with them. `Cell<A>`, `Input<A>` and `Shared<A>` are `Copy` for
 every `A`, through hand-written impls rather than derives, so
 `Cell<String>` is `Copy`. `Stream<A>` is move-only, for the reasons
@@ -116,28 +116,31 @@ and one compare is nothing.
 
 Constructors are methods on the tokens, and they come in two kinds.
 
-Stages transform occurrences and take no context: `map`, `filter`,
+Adapters transform events and take no context: `map`, `filter`,
 `filter_map`, `map_to`, `snapshot`, `gate` and `once`. They live on
-the `Source` trait and each returns an adapter type, `Map<S, F>`,
-`Filter<S, P>` and so on, which is itself a `Source`. Nothing is
-allocated and no node exists yet. `Source` has an associated `Item`
-type rather than a type parameter, exactly as `Iterator` does; a
-generic `Source<A>` cannot be implemented by an adapter type at all,
-because `A` would appear only in the bounds (E0207). A chain is
-affine: using it twice is a compile error.
+the `Source` trait, and each returns its own type, `Map<S, F>`,
+`Filter<S, P>` and so on, which is itself a `Source`. "Adapter" names
+both the operation and the type, as it does for `Iterator`. Nothing is
+allocated and no node exists yet. `Source` has an associated `Event`
+type rather than a type parameter, the way `Iterator` has `Item`, so
+`Source<Event = Click>` reads as a source of click events; a generic
+`Source<A>` cannot be implemented by an adapter type at all, because
+`A` would appear only in the bounds (E0207). A chain is a linear
+sequence of adapters with no materializer, and it is itself linear:
+using it twice is a compile error.
 
 Materializers create exactly one node from a chain and take the build
 context: `hold`, `accumulate`, `accumulate_mut`, `scan`, `share`,
 `node`, `merge`, `or_else`, `split`, `defer`, `construct`,
-`switch_stream`, and on cells `steps`, `steps_with_current`,
-`map_cell`, `lift` and `switch_cell`. The stages between two nodes
-fuse into that node's closure; [RFD 4](./rfd-0004-value-model.md)
+`switch_stream`, and on cells `map_cell`, `lift` and `switch_cell`.
+The adapters between two nodes fuse into that node's closure; [RFD 4](./rfd-0004-value-model.md)
 records the fusion. `Build` itself has methods only for the things
 that start from nothing: `input` and its variants, `constant`, `never`,
-`cell_loop` and `stream_loop`.
+`cell_loop` and `stream_loop`, plus `depends`
+([RFD 3](./rfd-0003-memory-model.md)).
 
 ```rust
-input.map(f).filter(p).snapshot(c, g).hold(b, 0);   // three stages, one node
+input.map(f).filter(p).snapshot(c, g).hold(b, 0);   // three adapters, one node
 count.lift(b, other, |n, m| n + m);
 ```
 
@@ -168,7 +171,7 @@ last-wins would make production behave differently from every test
 that ever ran.
 
 Inputs may be created anywhere `Build` is available, including inside
-`construct`, and the token flows to the I/O world as data, through a
+`construct`, and the token flows to I/O code as data, through a
 listener on the value that carries it. The alternative, declaring
 every input as a parameter of the build closure, cannot express an
 input created at runtime for a dynamically constructed component, and
@@ -189,8 +192,8 @@ order of listeners within a transaction is the evaluation order of
 their streams, ties by registration order, and is documented as not
 something to rely on.
 
-`listen`, `listen_cell` and `root` return a `Listener` or a `Root`. A
-handle borrows nothing from the graph: it shares a flag with its node,
+`listen`, `listen_cell`, `listen_steps` and `anchor` return a
+`Listener` or an `Anchor`. A handle borrows nothing from the graph: it shares a flag with its node,
 and dropping it flips the flag, so the graph can be driven while
 handles are held and a handle can be dropped inside a listener.
 `unlisten()` exists for symmetry with Sodium, and `keep()` turns a
@@ -203,7 +206,22 @@ implement. A listener with a pre-filter would be FRP logic constructed
 after build, and `snapshot` and `once` in I/O code would be the first
 crack in the wall. A linear stream is moved into `listen`, so it can
 be listened to once; a shared stream any number of times; a cell any
-number of times through `listen_cell`.
+number of times through `listen_cell` and `listen_steps`.
+
+Sodium's `updates` and `value` are its operational primitives, filed
+under `Operational` because their meaning depends on transaction
+boundaries, and the book says to use them only at the boundary. Here
+they are listeners and nothing else: `listen_cell` is `value`, firing
+once now with the current value and then on every step, and
+`listen_steps` is `updates`, firing on every step only. Both deliver
+the value by reference. No stream view of a cell exists in graph code,
+so no token is ever created from I/O code, and the FRP answer to "react
+when this cell changes" inside the graph is to keep the stream that
+fed the hold, sharing it if both are needed. We first put them on
+`Cell` as materializers returning streams; that made them ordinary
+graph logic, which is exactly what `Operational` exists to prevent, and
+it cost a `Clone` bound, a restriction on in-place accumulation, and a
+coalescing subtlety that all disappeared with the move.
 
 ### Outputs
 
@@ -216,7 +234,7 @@ wrapper would have to be applied inside every `construct` closure; the
 build return value already says "these are the edges".
 
 There is no queue type in the core. A loop that wants to pull
-occurrences instead of reacting to them writes a listener that pushes
+events instead of reacting to them writes a listener that pushes
 into its own collection, and the adapter crates for specific runtimes
 provide that over their own channel types
 ([RFD 6](./rfd-0006-io-edge.md)). We drafted a core `Mailbox<A>` and
@@ -227,7 +245,7 @@ semantics of its own, for something every runtime already has.
 
 Nothing can add logic after build. Runtime construction goes through
 `construct`, which is the semantics' `Execute`:
-`s.construct(b, |b, a| ...)` runs the closure at each occurrence with
+`s.construct(b, |b, a| ...)` runs the closure at each event with
 a fresh `&mut Build`, and its results reach the world only through
 `switch_stream` and `switch_cell`. Plugin-style late logic is a cell
 of plugins and a switch. Tests build one graph each.
@@ -235,10 +253,10 @@ of plugins and a switch. Tests build one graph each.
 Inside `construct`, `sample` returns the value the cell had at the
 start of the transaction, the semantics' `at c t`. That value is fixed
 for the whole transaction, so the read imposes no ordering and cannot
-glitch, which is also why cell reads never appear as edges in the
+glitch, which is also why cell reads are never dependencies in the
 evaluation order ([RFD 5](./rfd-0005-transaction-protocol.md)). A
 hold created inside `construct` starts at its initial value and picks
-up an occurrence in the same transaction if its input has one, as the
+up an event in the same transaction if its input has one, as the
 semantics' `Hold a s t0` with `t >= t0` requires.
 
 ### Loops
@@ -273,7 +291,7 @@ against the loop node, not the closer: the build or `construct` scope
 records the loops it declared and panics at scope end for any that is
 still open. Moving the closer somewhere else changes nothing. In
 particular, smuggling a closer into a `construct` closure through an
-`Option` and taking it out on some later occurrence compiles, and the
+`Option` and taking it out on some later event compiles, and the
 declaring scope still panics at its end because the loop is open when
 the scope closes.
 
@@ -296,11 +314,13 @@ declare here, hand tokens to user code, close there.
 
 ### The I/O API
 
-`Graph` has `send`, `transaction`, `listen`, `listen_cell`, `root`,
-`sample`, `collect_garbage`, `pump` and `remote`. `root` keeps a node
-alive that the I/O world wants to hold without listening to it, and
-returns the `Root` handle that holds it; the first name for it was
-`Pin`, which is an unrelated concept in `std::pin`.
+`Graph` has `send`, `transaction`, `listen`, `listen_cell`,
+`listen_steps`, `anchor`, `sample`, `collect_garbage`, `pump` and
+`remote`. `anchor` keeps a node alive that I/O code wants to hold
+without listening to it, and returns the `Anchor` handle that holds
+it. The first name for it was `Pin`, an unrelated concept in
+`std::pin`; the second was `Root`, which collided with the concept an
+anchor is one kind of.
 `collect_garbage` runs a collection now, for the manual policy;
 `collect` was the obvious name and is exactly the name the table below
 retires because it means something else to a Rust reader.
@@ -348,8 +368,8 @@ manual for those. These change, following the naming policy in
 | Sodium | Bough | Why |
 |---|---|---|
 | `switchS`, `switchC` | `switch_stream`, `switch_cell` | The suffix letters mean nothing to someone who has not read the book. |
-| `updates` | `steps` | It fires on every step including unchanged values, and `steps` is the semantics' own word for that list. |
-| `value` | `steps_with_current` | Fires once at the instant it is created, with the value the cell has just after that instant, then on every step. The semantics coalesce the creation firing with a step at the same instant into one occurrence carrying the step, and so does the engine: one node evaluation per instant yields one occurrence. |
+| `updates` | `Graph::listen_steps` | An operational primitive, so it is a listener on `Graph`, not a stream on `Cell`. Fires on every step, including a step to an equal value. |
+| `value` | `Graph::listen_cell` | An operational primitive, so it is a listener on `Graph`. Fires once at registration with the current value, then on every step. |
 | `collect` | `scan` | It is exactly `Iterator::scan`, and `collect` means something else to every Rust reader. |
 | `filterOptional` | `filter_map(\|o\| o)` | `filter_map` takes a function and covers the map-then-filter pair; the identity closure moves the `Option` through by value, so this needs no `Clone`. |
 | `apply` on cells | `lift` with `\|f, a\| f(a)` | The oracle's `Apply` is a cell of functions applied to a cell; `lift` covers it with an identity-shaped function, and the oracle tests exercise it that way. |
@@ -367,6 +387,6 @@ Kept as is: `never`, `constant`, `map`, `map_to`, `filter`, `merge`,
 `defer`, `listen`.
 
 New, with no Sodium counterpart: `share` and `Shared`, `node`,
-`input_coalescing`, `input_cell_coalescing`, `root` and `Root`, `keep`,
-`collect_garbage`, `pump`, `remote` and `Remote`, `Build`, `Graph`,
-`Transaction`.
+`input_coalescing`, `input_cell_coalescing`, `anchor` and `Anchor`,
+`keep`, `collect_garbage`, `pump`, `remote` and `Remote`, `depends`,
+`Build`, `Graph`, `Transaction`.

@@ -67,16 +67,16 @@ The executable denotational semantics in the Sodium repository
 (`denotational/Reactive/Sodium/Denotational.hs`, version 1.1) are
 ported to Rust as an oracle over lists of time-stamped values, the
 `bough-oracle` crate. Every primitive is property-tested against the
-oracle with random programs and random input occurrences, comparing
-occurrences and steps at every instant. The port is cross-checked once
+oracle with random programs and random input events, comparing
+events and steps at every instant. The port is cross-checked once
 against the fixed vectors in `denotational/sodium.hs` and
 `common-tests/SemanticTests.hs`; GHC does not run in CI. Behaviour the
 semantics cannot express (listeners, roots, collection, runtime inputs)
 gets its own property tests with random observation patterns, and the
 public live-node count is the leak assertion.
 
-Exact fidelity means we inherit the corners. `steps` fires on unchanged
-values. `switch_cell` emits a step at creation and at every switch,
+Exact fidelity means we inherit the corners. `listen_steps` fires on a step
+to an equal value. `switch_cell` emits a step at creation and at every switch,
 even when the new inner is quiet. `switch_stream` uses the old stream
 at the switch instant while `switch_cell` uses the new cell's
 post-instant value. `merge` is left-biased. Changing any of these is a
@@ -93,7 +93,7 @@ timed by criterion by hand:
   to the shape.
 - Frame: a thousand inputs per transaction into ten thousand nodes
   with most of them affected. The baseline is a loop over the values.
-- Shallow: one input through three stages, plus a variant with a
+- Shallow: one input through three adapters, plus a variant with a
   `share` in the middle so one real node hop is measured. The baseline
   is plain function calls.
 

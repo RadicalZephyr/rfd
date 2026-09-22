@@ -12,7 +12,7 @@ combinators from the README becomes concrete.
 
 ## By Value Through Streams, By Reference From Cells
 
-Stream functions take their occurrence by value and return owned
+Stream functions take their event by value and return owned
 values: `map` takes `A` and returns `B`, `snapshot` takes `A` and
 `&B`, `merge` takes `A, A`, and `filter` takes `&A` since it does not
 consume. The identity function is `|a| a`, not `|a| a.clone()`. Cell
@@ -36,26 +36,28 @@ A `Stream<A>` is move-only and has exactly one consumer. Every
 constructor consumes it. Using it twice is a compile error, and the
 fix is to say so: `share(b)` returns a `Shared<A>`, which is `Copy`,
 requires `A: Clone`, and clones on every read. Both implement
-`Source`, a trait with an associated `Item` type in the manner of
-`Iterator`, so every constructor and `listen` accept either through
-one trait, and the edge is compiled into the node at construction: a
-linear edge takes the occurrence out of the slot, a shared edge clones
-it.
+`Source`, a trait with an associated `Event` type the way `Iterator`
+has `Item`, so every constructor and `listen` accept either through
+one trait, and the dependency is compiled into the node at
+construction: a linear dependency takes the event out of the slot, a
+shared one clones it.
 
 Linearity is what lets `hold` and `merge` drop their `Clone` bounds.
-The hold is the sole consumer and moves the occurrence into its
+The hold is the sole consumer and moves the event into its
 committed value; merge moves whichever input fired through its
 function. The `Clone` points that remain are the operations that
 genuinely duplicate a value:
 
 - `share`;
-- `steps` and `steps_with_current` on a hold, which duplicate the
-  hold's input;
 - `map_to`, which emits one value repeatedly;
-- `steps` of a `switch_cell`, which copies the inner cell's value into
-  an occurrence;
 - a caller of `sample` who clones; `sample` itself returns a reference
   and has no bound.
+
+Cells have no stream view in graph code. Sodium's `updates` and
+`value` are operational primitives and become the listeners
+`listen_steps` and `listen_cell` ([RFD 2](./rfd-0002-strong-io-separation.md)),
+which read the committed value after commit by reference and need no
+`Clone` either.
 
 We considered a single `Copy` stream token with a build-time panic on
 a second consumer. It finds the bug on first run; the move-only token
@@ -63,8 +65,7 @@ finds it at compile time, which is the point of the model. The cost is
 that a linear stream inside a value is unreachable for derivation,
 because cell values are read by reference and a function on
 `Cell<Item>` cannot move `item.clicks` out. Any stream that travels
-inside a value must be shared, which is the confrontation we want. The
-I/O world receives a linear stream only as a by-value occurrence, and
+inside a value must be shared, which is the confrontation we want. I/O code receives a linear stream only as a by-value event, and
 since listeners have no graph access, it attaches a listener only
 after `send` returns: dynamic wiring from I/O is collect, then wire.
 
@@ -79,20 +80,20 @@ half the benefit.
 
 ## Chains Fuse, Iterator Style
 
-Nothing can observe the values between the stages of a linear stream,
-so the stages fuse the way iterator adapters do. `map`, `filter`,
-`filter_map`, `map_to`, `snapshot`, `gate` and `once` are stages: each
-returns an adapter type such as `Map<S, F>`, all of them `Source`,
-and none takes a build context. `Source` carries its item as an
-associated type rather than a type parameter: an adapter such as
+Nothing can observe the values between the adapters of a linear stream,
+so the adapters fuse the way iterator adapters do. `map`, `filter`,
+`filter_map`, `map_to`, `snapshot`, `gate` and `once` are adapters: each
+returns its own type, such as `Map<S, F>`, all of them `Source`, and
+none takes a build context. A chain is a linear sequence of adapters
+with no materializer. `Source` carries its event as an associated
+type, `Event`, rather than a type parameter: an adapter such as
 `Map<S, F>` cannot implement a generic `Source<A>`, because `A` would
 appear only in its bounds (E0207), which a stub of the API surface
 confirmed. A chain becomes one node with one
 monomorphized closure when something materializes it: `hold`,
 `accumulate`, `accumulate_mut`, `scan`, `share`, `node`, `merge`,
 `or_else`, `split`, `defer`, `construct`, `switch_stream`, and on
-cells `steps`, `steps_with_current`, `map_cell`, `lift` and
-`switch_cell`. Those take `b`.
+cells `map_cell`, `lift` and `switch_cell`. Those take `b`.
 
 ```rust
 input.map(f).filter(p).snapshot(c, g).hold(b, 0)
@@ -102,11 +103,11 @@ A chain cannot be stored in a value or returned from build until it is
 materialized, like an iterator before `collect`; `node(b)` materializes
 a chain as a linear stream with an identity of its own. The marking
 walk and the dependents lists see one node per chain, and the
-per-stage cost is a direct call, so a chain costs what the imperative
+per-adapter cost is a direct call, so a chain costs what the imperative
 baseline costs. The alternatives were one node per combinator, a
-virtual call and a slot per stage, and boxed stages appended to a
+virtual call and a slot per adapter, and boxed adapters appended to a
 chain node, which removes the bookkeeping but keeps a virtual call per
-stage. Fusion is the iterator-like API the README promises, and it is
+adapter. Fusion is the iterator-like API the README promises, and it is
 the cheap version of a compiled graph for the one case that dominates
 real graphs; the node graph itself stays an interpreter ([RFD 5](./rfd-0005-transaction-protocol.md)).
 
@@ -116,7 +117,7 @@ this is indistinguishable from updating at commit.
 
 ## Cells
 
-A hold is the stateful cell: it moves its occurrence into its
+A hold is the stateful cell: it moves its event into its
 committed value at commit. `map_cell`, `lift` and `switch_cell` are
 read-through. They compute from their inputs' current values when
 read, memoized against the inputs' version counters, so the function
@@ -127,11 +128,10 @@ interior mutability, because `sample` takes its context by shared
 reference so that two samples can appear in one expression: a
 `Cell`-style slot in `Local` mode and a mutex in `Threaded` mode
 ([RFD 6](./rfd-0006-io-edge.md)). Functions must be
-pure, and the documented contract is that the engine may call them any
-number of times per change, because a stream view of the same cell
-computes independently during evaluation. We considered eager
+pure. The engine calls them at most once per version of their inputs,
+and not at all if the cell is never read. We considered eager
 evaluation at commit, which matches Sodium's call pattern and makes
-sample a single load. It is never better than lazy by more than a
+sample a single load. It is never better than read-through by more than a
 version compare, and it is unboundedly worse for the high-rate shape
 read by a slow observer, which is one of the three workloads.
 
@@ -143,11 +143,9 @@ functions applied to a cell, is `lift` with `|f, a| f(a)`.
 `at (SwitchC c) t` is `at (at c t) t`, two pointer chases on sample
 and no state of its own.
 
-Stream views of cells are nodes built on demand. `steps` of a hold
-clones, because the hold will move that value. `steps` of a derived
-cell needs no `Clone`: it reads the post-transaction values of its
-inputs by reference, which exist because the pending occurrence sits
-in the hold's slot until commit.
+There is no stream view of a cell in graph code. The listeners
+`listen_steps` and `listen_cell` are the only way to turn steps into
+events, and they belong to I/O code.
 
 ## In-Place Accumulation
 
@@ -161,27 +159,14 @@ because the function cannot read the graph, and no observer can see
 the mutation: every reference is scoped to one call and the mutation
 happens when none exists.
 
-The cost is the stream view. `steps(accumulate)` at instant t carries
-the new state and is simultaneous with the input, and downstream logic
-may consume it during t. With in-place mutation the new state does not
-exist until commit, so there is nothing to put on the stream at t, and
-producing one by cloning during evaluation is `accumulate` again. An
-in-place accumulator therefore has no stream view: `steps`,
-`steps_with_current`, and `steps` of any cell derived from it are
-build-time errors, checked when they are constructed. Everything on
-the cell side works, since sample, snapshot, gate and `Build::sample`
-read the committed value before t, and `listen_cell` reads it after
-commit. This is also why derived cells are read-through: an eager
-update stream for `lift(log, filter, f)` would need the
-post-transaction state during evaluation.
-
-We considered enforcing the restriction at the type level with a
-distinct `State<S>` token accepted by every cell-reading operation
-through a trait, and rejected it for now: `lift` over a mix of `Cell`
-and `State` has to compute its output type, and the build-time panic
-is in the same class as every other construction error. The door stays
-open if the panic bites in practice. Dropping in-place accumulation
+Because a cell has no stream view in graph code, in-place accumulation
+needs no restriction at all. Everything that reads the cell reads it
+either during evaluation, as it was before the instant, or after
+commit, from a listener, and the mutation happens between the two. An
+earlier draft gave cells a stream view and had to forbid it on the
+in-place form, since the new state does not exist until commit; moving
+the stream views to I/O code dissolved the problem. Dropping in-place accumulation
 would leave an asymptotic cliff against the performance bar for any
 workload that accumulates, and persistent collections cost roughly ten
-times a `Vec` push. Dropping the derived `accumulate` would lose a
+times a `Vec` push. Dropping `accumulate`, the semantics' form, would lose a
 legal and common stream view.

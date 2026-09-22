@@ -23,7 +23,7 @@ by an inbox behind a standard-library mutex and a pluggable waker, an
 unlocks, and wakes. It is synchronous and never blocks on the graph.
 `remote.transaction(|tx| ...)` batches simultaneous sends the same
 way, with a `Send + 'static` closure that runs on the driver. The
-driver calls `graph.pump()`, which runs each pending item as its own
+driver calls `graph.pump()`, which runs each pending send as its own
 transaction in arrival order, and arrival order is the total order
 the semantics need. Transported values must be `Send`; nothing else
 changes, and a `Remote` works with a `Graph<Local>`.
@@ -102,7 +102,7 @@ one, because a defaulted type parameter takes no part in inferring an
 associated function: `Graph::build(|b| ...)` with a generic `build` is
 "type annotations needed", and two inherent `build`s are ambiguous,
 as a stub of the API confirmed. Tokens are plain integers and `Send` in every mode;
-`Remote`, `Listener` and `Root` do not carry the mode.
+`Remote`, `Listener` and `Anchor` do not carry the mode.
 
 Requiring `Send` everywhere would have killed the UI case, where
 toolkit handles are not `Send`. A non-`Send`-only graph would have

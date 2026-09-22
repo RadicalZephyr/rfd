@@ -20,13 +20,13 @@ one. Half of the Java implementation's priority machinery exists to
 get this right by scheduling; we get it by construction, with a
 committed value that only changes at commit.
 
-Only stream-to-stream edges need ordering. A merge needs both inputs'
-occurrences at t, a filter needs one, a snapshot needs its stream plus
+Only stream-to-stream dependencies need ordering. A merge needs both inputs'
+events at t, a filter needs one, a snapshot needs its stream plus
 a pre-t cell read. `SwitchS` uses the stream selected before t for t
 itself, so the topology in effect during t is fixed before t starts,
 and all relinking happens at commit together with the holds.
 
-Each stream has at most one occurrence per instant; `Merge` and `Hold`
+Each stream has at most one event per instant; `Merge` and `Hold`
 both coalesce. Per-transaction stream state is one `Option<A>`, and
 with correct ordering there is never a second delivery, so the
 internal coalescing and last-firing-only machinery disappears.
@@ -35,16 +35,16 @@ internal coalescing and last-firing-only machinery disappears.
 drops the old inner's step and emits the new inner's post-instant
 value, and it emits a step at every switch instant, and at creation,
 even when the new inner is quiet. The post-instant value of a hold is
-its input's occurrence at t if there is one, else its current value,
+its input's event at t if there is one, else its current value,
 so this update needs the new inner's input evaluated at t, a
 dependency only discoverable mid-transaction. This single primitive is
 why Sodium re-ranks nodes and rebuilds its queue during a transaction.
 
 Things created at an instant exist from that instant inclusive. A hold
-keeps occurrences with `t >= t0`, `Value` fires at t0 with the
-post-t0 value, and `Execute` lets an occurrence at t build graph at t.
+keeps events with `t >= t0`, `Value` fires at t0 with the
+post-t0 value, and `Execute` lets an event at t build graph at t.
 A node built inside a `construct` closure must be able to read
-occurrences already computed in this transaction.
+events already computed in this transaction.
 
 Time is a list of integers. `Split` produces children `t ++ [n]`,
 which run after t and before t's successor, depth first, and two
@@ -52,7 +52,7 @@ splits in the same t share child indices. That is the complete
 specification of the post-transaction queue.
 
 And the Haskell knot-tying for accumulators works only because an
-occurrence's time is known before its value. Operationally: every
+event's time is known before its value. Operationally: every
 cycle must pass through a hold, an accumulator or a split. A
 stream-only cycle has no meaning, and the engine refuses it. The Java
 implementation does not; its rank code terminates on a cycle and
@@ -89,7 +89,6 @@ events the fixed cost is a counter bump and two reused vectors.
 Slots are stamped with the transaction id, so nothing needs clearing
 between transactions, and a linear consumer takes its value out of
 the slot, so nothing lingers. The build closure runs as transaction
-zero, which is how `steps_with_current` created at build fires at
 zero.
 
 We considered rank-ordered push, Sodium's design, and pure memoized
@@ -116,7 +115,7 @@ semantics' `Value`.
 ## Misuse
 
 Construction errors panic. A stream-only cycle, a second consumer of a
-cell holding linear streams, `steps` on in-place state, a loop
+cell holding linear streams, a loop
 declared and never closed, a stale or foreign token in graph code, and
 a double send to a non-coalescing input are all deterministic and are
 found the first time the code runs.
@@ -132,14 +131,14 @@ operations cannot return:
 | `Transaction::try_send` | `Stale`, `ForeignGraph`, `DoubleSend`; poisoning is checked once, when the transaction is opened |
 | `Graph::try_transaction`, `try_collect_garbage`, `try_remote` | `Poisoned` |
 | `Graph::try_pump` | `Poisoned`, `DoubleSend`; whether an input coalesces is graph knowledge, so a double send inside a remote transaction is only discoverable when the driver pumps; the offending transaction is dropped and the rest stay queued |
-| `Graph::try_listen`, `try_listen_cell`, `try_root`, `try_sample` | `Stale`, `ForeignGraph`, `Poisoned` |
+| `Graph::try_listen`, `try_listen_cell`, `try_listen_steps`, `try_anchor`, `try_sample` | `Stale`, `ForeignGraph`, `Poisoned` |
 | `Remote::try_send` | `ForeignGraph`, `InsideTransaction` |
 | `Remote::try_transaction` | `InsideTransaction` |
 
 The panicking variants panic on misuse in both build modes, with one
 class excepted. An operation on a collected node whose effect is
 unobservable by the semantics, meaning sending to a collected input,
-listening to a collected stream, or rooting a collected node, is a
+listening to a collected stream, or anchoring a collected node, is a
 debug-mode panic and a release-mode no-op in the panicking variant,
 following the integer-overflow precedent, and is counted on the graph
 so a release build can report that it is dropping sends. A remote send

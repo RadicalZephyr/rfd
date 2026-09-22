@@ -14,7 +14,7 @@ The first problem with the Sodium API is that it is so minimal that
 some methods that should only be used for interfacing with the I/O
 edge ("World of I/O" in Sodium parlance) are directly on the `Stream`
 and `Cell` structs and so they show up in the documentation right next
-to all the core FRP combinator primitives. Creating an input FRP
+to all the core FRP primitives. Creating an input FRP
 struct requires first creating the input edge struct (an I/O API!), so
 from the very jump the Sodium API is _requiring_ the user to mix the
 usage of I/O and FRP code.
@@ -32,13 +32,13 @@ implementation, there is no attempt to leverage unique Rust features
 like lifetimes to prevent the use of I/O edge APIs inside FRP because
 the design is fundamentally unsuited to doing so.
 
-## Two Worlds, Two Types
+## Two Types: Build and Graph
 
 The key insight is that we can (and should!) actually represent the
 difference between "FRP build time" and "I/O event sending time" in
 the API. The denotational semantics already draw this line: `hold`,
 `sample`, `value` and `switchC` live in the `Reactive` monad, the pure
-combinators do not, and `Execute` is the only way to run construction
+operations do not, and `Execute` is the only way to run construction
 at event time. We map `Reactive` onto a `Build` context that
 every node-creating operation requires and that also carries `sample`,
 and we put sending, listening, sampling from outside, and garbage
@@ -49,7 +49,7 @@ The invariant this buys is best stated as one sentence: **the graph is
 entered from exactly one place at a time.** Graph code, meaning node
 functions and `construct` closures, never holds a `Graph`. During a
 transaction the engine holds the only `&mut Graph`, and `Build` has no
-`send`, no `listen` and no `sample` of the outside world. Every public
+`send` and no `listen`. Every public
 entry point on `Graph` also checks a flag saying whether a transaction
 is in progress, so even a `Graph` smuggled into graph code inside an
 `Rc<RefCell<_>>` fails deterministically at the entry, not somewhere
@@ -61,38 +61,41 @@ node function may capture a channel sender, or a `Remote`
 that later sends it into the graph. That send lands in a later
 transaction, which makes it I/O by definition rather than a hole in
 the wall; the direct case, a `Remote` used from graph code on the
-driver thread during a transaction, is an error, and
-[RFD 6](./rfd-0006-io-edge.md) gives the guard. The synchronous guarantee is the one that matters for
-correctness, because it is the one that keeps a transaction a pure
-function of its inputs.
+driver thread, is an error from the start of a transaction until its
+listeners run, and [RFD 6](./rfd-0006-io-edge.md) gives the guard.
+The synchronous guarantee is the one that matters for correctness,
+because it is the one that keeps a transaction a pure function of its
+inputs.
 
 ```rust
 use std::{cell::RefCell, rc::Rc};
 
 struct Click;
 #[derive(Trace)]
-struct Ports { clicks_in: Input<Click>, label: Cell<String> }
+struct Edge { clicks_in: Input<Click>, label: Cell<String> }
 
 let ui = Rc::new(RefCell::new(Ui::new()));
 
-let (mut graph, ports) = Graph::build(|b| {
+let (mut graph, edge) = Graph::build(|b| {
     let (clicks, clicks_in) = b.input::<Click>();
     let count = clicks.accumulate(b, 0u32, |_, n| n + 1);
     let label = count.map_cell(b, |n| n.to_string());
-    Ports { clicks_in, label }        // whatever build returns is the edge, and the root set
+    Edge { clicks_in, label }         // whatever build returns is the edge, and the root set
 });
 
-let _l = graph.listen_cell(ports.label, {
+let _l = graph.listen_cell(edge.label, {
     let ui = ui.clone();
     move |s| ui.borrow_mut().set_text(s) // fires now, then on every step
 });
-graph.send(ports.clicks_in, Click);                                  // one transaction
-graph.transaction(|tx| { tx.send(ports.clicks_in, Click); });        // several sends, one instant
+graph.send(edge.clicks_in, Click);                                   // one transaction
+graph.transaction(|tx| { tx.send(edge.clicks_in, Click); });         // several sends, one instant
 ```
 
 The example compiles against a stub of this API. `graph` is `mut`
-because every I/O operation takes `&mut self`, and the listener owns a
-clone of the shared UI state because a listener is `'static`.
+because the operations that drive the graph take `&mut self`; `sample`
+and `try_sample` take `&self`, so two samples compose in one
+expression (see Reading a Cell). The listener owns a clone of the
+shared UI state because a listener is `'static`.
 
 ### Tokens
 
@@ -132,16 +135,17 @@ using it twice is a compile error.
 Materializers create exactly one node from a chain and take the build
 context: `hold`, `accumulate`, `accumulate_mut`, `scan`, `share`,
 `node`, `merge`, `or_else`, `split`, `defer`, `construct`,
-`switch_stream`, and on cells `map_cell`, `lift` and `switch_cell`.
-The adapters between two nodes fuse into that node's closure; [RFD 4](./rfd-0004-value-model.md)
-records the fusion. `Build` itself has methods only for the things
-that start from nothing: `input` and its variants, `constant`, `never`,
-`cell_loop` and `stream_loop`, plus `depends`
-([RFD 3](./rfd-0003-memory-model.md)).
+`switch_stream`, and on cells `map_cell`, `switch_cell`, `steps` and
+`steps_with_current`, plus `lift` on a tuple of cells. The adapters
+between two nodes fuse into that node's closure;
+[RFD 4](./rfd-0004-value-model.md) records the fusion. `Build` itself
+has methods only for the things that start from nothing: `input` and
+its variants, `constant`, `never`, `cell_loop` and `stream_loop`, plus
+`depends` ([RFD 3](./rfd-0003-memory-model.md)).
 
 ```rust
 input.map(f).filter(p).snapshot(c, g).hold(b, 0);   // three adapters, one node
-count.lift(b, other, |n, m| n + m);
+(count, other).lift(b, |n, m| n + m);
 ```
 
 We considered putting every constructor on `Build`,
@@ -156,8 +160,10 @@ is the linearity check made visible.
 `b.input::<A>()` returns a stream and the `Input<A>` token that drives
 it. `b.input_coalescing(f)` is for inputs that may be sent more than
 once in a transaction, with `f: Fn(A, A) -> A` taking both values by
-value, first send on the left; the type is inferred from the closure
-or from the first use, the same as `input`. `b.input_cell(init)` and
+value, first send on the left. Its event type comes from the first use
+or from an annotated closure; a bare `|x, y| x + y` fixes nothing, and
+the turbofish takes two parameters, `::<u32, _>`, since the closure
+type is the second. `b.input_cell(init)` and
 `b.input_cell_coalescing(init, f)` return a cell and its token, a hold
 over an input. The cell forms are one line over the stream forms and
 exist because an input that is state is common enough to deserve a
@@ -193,12 +199,12 @@ their streams, ties by registration order, and is documented as not
 something to rely on.
 
 `listen`, `listen_cell`, `listen_steps` and `anchor` return a
-`Listener` or an `Anchor`. A handle borrows nothing from the graph: it shares a flag with its node,
-and dropping it flips the flag, so the graph can be driven while
-handles are held and a handle can be dropped inside a listener.
-`unlisten()` exists for symmetry with Sodium, and `keep()` turns a
-handle into an app-lifetime root without a struct to hold it.
-[RFD 3](./rfd-0003-memory-model.md) has the rest.
+`Listener` or an `Anchor`. A handle borrows nothing from the graph: it
+shares a flag with its node, and dropping it flips the flag, so the
+graph can be driven while handles are held and a handle can be dropped
+inside a listener. `unlisten()` exists for symmetry with Sodium, and
+`keep()` turns a handle into an app-lifetime root without a struct to
+hold it. [RFD 3](./rfd-0003-memory-model.md) has the rest.
 
 `listen` accepts materialized nodes only, `Stream<A>` or `Shared<A>`,
 never a chain, through a `Node` bound that adapter types do not
@@ -209,19 +215,26 @@ be listened to once; a shared stream any number of times; a cell any
 number of times through `listen_cell` and `listen_steps`.
 
 Sodium's `updates` and `value` are its operational primitives, filed
-under `Operational` because their meaning depends on transaction
-boundaries, and the book says to use them only at the boundary. Here
-they are listeners and nothing else: `listen_cell` is `value`, firing
-once now with the current value and then on every step, and
-`listen_steps` is `updates`, firing on every step only. Both deliver
-the value by reference. No stream view of a cell exists in graph code,
-so no token is ever created from I/O code, and the FRP answer to "react
-when this cell changes" inside the graph is to keep the stream that
-fed the hold, sharing it if both are needed. We first put them on
-`Cell` as materializers returning streams; that made them ordinary
-graph logic, which is exactly what `Operational` exists to prevent, and
-it cost a `Clone` bound, a restriction on in-place accumulation, and a
-coalescing subtlety that all disappeared with the move.
+under `Operational` because they expose a cell's steps. The book puts
+the warning plainly in section 8.4: "To protect the idea of a
+continuously varying cell, a true FRP system must ensure that changes
+in a cell's value aren't observable." Both exist here, in graph code
+and in I/O code. In graph code, `c.steps(b)` is `updates` and
+`c.steps_with_current(b)` is `value`, materializers on `Cell` that
+return a stream, and their documentation carries that warning: a
+stream of a cell's steps observes how the cell was built, not only
+what it holds, and belongs in operational code such as sending a cell
+over a wire. From I/O code, `listen_steps` is `updates` and
+`listen_cell` is `value`, listeners that deliver the value by
+reference. We first moved the stream views to `Graph` alone, so that
+no stream view of a cell existed in graph code. That made graph code a
+strict subset of the semantics: a read-through cell has no feeding
+stream to keep, and the nearest substitute, a snapshot on its inputs'
+streams, is one instant stale, because `snapshot` reads a cell as it
+was before the instant. Restoring the stream views keeps the semantics
+whole and puts the warning where Sodium put it, on the primitives
+themselves; what they cost is recorded in
+[RFD 4](./rfd-0004-value-model.md).
 
 ### Outputs
 
@@ -241,14 +254,16 @@ provide that over their own channel types
 dropped it: it needed a capacity policy, a drain contract and drop
 semantics of its own, for something every runtime already has.
 
-### Runtime Construction
+## Runtime Construction
 
 Nothing can add logic after build. Runtime construction goes through
 `construct`, which is the semantics' `Execute`:
 `s.construct(b, |b, a| ...)` runs the closure at each event with
-a fresh `&mut Build`, and its results reach the world only through
-`switch_stream` and `switch_cell`. Plugin-style late logic is a cell
-of plugins and a switch. Tests build one graph each.
+a fresh `&mut Build`, and its results are ordinary events. A
+constructed screen goes into a hold that a `switch_stream` or
+`switch_cell` reads, and a token created inside the closure flows out
+to I/O code as data, as Inputs describes. Plugin-style late logic is a
+cell of plugins and a switch. Tests build one graph each.
 
 Inside `construct`, `sample` returns the value the cell had at the
 start of the transaction, the semantics' `at c t`. That value is fixed
@@ -259,13 +274,13 @@ hold created inside `construct` starts at its initial value and picks
 up an event in the same transaction if its input has one, as the
 semantics' `Hold a s t0` with `t >= t0` requires.
 
-### Loops
+## Loops
 
 FRP allows a limited form of cycles in the constructed graph. Declare
 and close are separate, and flat:
 
 ```rust
-let (block_number, block_number_loop) = b.cell_loop::<BlockNum>();
+let (block_number, block_number_loop) = b.cell_loop::<BlockNumber>();
 let (retry_count, retry_count_loop) = b.cell_loop::<RetryCount>();
 let parts = build_transfer(b, block_number, retry_count, ...);   // forward tokens travel anywhere
 block_number_loop.close(b, parts.block_number);                  // any cell, subject to the rule below
@@ -282,8 +297,11 @@ loop with `lift(forward, other, f)` is therefore rejected, since it
 would define a value in terms of itself at the same instant, which the
 semantics cannot give a meaning to; closing it with a hold whose
 input snapshots the forward token is the normal case. The check runs
-at close, and again in the transaction's marking walk for cycles a
-`construct` creates ([RFD 5](./rfd-0005-transaction-protocol.md)).
+at close, and again at relink for cycles a `construct` creates: the
+nodes a `construct` closure built are linked into the graph at commit,
+and their new dependencies are checked then, at the end of the
+transaction that created them, so a cycle is found the first time the
+code runs ([RFD 5](./rfd-0005-transaction-protocol.md)).
 
 The closer is consumed by `close`, so a loop cannot close twice. A
 loop must close in the scope that declared it, and that is checked
@@ -312,11 +330,13 @@ a second return value, cannot express a loop inside a constructed
 screen. The flat form is what an application framework needs as well:
 declare here, hand tokens to user code, close there.
 
-### The I/O API
+## The I/O API
 
 `Graph` has `send`, `transaction`, `listen`, `listen_cell`,
-`listen_steps`, `anchor`, `sample`, `collect_garbage`, `pump` and
-`remote`. `anchor` keeps a node alive that I/O code wants to hold
+`listen_steps`, `anchor`, `sample`, `collect_garbage`,
+`set_collection_policy`, `set_collect_after_every_transaction`,
+`live_nodes`, `stale_operations`, `set_waker`, `pump` and `remote`.
+`anchor` keeps a node alive that I/O code wants to hold
 without listening to it, and returns the `Anchor` handle that holds
 it. The first name for it was `Pin`, an unrelated concept in
 `std::pin`; the second was `Root`, which collided with the concept an
@@ -327,8 +347,10 @@ retires because it means something else to a Rust reader.
 `graph.transaction(|tx| ...)` hands out a `Transaction` that has only
 `send`, so simultaneous inputs are one closure. `Transaction` exists
 only on the I/O side, which removes the dual use this RFD complains
-about. `pump` and `remote` are the threaded and async edge
-([RFD 6](./rfd-0006-io-edge.md)).
+about. `set_waker`, `pump` and `remote` are the threaded and async
+edge ([RFD 6](./rfd-0006-io-edge.md)); the collection policy, the
+stress setting and the two counters are
+[RFD 3](./rfd-0003-memory-model.md)'s.
 
 Every operation that can fail has a `try_` sibling returning a
 `Result`, and each family of operations with the same failure modes
@@ -344,7 +366,7 @@ already cannot reach `Graph` during a transaction, and an application
 framework needs something that owns the graph across event-loop
 iterations.
 
-### Reading a Cell
+## Reading a Cell
 
 `c.sample(b)` in graph code and `graph.sample(c)` in I/O both take the
 context by shared reference and return `&A` borrowed from it. Shared
@@ -354,10 +376,12 @@ keep a value clones it, and the clone lands where the user decides to
 keep the value, which is the whole philosophy of
 [RFD 4](./rfd-0004-value-model.md). There is no `Clone` bound and no
 closure-taking variant. Reading a read-through cell may compute and
-memoize, so its memo sits behind interior mutability rather than
-behind `&mut`; taking the context by `&mut` was the first draft, and a
-stub of the API showed that two samples in one expression are then a
-borrow error, which makes `sample` unusable for its main job.
+memoize, so its memo is a `OnceCell`, which hands out a reference from
+a shared borrow and is cleared at commit through `&mut`
+([RFD 4](./rfd-0004-value-model.md)); taking the context by `&mut` was
+the first draft, and a stub of the API showed that two samples in one
+expression are then a borrow error, which makes `sample` unusable for
+its main job.
 
 ## Names
 
@@ -368,25 +392,26 @@ manual for those. These change, following the naming policy in
 | Sodium | Bough | Why |
 |---|---|---|
 | `switchS`, `switchC` | `switch_stream`, `switch_cell` | The suffix letters mean nothing to someone who has not read the book. |
-| `updates` | `Graph::listen_steps` | An operational primitive, so it is a listener on `Graph`, not a stream on `Cell`. Fires on every step, including a step to an equal value. |
-| `value` | `Graph::listen_cell` | An operational primitive, so it is a listener on `Graph`. Fires once at registration with the current value, then on every step. |
-| `collect` | `scan` | It is the FRP analogue to `Iterator::scan`, and `collect` means something else to every Rust reader. |
+| `updates` | `steps` on `Cell`, `listen_steps` on `Graph` | An operational primitive: the name says what it exposes, a cell's steps, and it carries the book's warning. Fires on every step, including a step to an equal value. |
+| `value` | `steps_with_current` on `Cell`, `listen_cell` on `Graph` | Long on purpose: it fires once at creation with the current value and then on every step; the listener fires once at registration. |
+| `collect` | `scan` | `collect` means something else to every Rust reader, and `scan` is the nearest Rust name; [RFD 4](./rfd-0004-value-model.md) gives the signature, which is not `Iterator::scan`'s. |
 | `filterOptional` | `filter_map(\|o\| o)` | `filter_map` takes a function and covers the map-then-filter pair; the identity closure moves the `Option` through by value, so this needs no `Clone`. |
-| `apply` on cells | `lift` with `\|f, a\| f(a)` | The oracle's `Apply` is a cell of functions applied to a cell; `lift` covers it with an identity-shaped function, and the oracle tests exercise it that way. |
-| `lift` (arities 2 to 6) | `lift`, binary, chained | Rust has no variadics. `a.lift(b, x, f).lift(b, y, g)` composes through read-through cells at no cost; a tuple form can follow if it earns its place. |
+| `apply` on cells | `lift` with `\|f, a\| f(a)` | The oracle's `Apply` applies a cell of functions to a cell. Cell values are read by reference, so the cell holds `Fn(&A) -> B` and `(cf, ca).lift(b, \|f, a\| f(a))` is it; the oracle tests exercise it that way. |
+| `lift` (arities 2 to 6) | `lift` on a tuple of cells, arities 2 to 6 | Rust has no variadics, and a tuple of cells is the one form: `(a, x, y).lift(b, \|a, x, y\| ...)`. Chaining binary lifts composes functions rather than lifting three cells ([RFD 4](./rfd-0004-value-model.md)). |
 | `accum` | `accumulate` | The naming policy; `accumulate_mut` is the in-place form ([RFD 4](./rfd-0004-value-model.md)). |
 | `map` on a cell | `map_cell` | Distinct from `map` on a stream, and spelled out. |
 | `listen` on a cell | `listen_cell` | Cells are read by reference, so the listener signature differs from the stream one. |
 | `StreamSink`, `CellSink` | `input`, `input_cell` | Inputs are created from `Build` and drive a stream or a cell. |
 | `StreamLoop`, `CellLoop` | `cell_loop`, `stream_loop` with `close` | Same concept, flat declare and close. |
-| `Operational` | gone | Its four operations are ordinary methods. |
+| `Operational` | gone | `defer` and `split` are ordinary methods on `Source`; `updates` and `value` are `steps` and `steps_with_current` on `Cell`, carrying the book's warning, and listeners on `Graph`. |
 | `execute` (the semantics) | `construct` | What it does, in Rust words. |
 
 Kept as is: `never`, `constant`, `map`, `map_to`, `filter`, `merge`,
 `or_else`, `snapshot`, `hold`, `gate`, `once`, `sample`, `split`,
 `defer`, `listen`.
 
-New, with no Sodium counterpart: `share` and `Shared`, `node`,
+New, with no Sodium counterpart: `share` and `Shared`, `node` and
+`Node`, `Source` and `Event`, `Trace` and `Leaf`, `depends`,
 `input_coalescing`, `input_cell_coalescing`, `anchor` and `Anchor`,
-`keep`, `collect_garbage`, `pump`, `remote` and `Remote`, `depends`,
-`Build`, `Graph`, `Transaction`.
+`Listener`, `keep`, `collect_garbage`, `set_waker`, `pump`, `remote`
+and `Remote`, `Build`, `Graph`, `Transaction`, `Local` and `Threaded`.

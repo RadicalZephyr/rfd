@@ -1,9 +1,9 @@
-# Bough
+# Glossary
 
-A functional reactive programming library that implements the Sodium
-denotational semantics and keeps building FRP logic and driving it from I/O
-in two separate worlds. This glossary is the project's language; the design
-behind each term is in the RFDs.
+Bough is a functional reactive programming library that implements the
+Sodium denotational semantics with an API that cleanly separates
+building FRP logic from driving it with I/O. This glossary is the
+project's language; the design behind each term is in the RFDs.
 
 ## Language
 
@@ -57,13 +57,15 @@ Giving a stream more than one consumer, which is always explicit, through
 _Avoid_: splitting (that is `split`), broadcasting
 
 **Cell**:
-A value that exists at every instant. Cell values are read by reference and
-are never cloned by the engine.
+A value that exists at every instant. Cell values are read by reference;
+the engine clones one only for `steps` and `steps_with_current`, which
+need a value of their own.
 _Avoid_: behavior, signal, property, variable
 
 **Hold**:
 A cell that keeps the latest event of a stream, starting from an initial
-value. Holds and accumulators are the stateful cells.
+value. Holds, accumulators and constants are the stateful cells; a
+constant is a hold that never steps.
 _Avoid_: register, latch, state cell
 
 **Accumulator**:
@@ -72,9 +74,11 @@ new state or by mutating the state in place.
 _Avoid_: reducer, fold cell
 
 **Read-through cell**:
-A cell computed from other cells when it is read, memoized against their
-versions: `map_cell`, `lift`, `switch_cell`. The other kind of cell is
-stateful, a hold or an accumulator, and there is no third kind.
+A cell computed from other cells when it is read and memoized until one
+of them steps: `map_cell`, `lift`, `switch_cell`. It steps when an input
+steps, so marking reaches it, but its function runs only on read. The
+other kind of cell is stateful, a hold, an accumulator or a constant,
+and there is no third kind.
 _Avoid_: derived cell, lazy cell, computed cell
 
 **Input**:
@@ -102,7 +106,8 @@ _Avoid_: token, guard, subscription
 
 **Node**:
 Anything in the graph with an identity of its own, created by a
-materializer.
+materializer. `Node` is also the bound `listen` takes, which only
+`Stream` and `Shared` satisfy: a chain is not a node.
 _Avoid_: vertex, operator
 
 **Adapter**:
@@ -121,13 +126,16 @@ the build context to do it.
 _Avoid_: terminal operation, consumer, sink
 
 **Dependency**:
-A node's input: what it reads during evaluation. A cell read is not a
-dependency, because a cell is read as it was before the instant.
-_Avoid_: edge, link, upstream (as a noun)
+What a node is marked from: a stream node's inputs, and the cells a
+read-through cell is computed from, so that a step in one reaches the
+other. A cell read inside a stream function is not a dependency, because
+a cell is read as it was before the instant.
+_Avoid_: edge, link, upstream (as a noun), reach (that is for collection)
 
 **Build context**:
 The context every node-creating operation requires. It exists inside the
-build closure and inside construct closures, and nowhere else.
+build closure and inside construct closures, and nowhere else, and it
+carries the graph's mode.
 _Avoid_: builder, transaction (Sodium's word for it)
 
 **Graph code**:
@@ -177,8 +185,8 @@ _Avoid_: runtime, executor, owner
 **Listener**:
 An I/O callback attached to a node, run after commit with no graph access,
 and the handle that keeps it attached. `listen_cell` and `listen_steps` are
-Sodium's operational primitives `value` and `updates`, filed here because
-they belong to I/O code.
+the I/O forms of `steps_with_current` and `steps`, Sodium's `value` and
+`updates`.
 _Avoid_: observer, subscriber, callback (for the attachment)
 
 **Anchor**:
@@ -187,12 +195,13 @@ taken with `anchor`. One of the three kinds of root.
 _Avoid_: pin, root (that is the concept)
 
 **Remote**:
-A `Send + Clone` handle for sending into a graph from any thread. Each
-remote send is its own transaction, run when the driver pumps.
-_Avoid_: sender, proxy, channel
+A `Send + Clone` endpoint for sending into a graph from any thread. A
+remote send or a remote transaction is queued as one unit, and the driver
+runs each unit as one transaction when it pumps.
+_Avoid_: sender, proxy, channel, handle (its drop does nothing)
 
 **Pump**:
-Running every pending remote send, each as its own transaction, in arrival
+Running every pending remote unit, each as one transaction, in arrival
 order.
 _Avoid_: poll, drain, flush
 
@@ -205,8 +214,16 @@ _Avoid_: flavor, threading model
 
 **Root**:
 Something that keeps a node alive: the value the build closure returned, a
-live listener, or a live anchor.
+live listener, or a live anchor. A handle is live until it is dropped, and
+`keep` makes it live for the graph's lifetime.
 _Avoid_: anchor (that is one kind), pin, owner
+
+**Reach**:
+What a node keeps alive: its dependencies, the tokens `Trace` finds in a
+stateful cell's committed value, and its `depends` declarations. Reach is
+wider than dependency: a `depends` declaration never orders evaluation
+and can never read as a cycle.
+_Avoid_: reference (a Rust word), liveness edge, retention
 
 **Stale**:
 Of a token: its node has been collected.
@@ -217,7 +234,8 @@ Of a token: it belongs to another graph.
 _Avoid_: mismatched, alien
 
 **Poisoned**:
-Of a graph: a panic escaped `send`, and every later call fails.
+Of a graph: a panic escaped a transaction, through `send`, `transaction`
+or `pump`, and every later call fails, remote sends included.
 _Avoid_: broken, corrupted, tainted
 
 **Collection**:

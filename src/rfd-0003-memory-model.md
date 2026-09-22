@@ -14,9 +14,13 @@ must be checked.
 ## Nodes Live in an Arena, Tokens Name Them
 
 Every node lives in one arena owned by the `Graph`, indexed by `u32`.
-There is no `Rc` in the graph and no `RefCell` in the node graph; the
-one piece of interior mutability is the memo of a read-through cell,
-because `sample` takes its context by shared reference ([RFD 4](./rfd-0004-value-model.md)). A token is an
+There is no `Rc` in the graph and no `RefCell` in the node graph.
+Interior mutability appears in three places, each with one job: the
+memo of a read-through cell, a `OnceCell` that hands out a reference
+from a shared borrow and is cleared only through `&mut` at commit
+([RFD 4](./rfd-0004-value-model.md)); the flag a handle shares with
+its node, so that dropping the handle needs no graph access; and the
+inbox behind `Remote` ([RFD 6](./rfd-0006-io-edge.md)). A token is an
 index, a generation and a graph id. A freed slot bumps its generation,
 so a stale token fails the check on its next use instead of addressing
 a recycled node. This is what makes a wrong `Trace` implementation a
@@ -24,7 +28,10 @@ loud error rather than memory unsafety, and it is why `Trace` is a
 safe trait.
 
 `Cell<A>`, `Input<A>` and `Shared<A>` are `Copy`. `Stream<A>` is
-move-only because it is linear ([RFD 4](./rfd-0004-value-model.md)); it is still three words.
+move-only because it is linear ([RFD 4](./rfd-0004-value-model.md));
+it is still the same twelve bytes. The phantom in every token is
+`PhantomData<fn() -> A>`, so a token is `Send` whatever `A` is, which
+[RFD 6](./rfd-0006-io-edge.md) relies on.
 
 ## Liveness Is Reachability From Explicit Roots
 
@@ -38,10 +45,13 @@ three kinds of root:
    `graph.anchor(&token)` on a token it wants to hold without listening
    to it.
 
-A node's dependencies are its inputs, the tokens a `Trace` walk finds
-inside a hold's committed value, a switch's currently selected inner
-(which is such a value), and the explicit `depends` declarations
-below.
+A node's reach, what it keeps alive, is its dependencies, the tokens a
+`Trace` walk finds inside a stateful cell's committed value, a switch's
+currently selected inner (which is such a value), and the explicit
+`depends` declarations below. Reach is wider than dependency: the
+marking walk of a transaction follows dependents lists only, so a
+`depends` declaration never orders evaluation and can never read as a
+cycle ([RFD 5](./rfd-0005-transaction-protocol.md)).
 
 Collection is mark from the roots, sweep the arena, bump the
 generation of every freed slot, and prune dead nodes out of their
@@ -68,8 +78,11 @@ Two things, both checked.
 
 Every type held in a cell implements `Trace`, derived with
 `#[derive(Trace)]` next to the `Clone` most such types already derive,
-with `#[trace(skip)]` for fields that cannot hold tokens and a small
-macro to declare a foreign type a leaf. Implementations ship for the
+with `#[trace(skip)]` for fields that cannot hold tokens. A value of a
+foreign type that holds no tokens goes in a `Leaf<T>` wrapper, which
+traces nothing and derefs to `T`; the orphan rules forbid implementing
+`Trace` for another crate's type, so a macro declaring one a leaf could
+only ever run inside this crate. Implementations ship for the
 standard library's types. The bound sits on `hold` and the other
 operations that persist a value, so a stream of non-`Trace` values can
 be mapped, filtered and merged freely and fails only where it would
@@ -88,8 +101,8 @@ touched through a stale token. Making hand-written implementations
 writing one.
 
 A closure that captures a token that is not upstream of its own node
-declares it: `b.depends(&node, &[&a, &b])` states that a node keeps
-those tokens alive, one declaration per closure, callable after any
+declares it: `b.depends(&node, &[&clicks, &total])` states that a node
+keeps those tokens alive, one declaration per closure, callable after any
 construction, taking references so it does not consume a linear
 stream; the slice is heterogeneous, since the tokens a closure captures
 are rarely all of one type. Upstream captures need no
@@ -106,30 +119,36 @@ An undeclared capture cannot be made a compile error without making
 tokens unusable as data, and we want the data. Its failure mode is a
 stale token: a loud error at the point of use, never a leak and never
 a read of a recycled node. A collection-stress setting on the graph,
-which collects after every transaction, makes that error deterministic
-in tests, and the public live-node count is how the no-leak
-requirement is asserted: build, drive, drop, collect, compare.
+`set_collect_after_every_transaction`, makes that error deterministic
+in tests, and the public live-node count, `live_nodes`, is how the
+no-leak requirement is asserted: build, drive, drop, collect, compare.
 
 ## When Collection Runs
 
 Never inside a transaction. Automatic by default and amortized: after
-a transaction, collect when the nodes allocated since the last
-collection exceed the live count, so a graph that never allocates
-never pays. A manual policy is available, with `graph.collect_garbage()`, for
-a frame loop that wants to collect at frame end or a high-rate loop
-that wants to choose when it pays. Manual-only was rejected because UI
-code should never think about it; automatic-only because the shallow
+a transaction, collect when the nodes allocated plus the roots
+released since the last collection exceed the live count. Garbage is
+made by unrooting as much as by allocating, and a graph built once
+that then drops listeners allocates nothing, so a trigger on
+allocation alone would never fire for it; a graph that neither
+allocates nor drops a root never pays. A manual policy is available,
+set with `set_collection_policy` and run with `collect_garbage`, for a
+frame loop that wants to collect at frame end or a high-rate loop that
+wants to choose when it pays. Manual-only was rejected because UI code
+should never think about it; automatic-only because the shallow
 high-rate shape wants to choose.
 
 ## Handles
 
 A handle borrows nothing from the graph, so the graph can be driven
 while handles are held. `Listener` and `Anchor` are RAII: dropping the
-handle unlistens or unanchors by flipping a flag the node shares, so dropping one inside a listener
-callback needs no graph access. `keep()` turns a handle into an
-app-lifetime root without a struct to hold it, because every real
-application has process-lifetime listeners and a field called
-`_listeners` that exists to be ignored is the alternative.
+handle unlistens or unanchors by flipping a flag the node shares, so
+dropping one inside a listener callback needs no graph access. A
+handle is live until it is dropped, and a live handle is a root.
+`keep()` consumes the handle and leaves its listener or anchor live
+for the graph's lifetime, a root without a struct to hold it, because
+every real application has process-lifetime listeners and a field
+called `_listeners` that exists to be ignored is the alternative.
 `unlisten()` exists for symmetry with Sodium. A linear stream is
 consumed by `listen`, so once that listener is dropped the stream can
 never be observed again and is collected unless something else roots
@@ -144,5 +163,5 @@ anchoring a collected node has no effect the semantics can observe. In
 the panicking variants these are a debug-mode panic and a release-mode
 no-op, counted on the graph so a release build can still report that
 it is dropping sends; the `try_` variants return `Err(Stale)` in both
-modes ([RFD 5](./rfd-0005-transaction-protocol.md)). Sampling a collected cell must return something, so it
-always fails.
+modes ([RFD 5](./rfd-0005-transaction-protocol.md)). Sampling a
+collected cell must return something, so it always fails.

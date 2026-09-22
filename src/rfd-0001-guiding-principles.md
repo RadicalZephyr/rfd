@@ -79,8 +79,10 @@ Exact fidelity means we inherit the corners. `listen_steps` fires on a step
 to an equal value. `switch_cell` emits a step at creation and at every switch,
 even when the new inner is quiet. `switch_stream` uses the old stream
 at the switch instant while `switch_cell` uses the new cell's
-post-instant value. `merge` is left-biased. Changing any of these is a
-semantics change and needs its own RFD, not an implementation choice.
+post-instant value. `merge` takes a combining function, called as
+`f(left, right)` when both streams fire in one instant; `or_else` is
+the left-biased one. Changing any of these is a semantics change and
+needs its own RFD, not an implementation choice.
 
 ### What Fast Means
 

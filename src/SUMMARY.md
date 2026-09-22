@@ -5,7 +5,7 @@
 - [Memory Model](./rfd-0003-memory-model.md)
 - [Value Model](./rfd-0004-value-model.md)
 - [Transaction Protocol and Failure Modes](./rfd-0005-transaction-protocol.md)
-- [The I/O Edge and Concurrency](./rfd-0006-io-edge.md)
+- [The I/O Edge: Remotes, Drivers, and Threading Modes](./rfd-0006-io-edge.md)
 
 ---
 

@@ -23,15 +23,32 @@ its node, so that dropping the handle needs no graph access; and the
 inbox behind `Remote` ([RFD 6](./rfd-0006-io-edge.md)). A token is an
 index, a generation and a graph id. A freed slot bumps its generation,
 so a stale token fails the check on its next use instead of addressing
-a recycled node. This is what makes a wrong `Trace` implementation a
-loud error rather than memory unsafety, and it is why `Trace` is a
-safe trait.
+a recycled node. A slot whose generation reaches its maximum is retired
+and never reused, one compare on free, so a stale token from before a
+wrap can never validate; with a first-in first-out free list the churn
+spreads across every slot, and retirement is astronomically rare
+([RFD 7](./rfd-0007-targets.md)). This is what makes a wrong `Trace`
+implementation a loud error rather than memory unsafety, and it is why
+`Trace` is a safe trait.
 
 `Cell<A>`, `Input<A>` and `Shared<A>` are `Copy`. `Stream<A>` is
 move-only because it is linear ([RFD 4](./rfd-0004-value-model.md));
 it is still the same twelve bytes. The phantom in every token is
 `PhantomData<fn() -> A>`, so a token is `Send` whatever `A` is, which
 [RFD 6](./rfd-0006-io-edge.md) relies on.
+
+The arena and every per-transaction structure sit behind a `pub(crate)`
+storage seam from the first increment, and the engine allocates only at
+build and inside `construct`: mark and order buffers are reused,
+dispatch lists are reused, and a child transaction pulls from the
+split's iterator rather than queueing items. A graph that is not
+growing does not allocate. That is what lets the same engine run on a
+microcontroller with an allocator it never calls after start, and what
+lets a bounded storage backend with a fixed number of slots land later
+behind the seam without touching the protocol; `construct` can then run
+out of slots, which is a panic that poisons, an `Exhausted` variant on
+three error enums, and a major version
+([RFD 7](./rfd-0007-targets.md)).
 
 ## Liveness Is Reachability From Explicit Roots
 
@@ -83,12 +100,13 @@ foreign type that holds no tokens goes in a `Leaf<T>` wrapper, which
 traces nothing and derefs to `T`; the orphan rules forbid implementing
 `Trace` for another crate's type, so a macro declaring one a leaf could
 only ever run inside this crate. Implementations ship for the
-standard library's types. The bound sits on `hold` and the other
-operations that persist a value, so a stream of non-`Trace` values can
-be mapped, filtered and merged freely and fails only where it would
-persist. Stream event types need nothing beyond what their adapters
-need, because slots are cleared before a collection and only holds
-persist.
+standard library's types; those for `HashMap`, `HashSet` and `Instant`
+need `std`, and the one for `Arc` needs pointer atomics. The bound sits
+on `hold` and the other operations that persist a value, so a stream
+of non-`Trace` values can be mapped, filtered and merged freely and
+fails only where it would persist. Stream event types need nothing
+beyond what their adapters need, because slots are cleared before a
+collection and only holds persist.
 
 `Trace` is a safe trait. The obligation is real, but the consequence
 of getting it wrong is a stale-token error, and `unsafe` should mean

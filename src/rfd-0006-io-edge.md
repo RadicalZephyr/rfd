@@ -5,7 +5,10 @@
 The engine is single-threaded and stays so. The requirement is that it
 be usable from any threaded or async runtime with minimal friction,
 from several at once, and without the library choosing a channel
-implementation on its users' behalf.
+implementation on its users' behalf. Interrupt handlers and DOM
+callbacks are two more callers; [RFD 7](./rfd-0007-targets.md) gives
+the first an input slot and the second a rule, and this RFD keeps the
+queue.
 
 ## The Driver and the Remote
 
@@ -17,8 +20,8 @@ fixes that and creates a worse problem: two integrations cannot share
 one graph. So the runtime-agnostic part of the glue lives in the core.
 
 `graph.remote()` returns a `Remote`, which is `Send + Clone`, backed
-by an inbox behind a standard-library mutex and a pluggable waker, an
-`Arc<dyn Fn() + Send + Sync>` registered through `graph.set_waker`.
+by an inbox behind a standard-library mutex and a waker, a
+`core::task::Waker` registered through `graph.set_waker`.
 `remote.send(input, value)` locks, pushes a unit holding one boxed
 send, unlocks, and wakes. It is synchronous and never blocks on the
 graph. `remote.transaction(|tx| ...)` pushes a unit holding a
@@ -30,7 +33,22 @@ unit of simultaneity: it is never split and two are never merged,
 which is what lets a double send inside one be reported at `pump`
 ([RFD 5](./rfd-0005-transaction-protocol.md)). Transported values
 must be `Send`; nothing else changes, and a `Remote` works with a
-`Graph<Local>`.
+`Graph<Local>`. `Remote` is an `Arc`, so it exists where the target
+has pointer atomics ([RFD 7](./rfd-0007-targets.md)).
+
+The waker is the standard library's own. A driver that is a future
+stores `cx.waker().clone()` on each poll, pumps, and returns pending,
+so a tokio, smol or embassy task drives the graph with no channel in
+between; a thread driver builds a waker from an `Arc` through
+`alloc::task::Wake` and blocks on whatever that wakes; a bare-metal
+main loop that sleeps on the interrupt itself gives `Waker::noop()`.
+`core::task::Waker` needs no allocator and no atomics, so `set_waker`
+exists on every target. A function pointer in an `Arc` was the first
+draft; it was the same thing under a name every runtime would have to
+learn. Latency is the distance from a send to the next pump, a property
+of where the driver sits: a woken thread pumps at once, a future at its
+next poll, a frame-based host wherever its embedder placed the runner,
+and an adapter states its placement and the latency it implies.
 
 The core ships one driver: a dedicated standard-library thread that
 builds the graph, hands back the edge and a `Remote`, and blocks on a
@@ -96,17 +114,11 @@ async fn serve(listener: TcpListener) -> std::io::Result<()> {
         .keep();
 
     let remote = graph.remote();
-    let notify = Arc::new(Notify::new());
-    graph.set_waker({
-        let notify = notify.clone();
-        Arc::new(move || notify.notify_one())
-    });
-    tokio::spawn(async move {
-        loop {
-            notify.notified().await;
-            graph.pump();
-        }
-    });
+    tokio::spawn(std::future::poll_fn(move |cx| {
+        graph.set_waker(cx.waker().clone());
+        graph.pump();
+        std::task::Poll::<()>::Pending
+    }));
 
     loop {
         let (socket, address) = listener.accept().await?;
@@ -136,7 +148,10 @@ async fn serve(listener: TcpListener) -> std::io::Result<()> {
 ```
 
 The example compiles against the API skeleton, with `#[derive(Trace)]`
-expanded by hand until the derive lands. An earlier sketch attached
+expanded by hand until the derive lands. The driver is a future: each
+poll stores the task's waker, pumps, and returns pending, and every
+`Remote::send` wakes it; there is no channel and no notifier. An
+earlier sketch attached
 the outbound listener after the spawn and captured the per-user
 senders in it. That does not compile, because `graph` has moved, and
 making it compile would have needed a shared map of senders behind a
@@ -152,7 +167,10 @@ send only enqueues, but it is I/O inside FRP logic. The inbox records
 the driver's thread id and a flag that the driver sets when a
 transaction begins and clears before its listeners run, so the flag
 covers evaluation and commit alike, `accumulate_mut` closures
-included. A `Remote::send` from the driver thread while the flag is
+included. It is not the graph's own flag, which stays set until the
+transaction has finished and is the poison
+([RFD 5](./rfd-0005-transaction-protocol.md)). A `Remote::send` from
+the driver thread while the inbox's flag is
 set is an error in both build modes, `InsideTransaction` from
 `try_send`, since it is a logic error with an observable outcome and
 not an unobservable one
@@ -163,14 +181,18 @@ another thread it enqueues. From a listener it enqueues too, since
 the flag is clear by then, which is the sanctioned way for I/O to feed
 back into the graph: a later transaction, never a nested one. Leaving
 it unguarded and documented was the alternative; a check on a path
-that is already a bug costs nothing.
+that is already a bug costs nothing. The thread id exists under `std`;
+on bare metal the guard is documented and unchecked, since the
+interrupt path is the input slot and a `Remote::send` from a handler is
+misuse ([RFD 7](./rfd-0007-targets.md)).
 
-The inbox also mirrors the graph's poison bit. Once a panic has
-escaped a transaction, `Remote::send` panics and `try_send` returns
-`Poisoned`, so no thread keeps filling an inbox that no pump will ever
-drain; without the mirror, `try_pump` would fail forever while every
-remote kept getting `Ok`, and the inbox would grow without bound
-behind it.
+The inbox also mirrors the graph's poison. Once an entry has found the
+graph poisoned ([RFD 5](./rfd-0005-transaction-protocol.md)), it sets
+the bit in the inbox, so `Remote::send` panics and `try_send` returns
+`Poisoned` from then on and no thread keeps filling an inbox that no
+pump will ever drain; without the mirror, `try_pump` would fail forever
+while every remote kept getting `Ok`, and the inbox would grow without
+bound behind it.
 
 ## Threading Modes
 
@@ -194,8 +216,12 @@ one, because a defaulted type parameter takes no part in inferring an
 associated function: `Graph::build(|b| ...)` with a generic `build` is
 "type annotations needed", and two inherent `build`s are ambiguous,
 as a stub of the API confirmed. Tokens are plain integers and `Send`
-in every mode; `Remote`, `Listener` and `Anchor` do not carry the
-mode.
+in every mode. `Remote` does not carry the mode; `Listener` and
+`Anchor` do, as `Listener<M = Local>` and `Anchor<M = Local>`, because
+the flag a handle shares with its node is a counted cell in `Local` and
+an atomic in `Threaded`, and the parameter is defaulted so `Local` code
+never writes it. `Threaded` itself exists only where the target has
+pointer atomics ([RFD 7](./rfd-0007-targets.md)).
 
 Requiring `Send` everywhere would have killed the UI case, where
 toolkit handles are not `Send`. A non-`Send`-only graph would have

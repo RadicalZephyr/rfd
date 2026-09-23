@@ -116,6 +116,12 @@ current value otherwise, which is the same forward-looking read
 `switch_cell` makes at a switch instant
 ([RFD 4](./rfd-0004-value-model.md)).
 
+A `pump` runs each pending input slot as a transaction of its own, in
+connection order, and then each queued unit as one transaction, in
+arrival order. Simultaneity comes only from a unit, which is one
+external cause declared as such, and never from the timing of a drain
+([RFD 7](./rfd-0007-targets.md)).
+
 We considered rank-ordered push, Sodium's design, and pure memoized
 pull. Ranks must exceed all dynamically reachable inners for a switch
 node, which is unknowable in advance and is exactly what forces Sodium
@@ -129,7 +135,8 @@ under a switch, or the nodes a `construct` closure built.
 
 ## Listeners After Commit
 
-Listeners have no graph access
+A listener runs on the thread that called `send`, `transaction` or
+`pump`, after commit. Listeners have no graph access
 ([RFD 2](./rfd-0002-strong-io-separation.md)), so whether they run
 before or after commit is unobservable except through panics. After
 commit, a panicking listener leaves a consistent graph, and dispatch
@@ -161,7 +168,7 @@ operations cannot return:
 | `Graph::try_send` | `Stale`, `ForeignGraph`, `Poisoned`; one send opens one transaction, so no double send can occur |
 | `Transaction::try_send` | `Stale`, `ForeignGraph`, `DoubleSend`; poisoning is checked once, when the transaction is opened |
 | `Graph::try_transaction`, `try_collect_garbage`, `try_remote` | `Poisoned` |
-| `Graph::try_pump` | `Poisoned`, `Stale`, `DoubleSend`; whether an input is collected or coalesces is graph knowledge, so a stale send or a double send inside a remote unit is only discoverable when the driver pumps; the offending unit is dropped and the rest stay queued |
+| `Graph::try_pump` | `Poisoned`, `Stale`, `DoubleSend`; whether an input is collected or coalesces is graph knowledge, so a stale send or a double send inside a queued unit, or a slot connected to an input since collected, is only discoverable when the driver pumps; the offending unit or slot is dropped and the rest stay queued |
 | `Graph::try_listen`, `try_listen_cell`, `try_listen_steps`, `try_anchor`, `try_sample` | `Stale`, `ForeignGraph`, `Poisoned` |
 | `Remote::try_send` | `ForeignGraph`, `InsideTransaction`, `Poisoned` |
 | `Remote::try_transaction` | `InsideTransaction`, `Poisoned` |
@@ -186,15 +193,33 @@ production behaves differently from every test that ever ran. A
 
 Any panic that escapes a transaction poisons the graph, whether it
 leaves through `send`, `transaction` or `pump` or through a child
-transaction they run, and every later call fails with `Poisoned`; the
-inbox mirrors the bit, so remote sends fail too
-([RFD 6](./rfd-0006-io-edge.md)). A user function panicking during
-evaluation or commit leaves the graph mid-transaction. A listener
-panicking during dispatch leaves the graph committed but with the rest
-of that transaction's listeners unrun and its child transactions still
-queued, so the semantic timeline is incomplete. One rule covers both, at one
-flag check per entry. A user who wants a listener to survive its own
-panic wraps it in `catch_unwind`, where the consequence is visible.
-Rollback needs an undo log for a case that is a bug by definition, and
-leaving the state undefined is how you get a wrong answer an hour
-later.
+transaction they run, and every later call fails with `Poisoned`. A
+user function panicking during evaluation or commit leaves the graph
+mid-transaction. A listener panicking during dispatch leaves the graph
+committed but with the rest of that transaction's listeners unrun and
+its child transactions still queued, so the semantic timeline is
+incomplete. One rule covers both.
+
+The poison is the transaction-in-progress flag itself. Begin sets it,
+and only a transaction that finishes, children and listeners included,
+clears it, so an entry that finds it set outside a transaction knows a
+transaction never finished and reports `Poisoned`; that entry also
+mirrors the bit into the inbox, so remote sends fail from then on
+([RFD 6](./rfd-0006-io-edge.md)). There is no separate bit and no drop
+guard to set one, which matters on the targets where a panic is a trap
+rather than an unwind: on `wasm32-unknown-unknown` no Rust code runs
+after the panic hook, so a guard could never fire, while a flag that
+was already set needs nothing to run
+([RFD 7](./rfd-0007-targets.md)). The check is the one every entry
+already makes against a smuggled `Graph`. A transaction never runs
+under the inbox lock, so a panic leaves the lock free.
+
+A user who wants a listener to survive its own panic wraps it in
+`catch_unwind`, where the consequence is visible; that exists only
+where panics unwind, and on an abort target the module is damaged
+after any panic, so a web adapter tears the graph down at the first
+`Poisoned` its driver sees. Rollback needs an undo log for a case that
+is a bug by definition, and leaving the state undefined is how you get
+a wrong answer an hour later. "Transaction" here means atomicity of
+visibility, holds commit together at the end and listeners see only
+committed state, not abortability.

@@ -184,6 +184,10 @@ input created at runtime for a dynamically constructed component, and
 multiplexing every dynamic input through one keyed input such as
 `Input<(ItemId, Edit)>` pushes routing logic into every component.
 
+An input may also be fed by an input slot, a `static` the writer owns,
+connected with `b.connect(input, &SLOT)` and drained by `pump`; that is
+the path from an interrupt handler ([RFD 7](./rfd-0007-targets.md)).
+
 ### Listeners and Handles
 
 Listeners are `FnMut(A)` for streams and `FnMut(&A)` for cells and
@@ -202,9 +206,13 @@ something to rely on.
 `Listener` or an `Anchor`. A handle borrows nothing from the graph: it
 shares a flag with its node, and dropping it flips the flag, so the
 graph can be driven while handles are held and a handle can be dropped
-inside a listener. `unlisten()` exists for symmetry with Sodium, and
-`keep()` turns a handle into an app-lifetime root without a struct to
-hold it. [RFD 3](./rfd-0003-memory-model.md) has the rest.
+inside a listener. The handles carry the graph's mode,
+`Listener<M = Local>` and `Anchor<M = Local>`, because that flag is a
+counted cell in `Local` and an atomic in `Threaded`
+([RFD 6](./rfd-0006-io-edge.md)). `unlisten()` exists for symmetry
+with Sodium, and `keep()` turns a handle into an app-lifetime root
+without a struct to hold it. [RFD 3](./rfd-0003-memory-model.md) has
+the rest.
 
 `listen` accepts materialized nodes only, `Stream<A>` or `Shared<A>`,
 never a chain, through a `Node` bound that adapter types do not
@@ -414,4 +422,5 @@ New, with no Sodium counterpart: `share` and `Shared`, `node` and
 `Node`, `Source` and `Event`, `Trace` and `Leaf`, `depends`,
 `input_coalescing`, `input_cell_coalescing`, `anchor` and `Anchor`,
 `Listener`, `keep`, `collect_garbage`, `set_waker`, `pump`, `remote`
-and `Remote`, `Build`, `Graph`, `Transaction`, `Local` and `Threaded`.
+and `Remote`, `InputSlot` and `connect`, `Build`, `Graph`,
+`Transaction`, `Local` and `Threaded`.

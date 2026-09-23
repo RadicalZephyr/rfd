@@ -101,7 +101,7 @@ _Avoid_: handle, reference, id
 
 **Handle**:
 An RAII object whose drop has an effect: `Listener` and `Anchor`. A handle
-borrows nothing from the graph.
+borrows nothing from the graph, and carries the graph's mode.
 _Avoid_: token, guard, subscription
 
 **Node**:
@@ -179,7 +179,8 @@ closure returned and whatever flowed out as data since.
 _Avoid_: boundary, surface, ports; never a graph edge, which is a dependency
 
 **Driver**:
-Whoever owns a graph and runs its transactions.
+Whoever owns a graph and runs its transactions: a thread, a future, a
+host's system, or a bare-metal main loop.
 _Avoid_: runtime, executor, owner
 
 **Listener**:
@@ -197,18 +198,42 @@ _Avoid_: pin, root (that is the concept)
 **Remote**:
 A `Send + Clone` endpoint for sending into a graph from any thread. A
 remote send or a remote transaction is queued as one unit, and the driver
-runs each unit as one transaction when it pumps.
+runs each unit as one transaction when it pumps. Exists where the target
+has pointer atomics.
 _Avoid_: sender, proxy, channel, handle (its drop does nothing)
 
+**Unit**:
+What the inbox queues: one remote send, or the several sends of one
+remote transaction, run by the driver as one transaction. A unit is the
+declaration of one external cause, never split and never merged.
+_Avoid_: batch, message, job
+
 **Pump**:
-Running every pending remote unit, each as one transaction, in arrival
-order.
+Running every pending input slot, each as one transaction in connection
+order, then every queued unit, each as one transaction in arrival order.
 _Avoid_: poll, drain, flush
+
+**Input slot**:
+A static mailbox for one input, placed by the code that writes it, folded
+in place, and drained by the driver as one transaction per pending slot.
+Connected to an input at build; one slot per producer.
+_Avoid_: mailbox, buffer, interrupt queue
+
+**Fold**:
+A slot's function for combining a pending event with a new one, pending on
+the left, associative. Not the input's coalescing function, which combines
+two sends inside one transaction.
+_Avoid_: coalescer (that is the input's), reducer, accumulator (that is a cell)
 
 **Mode**:
 Whether a graph is `Local` or `Threaded`: whether what it stores must be
-`Send`, and whether the graph itself is.
+`Send`, and whether the graph itself is. Handles carry it.
 _Avoid_: flavor, threading model
+
+**Tier**:
+One of the engine's feature levels: the `no_std` core over `alloc`, and
+`std`; a bounded storage backend is a later tier.
+_Avoid_: profile, mode (that is `Local` or `Threaded`), edition
 
 ### Memory
 
@@ -234,8 +259,9 @@ Of a token: it belongs to another graph.
 _Avoid_: mismatched, alien
 
 **Poisoned**:
-Of a graph: a panic escaped a transaction, through `send`, `transaction`
-or `pump`, and every later call fails, remote sends included.
+Of a graph: a transaction never finished, because a panic escaped it; the
+transaction-in-progress flag stays set and every later call fails, remote
+sends included.
 _Avoid_: broken, corrupted, tainted
 
 **Collection**:

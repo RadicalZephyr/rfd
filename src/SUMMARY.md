@@ -20,6 +20,8 @@
 - [Exploring a static, no-alloc core: the addendum](./research/2026-09-23-static-engine-handoff-addendum.md)
 - [A no-allocator core: static engine, bounded dynamic engine, or neither](./research/2026-09-23-static-engine-exploration.md)
 - [Bough on the web: what wasm32 and wasm-bindgen impose](./research/2026-09-23-wasm-target-research.md)
+- [Building the engine: the architecture brief](./research/2026-09-24-engine-architecture-brief.md)
+- [Building the engine: the oracle's specification](./research/2026-09-24-ghc-oracle-spec.md)
 
 # Notes
 

@@ -22,6 +22,7 @@
 - [Bough on the web: what wasm32 and wasm-bindgen impose](./research/2026-09-23-wasm-target-research.md)
 - [Building the engine: the architecture brief](./research/2026-09-24-engine-architecture-brief.md)
 - [Building the engine: the oracle's specification](./research/2026-09-24-ghc-oracle-spec.md)
+- [Building the proposed API: an engine held to GHC](./research/2026-09-24-engine-feasibility-spike.md)
 
 # Notes
 

@@ -24,6 +24,7 @@
 - [Building the engine: the oracle's specification](./research/2026-09-24-ghc-oracle-spec.md)
 - [Building the proposed API: an engine held to GHC](./research/2026-09-24-engine-feasibility-spike.md)
 - [Three issues for Sodium's semantics text, drafted](./research/2026-09-25-sodium-issue-drafts.md)
+- [Oracle work for the real build: the handoff](./research/handoff-2026-09-25-oracle-work-for-the-real-build.md)
 
 # Notes
 

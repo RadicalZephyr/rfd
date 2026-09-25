@@ -680,3 +680,50 @@ value. (b), a switch constructor that takes its candidates, is not needed.
 Closure-taking twins that take their captures as an argument were
 considered and rejected: they double the API, and they are another way to
 write `depends`.
+
+## Addendum, 2026-09-25: the answers
+
+_Zefira answered the questions above on 2026-09-25. Question 3's answer is
+the addendum before this one. The answers bind the RFD revision; no RFD
+has changed yet._
+
+1. **The oracle: (a).** GHC stays the oracle and runs in CI. Porting the
+   semantics to Rust is shelved entirely, and `bough-oracle` is kept. RFD
+   1's policy line changes. The oracle work that follows is in
+   [its handoff](./handoff-2026-09-25-oracle-work-for-the-real-build.md).
+2. **The loop rule: yes.** RFD 2's rule and the glossary's become the
+   dependency-graph rule of F3. The check runs at close, at a switch's
+   first link and at every move, as the engine does it. A move that closes
+   a cycle is a run-time error that poisons the graph, and each move walks
+   everything upstream of its new inner. Checking every declared candidate
+   at build instead was raised, and not tried.
+3. **Declarations through switches:** the addendum before this one.
+4. **The screen pattern: (a).** A `Clone`-free materializer splits a
+   stream of pairs into two linear streams. It is one new operation in RFD
+   4, and it denotes two maps, so the oracle needs nothing new.
+5. **Collection: yes.** A collection runs when the next transaction opens,
+   and its trigger compares with the live count the last collection left.
+   Two consequences follow: the first send collects whatever the build did
+   not root, and an idle graph keeps its garbage until the next transaction
+   or `collect_garbage`.
+6. **The guard: yes.** It is armed around graph code: evaluation and
+   commit, `construct` closures and a split's iterator. It covers its own
+   graph only (F75).
+7. **The targets: (a).** `Remote` needs pointer atomics and `std` or
+   `critical-section`, as input slots do. A thumbv7m build with neither
+   keeps `pump` and `set_waker` only.
+8. **A third patch to the oracle: yes,** as one case of the policy below.
+   `defer` follows `split`. The same cut on `construct` is an experiment,
+   and the handoff carries it.
+9. **Seeds in CI: (a).** A new question, raised by the answer to
+   question 1. CI runs a fixed seed, and a scheduled job runs fresh seeds
+   and reports each failure with its seed.
+
+**The policy.** A new question, raised by question 8: what wins where the
+text contradicts itself. The semantics text is the authority, except where
+it breaks its own rules: time order, and things existing from their
+creation. There Bough follows the rule, names the difference, and a test
+pins the text's answer beside Bough's. F6, F7 and F89 are its three cases
+so far. It qualifies RFD 1's "exact fidelity means we inherit the
+corners". The three are drafted as issues for Sodium in
+[the drafts](./2026-09-25-sodium-issue-drafts.md), and none is posted.

@@ -589,3 +589,94 @@ oracle's review findings.
 - O4. Construct bodies run for events before their construct existed.
 - O5. The Haskell unit tests have no time limit.
 - O6. A GHC build orphaned by SIGKILL leaks.
+
+## Addendum, 2026-09-25: question 3, revisited
+
+_Zefira reopened question 3 after reading this note, and proposed a
+different model for capture declarations. The spike proves it in three
+commits on the same branch, from `06972e0` to `4dc2ff4`. It replaces the
+recommendation above._
+
+### The model
+
+The graph traces every value it holds. A closure is the one thing it
+cannot look inside. So every value a `move` closure captures that holds a
+token is declared, with `depends`, on the node the closure belongs to. For
+an adapter, that is the node its chain becomes.
+
+The rule finds every capture. Graph closures are `'static`, so a closure
+can only hold a token by owning it: without `move`, the compiler refuses
+the borrow (E0373). It never asks whether a capture is upstream, which is
+the question F62 showed a switch can change at run time. It covers F62 and
+F92's three kinds of capture alike. Declaring a token the node reaches
+anyway costs one reach entry.
+
+### What the adapters hold
+
+A chain already reported the cells `snapshot` and `gate` read, through a
+hidden `read_cells`, and every materializer recorded them as reach. That
+was `Trace` under another name. Adapters get no graph context, so a token
+an adapter holds matters only if it can leave in an event:
+
+| Adapter | Holds | Seen by the collector | Needs a declaration |
+|---|---|---|---|
+| `map(f)` | a closure | no | what `f` can return |
+| `filter(p)` | a closure | no | never: `p` returns `bool` |
+| `filter_map(f)` | a closure | no | what `f` can return |
+| `map_to(v)` | a value | yes, now | never |
+| `snapshot(c, f)` | a cell and a closure | the cell | what `f` can return |
+| `gate(c)` | a cell | yes | never |
+| `once()` | a flag | nothing to see | never |
+
+`map_to` was the one gap. It holds a value for as long as its chain lives,
+and nothing looked inside it. The rule asks for more than the table needs,
+a filter's captures for one, at one reach entry each.
+
+### What changed on the spike
+
+- **F93. Chains are `Trace`.** `Source` requires `Trace` in place of
+  `read_cells`. `snapshot` and `gate` visit their cell, `map_to` its
+  value, and the other adapters pass the walk to their source. A
+  materializer traces the chain once, when it builds the node, and records
+  what the walk finds besides the dependency. A chain never changes after
+  it is built, so once is enough. No node's reach changed. (`cb8b274`)
+- **F94. `map_to` requires `Trace` of its value.** RFD 3 puts the bound on
+  the operations that persist a value, and `map_to` is one. A token in the
+  value is in the node's reach with no declaration. The program that was a
+  stale token without a declaration now runs without one. Every `map_to`
+  in the repository already passed a `Trace` value; a foreign type goes in
+  a `Leaf`. (`99458fe`)
+- **F95. `depends` takes any `Trace` value, as `anchor` does (F67).** A
+  struct or a `Vec` of tokens a closure captures is declared as one value.
+  A new test moves a struct of panels, one of them in a `Vec`, into a
+  closure that picks among them. One declaration keeps every panel, and
+  without it the first move is a stale token. Inline slices of tokens
+  compile unchanged. Five places named the element type `&dyn TokenRef`
+  and now name `&dyn Trace`, since turning one trait object into another
+  needs Rust 1.86 and the minimum is 1.85. Two of them built a `Vec` of
+  tokens by hand, and are one value now. (`4dc2ff4`)
+
+The 532 tests pass in debug and in release, and 8,192 random programs
+with seed 20260924 still agree with GHC.
+
+### What it does not change
+
+- A forgotten declaration is still a stale token at use, not a compile
+  error.
+- A value is traced when it is declared, and a chain when its node is
+  built. A token added later through interior mutability is not seen.
+  That takes a hand-written `Trace`, and the I/O code that adds the token
+  anchors it, as RFD 3 already asks.
+- Adapter types implement the public `Trace` now, so a chain satisfies a
+  `Trace` bound. A chain that is never built does nothing, so that is
+  harmless.
+
+### Question 3, as it stands
+
+(a), with this model. RFD 3 changes in four places: the capture paragraph
+states the `move` rule; `map_to` joins the operations that persist a
+value; reach includes what a chain holds; and `depends` takes any `Trace`
+value. (b), a switch constructor that takes its candidates, is not needed.
+Closure-taking twins that take their captures as an argument were
+considered and rejected: they double the API, and they are another way to
+write `depends`.

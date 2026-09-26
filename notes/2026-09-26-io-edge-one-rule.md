@@ -71,9 +71,23 @@ the `Runtime` reads.
     both silently. An `Option` would change every caller's type for
     the sake of a bug.
 - **Memory: anchor it at the edge.**
-  - Anchoring returns an `Anchored<T: Trace>`, which carries its value.
-    `Build`, `construct`, both handles and the `Runtime` can anchor.
-    `Build` and `construct` can't listen.
+  - The roots are live guards and waiting calls. An `Anchored` is an
+    anchor that carries its value, and the build's return is one like
+    any other, not a root of its own kind.
+  - Anchoring returns an `Anchored<T: Trace>`, which carries its value
+    and derefs to it. Both handles, the `Runtime` and `Build` can
+    anchor. `Build` can't listen.
+  - `build` anchors its return for you. The closure still returns a
+    plain value that must be `Trace`, and the caller gets it back as an
+    `Anchored`. A build's return always goes to I/O code, so it's always
+    at the edge. A construct's output often stays in the graph, so a
+    construct body anchors only what's meant for I/O code, with
+    `b.anchor`. Transaction zero never needs `b.anchor`.
+  - `keep` on an `Anchored` hands back the plain value, and the root
+    lives as long as the runtime. `let app = app.keep();` gives back a
+    `Copy` `App`, as the spike's build returns today.
+  - To free part of the build's return, anchor the part you're keeping
+    through the `Runtime`, then drop the whole.
   - `Anchored` is `Clone`. Clones share one root, released when the
     last one drops, so a stream of them can be `share`d.
   - `Anchored` isn't `Trace`, so graph state can't hold one, and a root
@@ -83,23 +97,25 @@ the `Runtime` reads.
   - Collection runs after each whole unit. A waiting call roots the
     tokens it names: a registration its node or value, a send its input
     but not the value it carries.
-  - An `Anchored` made during the build leaves through a variable the
-    build closure captures. The return value stays the permanent root
-    set, and must be `Trace`.
+  - A connected input slot doesn't root its input. Keep the build's
+    return while its slots are connected; on embedded that means
+    `keep`.
   - `Leaf`, `#[trace(skip)]` and hand-written `Trace` impls promise to
     hide no tokens and no guards. Stable Rust can't enforce that, so
     the derive refuses fields whose type names `Anchored`, which covers
     the common path.
 - **Words.** Guards are `Listener` and `Anchor`. Handles are `Io` and
-  `RemoteIo`. The glossary's entries for handle, guard, `Remote`,
-  `Mode` and `Anchor` change, "guard" comes off the avoid list, and
-  `Anchored` is new.
+  `RemoteIo`. The glossary's entries for handle, guard, root,
+  `Remote`, `Mode` and `Anchor` change, "guard" comes off the avoid
+  list, and `Anchored` is new.
 
 ## What it changes
 
 - RFD 3's "anchor it or lose it" becomes "anchor it at the edge", and
   RFD 4's "receive, then wire" goes. A token leaves a transaction alive
   only if the graph holds it or it left as an `Anchored`.
+- RFD 3's three kinds of root lose "whatever the build closure
+  returned". The return is an anchor like any other.
 - The eager `Io` on `spike/same-thread-handle`
   ([RadicalZephyr/bough#5](https://github.com/RadicalZephyr/bough/pull/5))
   goes: the `Owner`, `with_sample`, `with_graph`, `Io::pump`,
@@ -153,6 +169,13 @@ the `Runtime` reads.
   anchor before anything else. `Anchored` moves that to one place,
   where the node is built. That's the user naming the edge of their
   graph, as the build closure's return value already does.
+- **A permanent root set.** The build's return would have stayed a
+  root for the runtime's life, and anything to be freed later would
+  have been anchored during the build and passed out through a variable
+  the closure captures. Nothing the build returned could ever be freed,
+  and the captured variable is a C out-param with extra steps.
+- **A connection that roots its input.** A slot is a `static` that
+  never disconnects, so its input would be a permanent root again.
 - **A receipt from `send` to tie a `listen_once` to.** The `Runtime`'s
   `send` has already finished when it returns, so only the handles
   could offer one.
@@ -172,6 +195,10 @@ the `Runtime` reads.
 - A listener registered from a listener misses events until the next
   pump.
 - Two atomic loads each time a listener fires, still to be measured.
+- The build's return can be freed by accident. A setup function copies
+  its tokens into closures, returns, and drops the `Anchored`. Debug
+  builds panic at the first send, listen or anchor on a collected
+  token, and at the next pump for a slot.
 - An `Anchored` hidden through `Leaf`, `#[trace(skip)]` or a
   hand-written impl holds memory until the engine drops. That's a leak,
   not unsoundness.
@@ -204,7 +231,8 @@ person will notice, so it doesn't count against the rule.
     `Listener`, `Anchor` and `InputSlot`, on every target and feature
     set CI checks. They live in the library, so a cross `cargo check`
     runs them;
-  - `Anchored`, with collection after each unit;
+  - `Anchored`, including the build's return, with collection after
+    each unit;
   - slot priority and pre-emption, with RFD 7's fold law run against
     them;
   - `listen_once` and tied listeners;

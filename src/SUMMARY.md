@@ -20,7 +20,13 @@
 - [Exploring a static, no-alloc core: the addendum](./research/2026-09-23-static-engine-handoff-addendum.md)
 - [A no-allocator core: static engine, bounded dynamic engine, or neither](./research/2026-09-23-static-engine-exploration.md)
 - [Bough on the web: what wasm32 and wasm-bindgen impose](./research/2026-09-23-wasm-target-research.md)
+- [Building the engine: the architecture brief](./research/2026-09-24-engine-architecture-brief.md)
+- [Building the engine: the oracle's specification](./research/2026-09-24-ghc-oracle-spec.md)
+- [Building the proposed API: an engine held to GHC](./research/2026-09-24-engine-feasibility-spike.md)
+- [Three issues for Sodium's semantics text, drafted](./research/2026-09-25-sodium-issue-drafts.md)
+- [Oracle work for the real build: the handoff](./research/handoff-2026-09-25-oracle-work-for-the-real-build.md)
 
 # Notes
 
 - [Slot churn simulation](./notes/2026-09-23-slot-churn-simulation.md)
+- [One rule for the I/O edge](./notes/2026-09-26-io-edge-one-rule.md)

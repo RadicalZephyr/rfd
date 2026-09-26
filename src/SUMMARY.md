@@ -29,3 +29,4 @@
 # Notes
 
 - [Slot churn simulation](./notes/2026-09-23-slot-churn-simulation.md)
+- [One rule for the I/O edge](./notes/2026-09-26-io-edge-one-rule.md)

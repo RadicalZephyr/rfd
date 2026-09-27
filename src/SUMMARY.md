@@ -33,3 +33,4 @@
 - [One rule for the I/O edge](./notes/2026-09-26-io-edge-one-rule.md)
 - [Where the I/O edge spike landed](./notes/2026-09-27-io-edge-spike.md)
 - [The I/O edge spike's three questions, answered](./notes/2026-09-27-io-edge-questions-answered.md)
+- [What the RFD revision will do](./notes/2026-09-27-rfd-revision-grilling.md)

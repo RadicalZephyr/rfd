@@ -150,3 +150,11 @@ pump later.
 - The revision's branch is `rfd/revision-after-the-spikes`.
 - The glossary is its first commit, then RFDs 1 to 7 in order, since
   every RFD uses the glossary's words.
+
+## Addendum, 2026-09-27: the poison step
+
+The first step landed as `fa9afdf` on `spike/io-edge`. It marks the
+poison at each entry that can poison, not only around graph code: a
+panic in a listener, a transaction's closure or a collection's `Drop`
+poisons too, and before the step a handle's call after one was queued
+and lost. It costs two instructions a send.

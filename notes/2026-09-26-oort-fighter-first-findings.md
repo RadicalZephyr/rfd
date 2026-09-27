@@ -78,3 +78,76 @@ construction its limit well before propagation.
 What might be worth finding out: where construction's instructions go,
 per node kind, measured with something like `bough-bench`, and whether
 an idle fused chain costs something per event that it wouldn't need to.
+
+## Construction costs the same for every node
+
+_Added 2026-09-27, from probe bots that each add one kind of node and
+measure Oort's tick 1._
+
+| What's built | Gas |
+|---|---|
+| An empty `Runtime::build` | 21k |
+| The first input | about 25k more |
+| A `hold`, `lift`, `switch_cell` or `construct` | 13k to 19k each |
+| A `cell_loop` and its close | about 12k on top of the hold that closes it |
+| A fused `map` and `filter` in front of a hold | about 145 |
+
+A `construct` that never fires costs as much as a hold. The marginal
+cost falls from about 18k to 13k as the graph grows, with a bump from
+one hold to two that looks like a table growing. We found nothing
+quadratic. Fusion does its job, so what costs is materializing, and
+about 15k wasm instructions a node means a million-instruction tick
+builds 60 or 70 nodes. The fighter's 460k tick 1 is 21k plus about 28
+of them. We haven't profiled where a node's instructions go.
+
+## Building the graph in stages didn't pay
+
+_Added 2026-09-27._
+
+We tried spreading the fighter's construction over several ticks, as a
+dogfood of staged building. The graph booted itself: tick 1 built the
+inputs and outputs that start idle, the first scan built Search through
+`once().construct(...)`, and the second built the modes from Search's
+bundle, which it received through a held cell. Each stage took over the
+outputs with `hold` and a switch.
+
+It works. Every test passed, and the fighter won the same ticks as
+before. It also costs more than it saves:
+
+| Tick | What it builds | Gas |
+|---|---|---|
+| 1 | The edge alone | 368k |
+| 2 | Search | 81k |
+| 3 | The modes | 330k |
+| After | A Search tick | 71k, up from 44k |
+
+Making outputs switchable from tick 1 took about 22 nodes: two
+constants, a `never` and its `share`, two stage constructs and their
+shares, the hold that hands Search on, an `or_else` and its `share`,
+three holds and three switches, and a `booted` hold. At 15k a node the
+plumbing costs about what the graph it spreads does. Oort's tick 1 is
+also the ship's constructor plus its first tick, so the first stage
+lands on top of the edge anyway. And when the second scan was a hit,
+the modes and an Engage built in the same tick, for 506k.
+
+Two things here are for Bough. At this per-node cost, staging only pays
+for a graph much larger than its plumbing, so it's a pattern for big
+programs, not a way to trim a small one. And "receive, then wire" at
+the edge would have been cheaper than switches: each stage anchors its
+outputs and the driver keeps the tokens, which drops the switches,
+constants and holds. We didn't try it.
+
+## Two smaller things from staging
+
+A `construct` nested in another at the same instant works. The second
+scan built the modes, the modes' acquisition saw that same scan, and it
+constructed an Engage from inside the stage's own construct run. A test
+pins that down, and it happened in the simulator too.
+
+The rule that a closure's captures need `depends` bit us once. Each
+stage's closure captured the input cell for our own state, and at tick
+1 nothing else reached it, so the build's collection freed it. The
+panic said only "a stale token: its node was collected", two ticks
+later, when a stage first used it. It didn't say which token or where
+it had been captured. Naming the token's creation site, even in debug
+builds only, would have saved a guess.

@@ -606,3 +606,79 @@ these changes:
 
 Next: phase 1 in a fresh session, from the scratch directory. Nothing is
 open.
+
+### 2026-09-27 09:46 -07:00, phase 1 paused: the wrong container
+
+Zefira stopped this session partway through phase 1. It was started on
+the host, Bazzite 44 (Silverblue), not in the Fedora container. No PDF
+tool has been used and nothing has been fetched.
+
+Done:
+
+- `literature@ad4fa96`: the README is rewritten to the spec, with
+  Zefira's opening kept, and `index.py` regenerates and checks the index.
+  That commit lacks the `Claude-Session` trailer; later commits carry it.
+- The seeds were checked against Crossref. All but three have a DOI and
+  their details hold, with these fixes: Patai is WFLP 2010 in LNCS 6559
+  (2011); Pearce and Kelly's JEA article is dated 2007 by Crossref;
+  Bender, Fineman, Gilbert and Tarjan is TALG 2015/2016, "A New Approach
+  to Incremental Cycle Detection and Related Problems"; the Copilot
+  verifier is Scott, Dodds et al., "Trustworthy Runtime Verification via
+  Bisimulation (Experience Report)", ICFP 2023, doi:10.1145/3607841;
+  DBSP's VLDB 2023 paper is doi:10.14778/3587136.3587137. Differential
+  Dataflow (CIDR 2013) has no DOI (OpenAlex W3098257205). Acar's thesis
+  and Berry's draft book are not in Crossref or OpenAlex and need the
+  CMU report and Berry's page.
+- Hop 1 of the snowball ran for every dimension. The outputs are in the
+  scratch directory, not in any repo: `trace/hops/1-<dim>.tsv`, ranked by
+  how many of the dimension's seeds each work links to. Nothing has been
+  ranked or kept yet.
+
+The tooling, in `~/prog/bough/research-scratch-space/trace/`:
+
+- `oa.py`: OpenAlex lookups (`get`, `refs`, `cites`, `search`) and a
+  Crossref search (`xref`), with a disk cache in `trace/cache/`.
+- `snowball.py DIM`: one hop over `seeds.json[DIM]` plus
+  `added.json[DIM]`, the file for sources kept after a hop.
+
+Learned about the services, as of this date:
+
+- DBLP's API sits behind an Anubis bot check on all three mirrors and
+  can't be used from a script. Crossref replaces it for title search.
+- OpenAlex without a key has a free budget of $0.10 a day. A singleton
+  lookup (`works/doi:...`) is free, a filtered list costs $0.0001, and a
+  `search` costs $0.001. Look up by DOI, and search only when there's no
+  DOI.
+
+Next: in the right container, a fresh session resumes phase 1 at step 4,
+ranking hop 1's candidates per dimension, then the next hops to
+saturation. Hop 1 surfaced gaps the citation graph won't fill from these
+seeds, to add by hand: Build Systems à la Carte, Naiad's nested
+timestamps and superdense time (for `T = [Int]`), Lee's "The Problem
+with Threads" (for the single-thread rationale), Kiselyov et al.'s
+"Stream Fusion, to Completeness", Hydro's Flo, Céu, Vélus, and
+sequentially constructive concurrency (SCCharts).
+
+#### Context
+
+Phase 1 of the FRP literature review was started on the host instead of
+the Fedora container, and was stopped before any PDF work. The literature
+repo's README and index script are committed. The seeds are checked, and
+the first snowball hop has run, with its output and tooling in the
+scratch directory `~/prog/bough/research-scratch-space/trace/`.
+
+### ❓ **Where phase 1 resumes**
+
+Phase 1 is half done. Does the next session pick up from this state, or
+start the phase over?
+
+Where phase 1 resumes:
+
+- **(a)** Resume in the Fedora container from step 4, reusing the
+  scratch directory's tooling and hop outputs. This needs the scratch
+  directory mounted in the container at the same path.
+- **(b)** Restart phase 1 from step 2 in the container, re-running the
+  seed checks and hop 1. The committed README and script stay.
+
+➡️ **(a)** Nothing done so far depends on the host, and the OpenAlex
+cache saves most of today's budget.

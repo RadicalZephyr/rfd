@@ -690,3 +690,20 @@ Zefira chose (a). A fresh session in the Fedora container resumes phase
 outputs. If the scratch directory isn't mounted at
 `~/prog/bough/research-scratch-space` in the container, that's a
 blocker. Nothing else is open.
+
+Zefira has an OpenAlex account now. Its API key is in
+`~/.config/openalex/api_key`, mode 600, one line, outside every repo.
+Never print it, log it or commit it. Before any other OpenAlex call, the
+next session changes `trace/oa.py` to use it:
+
+- Read `OPENALEX_API_KEY` from the environment, else the file. With
+  neither, fall back to the free allowance, as now.
+- Send it as the `api_key` query parameter. Check that name against
+  OpenAlex's current docs first.
+- Leave it out of the cache key, which hashes the request URL, so the
+  cached hop 1 responses still hit.
+- Confirm the account's budget from the `x-ratelimit-*` headers of one
+  free singleton lookup.
+
+Check that `~/.config/openalex/api_key` is visible inside the container.
+If it isn't, ask Zefira; don't go on with the free allowance.

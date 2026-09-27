@@ -682,3 +682,11 @@ Where phase 1 resumes:
 
 ➡️ **(a)** Nothing done so far depends on the host, and the OpenAlex
 cache saves most of today's budget.
+
+### 2026-09-27 09:49 -07:00, where phase 1 resumes
+
+Zefira chose (a). A fresh session in the Fedora container resumes phase
+1 at step 4, from the scratch directory's `trace/` tooling and hop 1
+outputs. If the scratch directory isn't mounted at
+`~/prog/bough/research-scratch-space` in the container, that's a
+blocker. Nothing else is open.

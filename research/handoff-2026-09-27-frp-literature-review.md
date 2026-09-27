@@ -545,4 +545,64 @@ starts.
 
 ## Dated additions
 
-None yet.
+### 2026-09-27 09:31 -07:00, the setup, before phase 1
+
+Zefira rebased this branch after the handoff was written. It now sits on
+`origin/rfd/revision-after-the-spikes` at `9f96d58`, not `1b30f27`. The
+rebase brought in three notes the handoff doesn't name:
+
+- The Oort fighter note is on this branch now, as
+  `notes/2026-09-26-oort-fighter-first-findings.md`. The local branch
+  `notes/oort-fighter` is no longer where it lives. It's the evidence for
+  open question 6.
+- `notes/2026-09-27-mode-generic-core.md` is new. It comes from porting
+  the Sodium book's petrol pump example to Bough. Read it with the rest
+  of Bough's evidence.
+- The two commits between `1b30f27` and `9f96d58` only pin mdbook 0.5.4
+  and remove the unused admonish setup.
+
+Every item in the setup was checked:
+
+- Rust is rustup's stable 1.98.1 (released 2026-09-01), and Fedora's
+  `rust` and `cargo` packages are not installed.
+- `pdftotext` is poppler 26.01.0, `valgrind` is 3.27.1, `python3` is
+  3.14.7, and `gungraun-runner` is 0.19.4.
+- Chromium was missing. It was installed with `sudo dnf install
+  chromium`, as 154.0.8037.57. `chromium-browser --headless
+  --print-to-pdf` works.
+- `date` prints Pacific time.
+- WebSearch works.
+- OpenAlex, arXiv and DBLP answer. Semantic Scholar answers 429 without
+  a key, and there is no key. Back off and retry on it, and lean on
+  OpenAlex and DBLP.
+- The scratch directory is `~/prog/bough/research-scratch-space`. It is
+  outside every repo, and its disk has 1.7 TB free.
+- Git's identity is set.
+
+The main `rfd` checkout was on this branch, so the worktree couldn't be
+made. It was switched back to `spike/engine-feasibility` at `9afae4c`,
+and the worktree is now `~/prog/bough/rfd-literature-review`, as the
+handoff says.
+
+Commit signing is off in `rfd`, `literature` and `experiments`. Each has
+`commit.gpgsign false` in its own config, which overrides the global
+`true`, and the worktree shares `rfd`'s config. A test commit in each of
+the three went through unsigned with no passphrase prompt, and was
+removed with a soft reset. Nothing else was committed.
+
+The permissions are in `research-scratch-space/.claude/settings.json`,
+and phase 1 starts from that directory. They are the handoff's list with
+these changes:
+
+- `git clone`, `git fetch` and `git rev-parse` are allowed, and so are
+  writes to the scratch directory.
+- `bough`, `claude-planning`, `sodium` and `decisions` can be read but
+  not written. Neither can the main `rfd` checkout.
+- `git -C` is denied. Zefira's rule: never use it. `cd` into the repo
+  instead.
+- `git checkout` isn't allowed, because it can throw away uncommitted
+  work, so it asks first. Pin a crate clone with `git clone --branch
+  <tag>` where a tag exists.
+
+Next: phase 1 in a fresh session, from the scratch directory. Nothing is
+open.

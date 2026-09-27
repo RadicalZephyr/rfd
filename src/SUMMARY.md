@@ -35,3 +35,4 @@
 - [The I/O edge spike's three questions, answered](./notes/2026-09-27-io-edge-questions-answered.md)
 - [What the RFD revision will do](./notes/2026-09-27-rfd-revision-grilling.md)
 - [Where the RFD revision landed](./notes/2026-09-27-rfd-revision-landed.md)
+- [A core that doesn't know its mode](./notes/2026-09-27-mode-generic-core.md)

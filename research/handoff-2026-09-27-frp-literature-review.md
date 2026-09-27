@@ -707,3 +707,181 @@ next session changes `trace/oa.py` to use it:
 
 Check that `~/.config/openalex/api_key` is visible inside the container.
 If it isn't, ask Zefira; don't go on with the free allowance.
+
+### 2026-09-27 10:43 -07:00, phase 1 done: the fetch list
+
+Phase 1 ran in the Fedora container from the scratch directory, resuming
+at step 4 as the last addition said. It stops here for the fetch.
+
+`trace/oa.py` now reads the OpenAlex key from `OPENALEX_API_KEY` or
+`~/.config/openalex/api_key`, and sends it as `api_key`, the name
+OpenAlex's authentication page gives. The key is added after the cache
+key is hashed, so hop 1's cached responses still hit, and an error
+message shows the URL without it. One free singleton lookup's headers
+gave the account's budget: $1 a day, plus $20 prepaid and 200,000
+one-time credits, all expiring 2026-12-26. The whole phase used $0.027
+of the day's dollar.
+
+The trace:
+
+- Hop 1's candidates were ranked against the open questions, with RFDs 3
+  and 5, §10 of the architecture brief and the spike's F-findings read
+  for the purpose. Hop 1's link counts favour generic classics (Knuth,
+  MapReduce), so the ranking is judgement, recorded one line per source
+  in `trace/manifest.py`.
+- The gaps the last addition named were added by hand, all but Hydro's
+  papers as DOIs: Build Systems à la Carte, Naiad, superdense time (Lee
+  and Zheng), Lee's "The Problem with Threads", Stream Fusion to
+  Completeness, Flo, Céu, Vélus and sequential constructiveness. So were
+  web and Rust sources the citation graph can't reach: Jane Street's
+  Incremental, the TC39 signals proposal, the Reactively post,
+  Goregaokar's tour of Rust GC designs, shifgrethor, gc-arena's README,
+  rustc's red-green algorithm, Reflex's and reactive-banana's docs,
+  Elm's "Farewell to FRP", Ousterhout's slides, von Behren et al.'s
+  rebuttal, and Elliott's "Denotational Design".
+- Saturation: hop 2 added core sources in seven dimensions, so those got
+  a hop 3. Hop 3 added core sources only in loops and causality
+  (Schneider and Brandt, sequential constructiveness's journal version),
+  hop 4 added clock refinement (Gemünde, Brandt and Schneider) there, and
+  hop 5 added only map-level work (STATEMATE, SIGNAL). Every dimension is
+  saturated. The hop outputs are `trace/hops/<n>-<dim>.tsv`.
+
+What `literature` holds, commits `b81e506` to `17c1b59`:
+
+- 142 records: 66 core, 32 supporting, 44 map-only. The soft cap was
+  held by moving 24 supporting rows to map-only, the ones no open
+  question turns on (`DEMOTE` in the manifest). Core per dimension runs
+  from 5 (verification-testing) to 17 (scheduling-glitches).
+- 91 stored copies: 33 publisher, 32 preprint, 12 arXiv, 12 web prints,
+  2 theses. Every PDF's first pages carry its title. An arXiv version is
+  read from the PDF's own stamp.
+- Metadata comes from Crossref for DOIs, since OpenAlex drops subtitles
+  ("Flapjax", "Naiad"), and from OpenAlex or by hand otherwise.
+  Crossref's casing ("Von Hanxleden", "O'brien") is left for phase 3,
+  which checks each record against its copy.
+
+Choices made inside the plan:
+
+- **PDFs are tracked through a repo-local `.gitignore`.** The global
+  gitignore drops `*.pdf`, so the first copy commit held only records.
+  `literature/.gitignore` says `!*.pdf`.
+- **Seven copies are Wayback snapshots of authors' own pages**, now gone:
+  FRPNow, Patai, Pérez and Nilsson, Stream Fusion, RT-FRP, E-FRP, and
+  Bacon et al. `source_url` names the snapshot.
+- **Three copies were the authors' PostScript**, converted with
+  `ps2pdf`: Lustre (Proc. IEEE 1991), Synchronous Kahn Networks, and
+  QuickCheck. Ghostscript wasn't installed; it was installed with `sudo
+  dnf install ghostscript`, 10.06.0. `source_url` names the PostScript.
+- **Four copies aren't the venue's text,** and their claims are scoped to
+  the stored version. Lee's "Problem with Threads" is the Berkeley tech
+  report. Pouzet and Raymond is an extended October 2009 version. Scott
+  et al. is the extended arXiv report. E-FRP with priorities is Rice's
+  2009 tech report, which adds Jun Inoue as an author.
+- **The Reactively post's author is recorded by handle, `milomg`.** The
+  post and its GitHub account give only "Milo" and "Milo M"; the surname
+  first written came from memory and was removed.
+- **Milo's post was printed from its own HTML with overflow unclipped.**
+  A plain print kept 154 of its 2,000-odd words.
+- **One sub-agent searched author pages** for the 65 sources the indexes
+  couldn't place, and found 54. It returned URLs only; every copy was
+  downloaded and checked here.
+
+Learned about the services, as of this date:
+
+- ACM's Digital Library refuses scripts and headless Chromium alike with
+  a Cloudflare check, even for its open-access PDFs.
+- Unpaywall and OpenAlex miss most author pages: they call Krishnaswami's
+  ICFP 2013 paper closed, though it's on his Cambridge page.
+- HAL and Kiel's repository show an Anubis check to browser user agents
+  but serve plain `curl`. CiteSeerX now redirects to the Wayback Machine.
+  The Yale Haskell group's site is down.
+
+The tooling is in `~/prog/bough/research-scratch-space/trace/`, outside
+every repo, as before: `manifest.py` (the ranking and its reasons),
+`build.py` (`records`, `fetch`, `missing`) and `store.py` (stores a
+found-URL list with the same checks).
+
+The fetch list. The Sodium book isn't on it: its row has no file by
+design, and it's read in `~/prog/sodium/frp-mdbook/src/`. Save each copy
+into `~/prog/bough/literature` under the filename given. Phase 3 then
+fills in `file`, `version` and `source_url`.
+
+1. **`shiple-constructive-analysis-of-cyclic-circuits.pdf`**, core,
+   loops-causality. doi:10.1109/EDTC.1996.494321, Shiple, Berry and
+   Touati, "Constructive analysis of cyclic circuits", ED&TC 1996. IEEE
+   Xplore only; no author copy found at INRIA's or Berry's Esterel pages,
+   live or archived. Berry: DBLP
+   https://dblp.org/pers/hd/b/Berry:G=eacute=rard, Collège de France
+   https://www.college-de-france.fr/fr/personne/gerard-berry. No
+   published email found.
+2. **`keating-this-is-driving-me-loopy.pdf`**, core, loops-causality and
+   embedded-bounded. doi:10.1145/3609026.3609726, Keating and Gale, "This
+   Is Driving Me Loopy: Efficient Loops in Arrowized Functional Reactive
+   Programs", Haskell Symposium 2023. OpenAlex says gold open access, so
+   https://dl.acm.org/doi/pdf/10.1145/3609026.3609726 in a browser should
+   do. Keating: ORCID 0000-0001-6933-3338, DBLP
+   https://dblp.org/pid/299/8776.html. Gale: ORCID 0000-0001-7711-6763.
+   Keating's 2024 Warwick thesis, "Stricter arrowised functional reactive
+   programming", is a separate work:
+   https://wrap.warwick.ac.uk/id/eprint/191913/.
+3. **`maier-higher-order-reactive-programming-with-incremental-lists.pdf`**,
+   core, values-ownership and switching. doi:10.1007/978-3-642-39038-8_29,
+   Maier and Odersky, ECOOP 2013 (LNCS 7920). Springer only; not in EPFL
+   Infoscience. Odersky: martin.odersky@epfl.ch, published at
+   https://people.epfl.ch/martin.odersky, ORCID 0009-0005-3923-8993.
+   Maier's EPFL thesis, "Reactive Programming Abstractions for Complex
+   Event Logic and Dynamic Data Dependencies", is related but separate.
+4. **`sawada-emfrp-a-functional-reactive-programming-language-for-small.pdf`**,
+   core, embedded-bounded. doi:10.1145/2892664.2892670, Sawada and
+   Watanabe, "Emfrp", Modularity 2016 companion. ACM, not marked open;
+   the group's page links an ACM Author-Izer copy:
+   https://www.psg.c.titech.ac.jp/acmauthorizer.html. Watanabe: ORCID
+   0000-0001-7470-3428, DBLP https://dblp.org/pid/21/2042.html,
+   researchmap https://researchmap.jp/takuo.
+5. **`yokoyama-switching-mechanism-for-update-timing-of-time-varying.pdf`**,
+   supporting, embedded-bounded and switching. doi:10.1145/3651781.3651789,
+   Yokoyama, Moriguchi and Watanabe, ICSCA 2024. OpenAlex says gold open
+   access: https://dl.acm.org/doi/pdf/10.1145/3651781.3651789 in a browser.
+   Yokoyama: ORCID 0000-0002-8352-4082. Moriguchi: ORCID
+   0000-0002-4153-4514.
+6. **`shibanai-distributed-functional-reactive-programming-on-actor-based-runtime.pdf`**,
+   supporting, embedded-bounded and concurrency-io. XFRP.
+   doi:10.1145/3281366.3281370, Shibanai and Watanabe, AGERE 2018. ACM,
+   not marked open; Author-Izer link on the same group page. Watanabe as
+   above.
+
+Nothing outside that list is open. The trace tooling and manifest live
+only in the scratch directory; if they should be kept with `literature`,
+that's a small commit.
+
+Next: phase 2, Zefira fetches. Then phase 3, reading, in a fresh session.
+
+#### Context
+
+Phase 1 of the FRP literature review is done. The citation trace
+saturated in every dimension. `literature` holds 142 records: 98 kept
+(66 core, 32 supporting) and 44 map-only. 91 of the 98 kept sources have
+a stored legal copy. The Sodium book has no file by design, since it's
+read from `frp-mdbook`. That leaves six papers with no open copy found:
+four core and two supporting. Two of them, Keating and Gale's loops paper
+and Yokoyama et al.'s switching paper, are open access on ACM and only
+need a browser; the other four need the publisher or the authors.
+
+### ❓ **Fetching the six missing papers**
+
+Six kept papers have no open copy. Each is listed above with its filename
+and where to look. Will you fetch them before phase 3 reads?
+
+Fetching the six missing papers:
+
+- **(a)** Fetch what you can, at least the two open ACM papers, save them
+  under the listed filenames, and say go. Whatever you can't get stays
+  `abstract-only`, and its claims stay scoped to the abstract.
+- **(b)** Skip fetching and go straight to phase 3. All six stay
+  `abstract-only`, including four core sources: Shiple et al. on cyclic
+  circuits, Keating and Gale on loops, Maier and Odersky on incremental
+  lists, and Emfrp.
+
+➡️ **(a)** Four of the six are core, and three bear directly on open
+questions: static causality checking, loop cost, and cells of
+collections. The two ACM open-access papers take a minute in a browser.

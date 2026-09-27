@@ -72,15 +72,18 @@ behaviour. bough-gtk's eleven scenarios pass under Xvfb.
 
 ## What it cost
 
-- A waiting remote call is 64 bytes, up from 16. An inline enum of the
-  tokens it roots keeps a remote send at one allocation, as RFD 6
-  claims. A trait object per kind of call would bring it to about 24
-  bytes, which we've left for later.
+- A waiting remote call is 64 bytes, up from 16, for an inline enum of
+  the tokens it keeps alive. The enum was there to keep a remote send at
+  one allocation, as RFD 6 claims. Once a waiting send stopped rooting
+  its input, a send allocated once without it, and the enum only spares
+  a registration a `Vec`. A trait object per kind of call would bring it
+  to about 24 bytes, which we've left for later.
 - Listener dispatch got cheaper. One send to 64 listeners is 9.3% fewer
   instructions than before step 8: a listener's call takes its whole
   entry, so a once-listener spends itself, and a node's entries are
-  pruned only when one died. A first try at `listen_once` cost 6.3% on
-  every listener call, and was replaced.
+  pruned only when one died. A first try at `listen_once` cost about
+  eight instructions on every listener call, 6.8% on that send, and was
+  replaced.
 - The paint probe's late frame shows up in bough-gtk as predicted. A
   list view binds its rows inside the listener that changed its model,
   and their labels are right from the next pump, a turn of the main

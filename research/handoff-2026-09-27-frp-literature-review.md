@@ -1475,3 +1475,16 @@ barriers:
 44. Probe 24, extended: probe 23's uneven workload under a budget of
     a thousand, where barriers and floating garbage would fire.
     Performance.
+
+### 2026-09-28 05:34 -07:00, two more follow-ups
+
+From probe 27, which found a safe rebrand costs a read little for
+scalars and a copy per read for collections:
+
+45. `rfd-0003-rebrand-write-cost`, RFD 3, performance. The same on the
+    write side: storing token-bearing state into `hold` and
+    `accumulate_mut`, safe against the cast.
+46. Probe 27, extended: whether a derive can produce a borrowed view
+    for generic structs and enums, and whether `sample` can return it
+    from a `OnceCell` with no `unsafe`, keeping RFD 4's `&A`. Not
+    performance.

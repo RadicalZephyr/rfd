@@ -1898,3 +1898,62 @@ wait, and they need the machine to themselves.
 Zefira chose (a) and starts phase 6 now, in a session of her own. It
 runs the fifteen steps in the last addition, in order, taking the
 ratios after each bench.
+
+### 2026-09-28 11:35 -07:00, phase 6 done: the wall-clock run
+
+Every step of phase 6 ran in one batch, 09:54 to 11:34, with no failure.
+The results are `experiments@ce14249` to `experiments@1241138`, one
+commit per probe. Every result file cites `experiments@daa6419`, the
+commit that was checked out for the run and holds the script that ran
+it. That differs from phase 5, whose files cite each probe's own code
+commit.
+
+The machine, checked before the start:
+
+- Boost off and the governor at `performance`, logged before every step
+  and unchanged throughout.
+- Zefira stopped and masked GNOME's file indexer, `localsearch`, which
+  was using about 10% of a core on the host, and stopped
+  `bough-name-watch.timer`, the crates.io curl.
+- She set the tuned profile to `latency-performance` instead of the
+  night's `throughput-performance-bazzite`, to keep deep sleep states'
+  wake-up jitter out of the timings. The container can't read the
+  profile; the run's log records it as set on the host.
+
+How the run went, and the choices made inside the plan:
+
+- **One script ran it all:** `experiments/scripts/phase6.sh`
+  (`daa6419`). It builds every target first, so nothing compiles between
+  benches. Then, in the fifteen steps' order, it runs each bench, runs
+  `ratios.py` with that step's prefixes, and appends the ratios to the
+  same result file. The binaries' output goes to
+  `results/<name>-compile-time-<date>.txt` and
+  `results/<name>-timed-<date>.txt`.
+- **Each bench starts from an empty `target/criterion`,** and its
+  samples are moved to
+  `research-scratch-space/phase6-criterion/<target>/` straight after.
+  So no bench's ratios can pick up another's samples, whatever the group
+  names, and the raw samples are kept for verification. Phase 5's
+  indicative samples, left in `target/criterion`, are in
+  `phase6-criterion/pre-phase6/`, not in any ratio. The log is
+  `phase6-criterion/run.log`.
+- **A smoke run came first,** with `PHASE6_SMOKE=1`: Criterion's
+  `--quick`, the materializer's `--quick`, and the two long binaries
+  skipped, everything written to `research-scratch-space/phase6-smoke/`.
+  Its numbers aren't results.
+- **The load average reads 2 to 5 during the run.** That's Criterion's
+  analysis, which bootstraps its statistics across all cores with rayon
+  after each benchmark's measurement, not during it. The measurement is
+  single-threaded, so the samples don't see it. The machine went back to
+  idle when the smoke run ended.
+- **Criterion warned 51 times that it couldn't finish its samples in the
+  target time.** It extends the time instead, so every benchmark has its
+  full sample count.
+- **The lock probe's `--timed` table still prints "INDICATIVE ... not on
+  an idle machine".** The label is fixed text from phase 5. This run was
+  on the idle machine, pinned, so drafting can read these as measured.
+
+Next: phase 7, drafting, in a fresh session. The wall-clock ratios are
+in the result files beside the instruction counts. Drafting checks them
+against phase 5's findings, the ones marked "wall-clock pending" above
+all, starting with probe 7's erasure and probe 8's large-`Vec` rows.

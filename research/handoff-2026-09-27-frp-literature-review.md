@@ -1263,3 +1263,11 @@ The machine was checked before the start, from inside the container:
 - Load average 0.00 at the start. Still running and left alone:
   gnome-shell, DisplayLink's manager, tailscaled, and a user timer that
   curls crates.io every two hours.
+
+### 2026-09-28 02:41 -07:00, contradictions are findings, not stops
+
+Zefira, during phase 5: a finding that contradicts a settled decision is
+not a blocker. It is the finding to report, and it doesn't stop the
+probes. This replaces that case in the Rules' list of blockers from here
+on, for phases 5 and 6 and the verification pass. Crates that won't
+build, unreachable sources and ambiguous probe results still stop.

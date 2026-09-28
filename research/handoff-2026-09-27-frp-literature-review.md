@@ -1224,3 +1224,15 @@ Which probes to build:
 
 ➡️ **(a)** Each cut probe either confirms a leaning the literature
 already supports or informs a choice that nothing costly depends on yet.
+
+### 2026-09-28 01:58 -07:00, phase 4: all thirteen probes stay
+
+Zefira chose (b). Every probe in the list above is built in phase 5. The
+performance probes, whose Criterion benches wait for the idle machine in
+phase 6, are 2, 3, 4, 5, 7, 8 and 13, with an instruction count beside
+probe 1.
+
+Next: phase 5 in a fresh session. It sets up `experiments` to the spec
+above, builds the thirteen probes one commit at a time, runs every probe
+that doesn't need wall-clock timing and every gungraun instruction
+count, and stops to ask for the idle machine.

@@ -929,3 +929,123 @@ Every kept source now has a copy except the Sodium book, which has no
 file by design. That's 99 kept rows: 66 core and 33 supporting, with the
 thesis added. Nothing is pending. Next: phase 3, reading, in a fresh
 session, when Zefira says go.
+
+### 2026-09-28 01:29 -07:00, phase 3 stopped at a blocker: F89's stated reason
+
+Phase 3 read 13 of its 14 batches and stopped on a finding that
+contradicts the stated reason for a settled decision. The crates batch,
+the probe list and the must-read's outline are still to do.
+
+Done, in `literature`, commits `750ebb5` to `50ebee1`:
+
+- Every kept source but the six crates is read. 98 records carry reading
+  notes, one claim per line with its page. Core sources are `read-full`
+  except the Sodium book, which is `read-sections` by design. Supporting
+  sources are `read-full` or `read-sections`, with the sections listed.
+- Each batch left a synthesis file, `synthesis/01-scheduling.md` to
+  `synthesis/13-sodium.md`: what the sources mean for Bough, per source,
+  with contradictions, options and leanings, candidate probes, questions
+  to grill, and reading paths. Drafting starts there.
+- Metadata was checked against each copy's first page and corrected where
+  it disagreed: casing, author lists, venues and years. Two venues were
+  wrong: Diamonds is POPL 2021, not ICFP, and Schneider et al. is CASES
+  2004, not EMSOFT. Both were confirmed against Crossref.
+
+How the reading ran, and the choices made inside the plan:
+
+- **Pages are the stored PDF's page index,** counted from 1, never the
+  printed page. It's the one numbering a verifier can check without
+  ambiguity. The literature README says so (`750ebb5`). The Sodium book
+  is cited by chapter and section.
+- **Reading notes are the sources' claims only.** What they mean for
+  Bough is in `synthesis/`, which the README describes. A line that is
+  the reader's inference ends in `(reading)`.
+- **One sub-agent per batch, one at a time,** each with the same brief:
+  `research-scratch-space/reading/briefing.md`, with the batches in
+  `reading/batches.md` and the page-marked text in `reading/text/`. After
+  each batch I checked claims against their pages before committing,
+  three or four per batch, and fixed the synthesis twice where it said
+  more than the page: Keating and Gale's Thm. 4.5 proves one direction
+  only, and Acar lays his GC cost on SML/NJ, not on self-adjusting
+  computation. Every sampled claim held.
+- **Scott et al.'s record describes its stored copy,** the 2026 arXiv
+  extension (arXiv:2607.01363), with that copy's title and author order.
+  Its `id` is still the ICFP 2023 DOI. The verifier should decide whether
+  the `id` follows the copy.
+- **The crates are cloned and pinned** in
+  `research-scratch-space/crates/PINS.md`. salsa's `v*` tags stop at
+  0.16.1 in 2021, so it's pinned at `salsa-v0.28.5`, the crates.io
+  latest. carboxyl moved to `milibopp/carboxyl`, and its 0.2.2 has no tag,
+  so it's pinned at master, `2a80080`. They haven't been read.
+
+A mistake: one request to the crates.io API sent Zefira's email in its
+User-Agent header, against the rule that it goes only to Unpaywall and
+OpenAlex. It was sent once, and later requests carried no email.
+
+What the batches found, besides the blocker. No other settled decision is
+contradicted. Three stated reasons are weaker than worded, and each is a
+question for the grilling, not a blocker:
+
+- RFD 3 rejects refcounts because they can't see cycles. Counting backed
+  by a trace does see them (Bacon et al.). The stronger reason, that
+  tracing lets tokens be `Copy`, is RFD 3's second one.
+- RFD 6's single thread: the one measurement finds an uncontended lock
+  costs nothing measurable (Drechsler et al. 2018). The Sodium book's
+  Ousterhout passage (App. B §B.4) argues *for* threads. Listeners under
+  a lock, and one order of units the host can see, are what the sources
+  support.
+- RFD 4's "exactly one consumer" is at most one: Rust's moves are affine.
+
+Next: the question below. Then a fresh session finishes phase 3. It runs
+batch 14, the six crates at source and the crate table, and then stops
+with the probe list and the must-read's outline, as the handoff says.
+
+#### Context
+
+Phase 3 of the FRP literature review read 13 of its 14 batches, every
+source but the Rust crates. The last batch was the Sodium book. RFD 1's
+policy follows the semantics text except where it breaks its own rules,
+"time order, and things existing from their creation". It names three
+cases, F6, F7 and F89. F89 is a `split` or `defer` built at a child
+instant, which in the text replays an event from before it existed. Bough
+gives nothing there, as Sodium's Java does.
+
+The book's Appendix E states time order as an invariant ("for increasing
+T values", §E.4), which covers F6 and F7. It states creation only through
+the `t0` of four primitives in the `Reactive` monad: Hold, Value, SwitchC
+and Sample. `Split` is a pure function on streams, `Stream [a] → Stream
+a`, with no creation time (§E.5.10). The text has no `Defer`; RFD 5 makes
+a `defer` a split of one element. So in
+the text, a split has no "before it existed", and its answer at a child
+instant is what its equation says. Bough's F89 cut is not the text
+breaking a rule. It's Bough extending the creation rule to `split` and
+`defer`.
+
+Other sources back the cut on its merits. FRPNow proves that a
+combinator which may take its start from the past is "inherently leaky",
+and one tied to now is "forgetful" (van der Ploeg and Claessen, Lemmas 1
+and 2, p. 5). Sculthorpe's CFRP makes occurrences before switch-in
+unobservable. Nothing found argues for the text's replay.
+
+### ❓ **What F89's deviation rests on**
+
+RFD 1 lists F89 as the text breaking its own rule, and the text states
+no such rule for `split`. What should the review treat F89 as?
+
+What F89's deviation rests on:
+
+- **(a)** A semantics change under RFD 1's own rule for changing the
+  semantics. The review reports that RFD 1's stated reason doesn't hold
+  for F89, and that forgetfulness is a principled reason that does. The
+  cut itself isn't questioned. Whether it needs its own RFD, or a
+  reworded policy, is for the grilling.
+- **(b)** Within the policy as written, reading "things existing from
+  their creation" as a rule the whole text implies, which `split`
+  breaks. The review records a qualification, not a contradiction, and
+  phase 3 goes on.
+
+➡️ **(a)** RFD 1 says changing an inherited corner "is a semantics
+change and needs its own RFD, not an implementation choice", and the
+text is explicit that `Split` is pure. Calling it (b) would rest a
+settled policy on a rule the text doesn't state. (a) costs nothing
+now: the finding goes in the must-read, and phase 3 finishes as planned.

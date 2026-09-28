@@ -1279,3 +1279,37 @@ phase either. It is reported as a finding, with what would settle it,
 and she rechecks unclear results once the whole job is done. Of the
 Rules' blockers, a crate that won't build and a source that can't be
 reached still stop a phase.
+
+### 2026-09-28 03:40 -07:00, the probes' own follow-ups join phase 5
+
+Zefira: the follow-up probes the sub-agents suggest are built in phase 5
+too. Those suggested so far, numbered after the thirteen:
+
+14. `rfd-0005-small-side-order`, RFD 5, performance. Probe 2 found a
+    Pearce-Kelly order 20 to 230 times worse than the walk when inners
+    are built during the instant, because a new node goes at the end of
+    the order and the search covers the switch's whole downstream. An
+    order-maintenance list, or HKMST's two-way search, that places new
+    nodes just before the switch, on probe 2's workloads.
+15. `rfd-0003-work-paced-trigger`, RFD 3, performance. Probe 4 found
+    that RFD 3's trigger lets hundreds of dead screens pile up beside a
+    large live graph, and that pacing collection against garbage work
+    is worth about ten times; that was arithmetic, not measured. End to
+    end, RFD 3's trigger against a trigger on a work proxy, such as the
+    marked region's size against the live count.
+16. `rfd-0003-brand-erasure`, RFD 3, not performance. Probe 6's brand
+    design left its rebranding as `todo!()`, where gc-arena uses
+    `unsafe`. Whether a derived field-wise rebrand is sound with no
+    `unsafe`, whether RFD 6's cross-thread handles survive the brand,
+    and the leak route through capturing an `Anchored` and reopening
+    it.
+17. Probe 8, extended: a rope or concatenation tree for positional
+    deltas, whose `memmove` made the large-`Vec` rows unreadable, and
+    a lazy delta that buffers Z-sets until a read.
+18. Probe 13, extended: where a contended lock's extra 300 to 400 ns a
+    unit goes, by varying the graph's footprint.
+19. Probe 9, extended: `gate`, `sample`, `split`, `defer` and
+    `depends` in the marker's DSL.
+
+Extensions are new commits to the same probe. Phase 6 still waits for
+every probe, these included.

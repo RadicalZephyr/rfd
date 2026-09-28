@@ -1559,3 +1559,15 @@ dropped guard releases, and RFD 3's release term too small to fire:
 56. Probe 15, extended again: released screens on the input that fires
     every unit, with no growth, to bound the worst cost rather than
     the peak ratio. Performance.
+
+### 2026-09-28 06:45 -07:00, two more follow-ups
+
+From probes 40 and 41, which found fusion, not deferral, carries the map
+result, and one shared B-tree cuts its cost by about 40%:
+
+57. Probe 8, extended again: the fused delta handing its filter a real
+    Z-set, as separate nodes would, to price the node boundary for an
+    engine that doesn't fuse. Performance.
+58. Probe 8, extended again: the shared B-tree with leaves of 32 pairs,
+    the same bytes as the two-tree leaves, to see whether the gain is
+    one descent or fewer bytes moved. Performance.

@@ -1595,3 +1595,18 @@ and the barriers' slow path never fires:
     token, to exercise the barriers' slow path. Partly performance.
 62. Probe 24, extended again: the born-before-the-cycle reference on the
     uneven workload's per-input references. Performance.
+
+### 2026-09-28 07:16 -07:00, three more follow-ups
+
+From probe 45, which found a safe rebrand makes `accumulate_mut` cost in
+proportion to its state, and two safe ways around it:
+
+63. Probe 45, extended: whether rebranding by value stays constant-time
+    at lower optimisation levels, and what the nested shape's extra is.
+    Performance.
+64. Probe 45, extended: an accumulator that pushes a token every event
+    out to ten thousand events, to confirm or refute the quadratic cost
+    directly. Performance.
+65. With 46: derive the mutable borrowed view for generics and enums,
+    and see whether a list view can offer `retain` and `sort_by` with
+    no `&mut Vec` at the writer's brand. Not performance.

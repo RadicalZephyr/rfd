@@ -1049,3 +1049,16 @@ change and needs its own RFD, not an implementation choice", and the
 text is explicit that `Split` is pure. Calling it (b) would rest a
 settled policy on a rule the text doesn't state. (a) costs nothing
 now: the finding goes in the must-read, and phase 3 finishes as planned.
+
+### 2026-09-28 01:32 -07:00, F89 is a semantics change
+
+Zefira chose (a). The review treats F89's cut as a semantics change
+under RFD 1's own rule. It reports that RFD 1's stated reason, the text
+breaking its own rule, doesn't hold for F89, and that forgetfulness
+(FRPNow's Lemmas 1 and 2) is a principled reason that does. The finding
+goes in the must-read, keyed to RFD 1. Whether it needs its own RFD or a
+reworded policy is for the grilling.
+
+She asked for phase 3 to go on in this session rather than a fresh one.
+Next: batch 14, the six crates at source and the crate table, then the
+phase 3 stop with the probe list and the must-read's outline.

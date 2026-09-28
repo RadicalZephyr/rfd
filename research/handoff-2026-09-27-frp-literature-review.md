@@ -1383,3 +1383,14 @@ From probe 16, which made the brand sound with no `unsafe` on stable:
 28. Probe 16, extended: a real `#[derive(Rebrand)]` proc macro, whether
     it can give brand-free types a copy-free read, and what the orphan
     rules force for foreign event types. Not performance.
+
+### 2026-09-28 04:28 -07:00, two more follow-ups
+
+From probe 18, which found a contended lock's extra cost is mostly not
+the state migrating:
+
+29. Probe 13, extended again: futex system calls counted per unit in
+    the contended mutex, to confirm a wake on every unlock. A count.
+30. Probe 13, extended again: threads pinned to one core complex
+    against split across both, to see whether the migration cost per
+    line is a cross-complex cost. Performance.

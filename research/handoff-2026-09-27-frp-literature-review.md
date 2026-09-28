@@ -1358,3 +1358,17 @@ From probe 15, which found RFD 3's trigger needs a work term:
 24. `rfd-0003-incremental-mark`, RFD 3, performance. The pause that no
     trigger removes, marking ten thousand live nodes, split across
     units, with the write barrier that needs counted.
+
+### 2026-09-28 04:17 -07:00, two more follow-ups
+
+From probe 17, which put the positional delta on a rope and found a lazy
+map no help:
+
+25. Probe 8, extended again: a counted B-tree against the chunked rope,
+    at a million elements and on appends. Performance.
+26. Probe 8, extended again: a fully lazy map that buffers raw upserts
+    and brings the source up to date only on read. Performance.
+
+A note for verification: probe 17's re-run moved the earlier
+variants' counts by up to 6.6%, most likely from code layout. Every
+instruction count reproduces only at the commit its result file cites.

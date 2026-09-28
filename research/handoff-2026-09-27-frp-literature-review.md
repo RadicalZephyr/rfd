@@ -1547,3 +1547,15 @@ as a finding.
     see whether the height growth that refusals cause goes away
     cheaply. It matters only if Bough carries on after a refusal
     instead of poisoning. Performance.
+
+### 2026-09-28 06:34 -07:00, two more follow-ups
+
+From probes 38 and 39, which found no region term sees garbage that a
+dropped guard releases, and RFD 3's release term too small to fire:
+
+55. Probe 15, extended again: a release term that sees garbage, such
+    as counting every region node after a release until the next
+    collection. Performance.
+56. Probe 15, extended again: released screens on the input that fires
+    every unit, with no growth, to bound the worst cost rather than
+    the peak ratio. Performance.

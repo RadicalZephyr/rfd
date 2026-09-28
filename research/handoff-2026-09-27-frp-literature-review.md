@@ -1449,3 +1449,15 @@ inputs:
 39. Probe 15, extended again: garbage on a medium-rate input whose
     first transaction after a collection lags many navigations, to
     bound the work term's worst misses. Performance.
+
+### 2026-09-28 05:23 -07:00, two more follow-ups
+
+From probes 25 and 26, which found a counted B-tree beats the rope from
+ten thousand elements, and a fully lazy map wins by fusing its insert:
+
+40. Probe 8, extended again: an eager delta for the map with the
+    lookup, removal and insertion fused into one insert, to separate
+    fusion from laziness. Performance.
+41. Probe 8, extended again: a B-tree whose leaves share one index
+    lookup for the source and the mapped collection, as a fused map
+    node would. Performance.

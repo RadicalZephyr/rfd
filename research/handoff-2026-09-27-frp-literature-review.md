@@ -1413,3 +1413,14 @@ and depends:
     programs of two to four nodes, instead of one sampled, to see
     whether a constructive loop outside the exclusive gates exists with
     a changing cell and two or more inputs. Not performance.
+
+### 2026-09-28 04:47 -07:00, two more follow-ups
+
+From probe 21, which found the small-side orders bounded only on
+acyclic moves, and costly to reorder:
+
+34. Probe 14, extended again: a mixed adversary, a large old upstream
+    before the switch plus a new side of size k, to find where the walk
+    and the backward search cost the same. Performance.
+35. Probe 14, extended again: a moved set inserted with fresh spacing,
+    so repeated inserts into one gap stop relabelling. Performance.

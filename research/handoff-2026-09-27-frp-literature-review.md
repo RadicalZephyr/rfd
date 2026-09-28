@@ -1347,3 +1347,14 @@ follow-up suggested before 11:00 is built. Phase 5 stops taking new
 work then, and phase 6 starts by 11:30 at the latest, which leaves its
 benches about two hours and some slack before 14:00. One suggested
 later is recorded in the last addition and not built.
+
+### 2026-09-28 04:09 -07:00, two more follow-ups
+
+From probe 15, which found RFD 3's trigger needs a work term:
+
+23. Probe 15, extended: its per-input work term under several inputs
+    firing at uneven rates, some rarely, and live regions that grow, to
+    see whether it collects spuriously or misses. Performance.
+24. `rfd-0003-incremental-mark`, RFD 3, performance. The pause that no
+    trigger removes, marking ten thousand live nodes, split across
+    units, with the write barrier that needs counted.

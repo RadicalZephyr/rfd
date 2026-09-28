@@ -1892,3 +1892,9 @@ Running phase 6:
 
 ➡️ **(a)** The instruction counts are in; only the wall-clock ratios
 wait, and they need the machine to themselves.
+
+### 2026-09-28 08:55 -07:00, phase 6 goes
+
+Zefira chose (a) and starts phase 6 now, in a session of her own. It
+runs the fifteen steps in the last addition, in order, taking the
+ratios after each bench.

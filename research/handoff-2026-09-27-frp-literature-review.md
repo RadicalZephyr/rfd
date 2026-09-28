@@ -915,3 +915,17 @@ doesn't wait on either request. If a copy arrives, it's saved as
 `maier-reactive-programming-abstractions-for-complex-event-logic-and.pdf`,
 and whichever session is running fills in the record. If neither
 arrives, the note scopes both to their abstracts.
+
+### 2026-09-27 23:08 -07:00, both Maier copies arrived
+
+Zefira bought Maier and Odersky's ECOOP 2013 paper from Springer, and
+EPFL granted her request for Maier's thesis. Both are stored and checked
+against their titles, in `literature@804a7ed`. The thesis stays
+supporting, now as Scala.React at full length to read beside the paper,
+not as a stand-in for it. Both are licensed copies, one more reason
+`literature` stays private.
+
+Every kept source now has a copy except the Sodium book, which has no
+file by design. That's 99 kept rows: 66 core and 33 supporting, with the
+thesis added. Nothing is pending. Next: phase 3, reading, in a fresh
+session, when Zefira says go.

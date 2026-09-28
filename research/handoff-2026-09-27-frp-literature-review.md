@@ -1523,3 +1523,10 @@ only, and the run-time check at a switch's moves stays.
 51. Probe 9, extended again: switches that require decoupled inners at
     the type level, to see whether that closes the hole and keeps the
     navigation loop. Not performance.
+
+### 2026-09-28 06:18 -07:00, one more follow-up
+
+52. Probe 14, extended again: the backward search's cost split into
+    search, sort, unlink and relink, and a move that keeps the search's
+    own order when it is already topological, the one lever left that
+    could move where the list beats the walk. Performance.

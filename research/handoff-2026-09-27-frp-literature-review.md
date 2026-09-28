@@ -1339,3 +1339,11 @@ A choice inside the plan: follow-ups can breed follow-ups, and the night
 is finite. Phase 6's benches need about two hours on the idle machine.
 So a follow-up suggested after 06:30 is recorded in the last addition
 and not built, and phase 5 stops taking new work then.
+
+### 2026-09-28 04:07 -07:00, the cutoff moves to 11:00
+
+Zefira: mistral, this machine, is free until at least 14:00. So a
+follow-up suggested before 11:00 is built. Phase 5 stops taking new
+work then, and phase 6 starts by 11:30 at the latest, which leaves its
+benches about two hours and some slack before 14:00. One suggested
+later is recorded in the last addition and not built.

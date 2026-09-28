@@ -1584,3 +1584,14 @@ coming to a fraction of a raise a transaction:
 60. Probe 36, extended again: a mark that doesn't start from the root
     event stream at every navigation, to separate how much of the
     heights' lead is the larger marked region. Performance.
+
+### 2026-09-28 07:04 -07:00, two more follow-ups
+
+From probes 42 to 44, which found a fixed budget beats every debt pace
+and the barriers' slow path never fires:
+
+61. Probe 24, extended again: units that insert edges to old nodes,
+    such as navigating back to a kept screen or I/O re-anchoring an old
+    token, to exercise the barriers' slow path. Partly performance.
+62. Probe 24, extended again: the born-before-the-cycle reference on the
+    uneven workload's per-input references. Performance.

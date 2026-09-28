@@ -1665,3 +1665,21 @@ a switch, and a last-open-loop rule with holes of its own:
     brand and an explicit epoch bump, to remove the hole where two
     builds trade a loop, and the refusals of a loop in a `for` or an
     `if`. Not performance.
+
+### 2026-09-28 08:00 -07:00, a caveat and three more follow-ups
+
+Probes 47, 48 and 68 found that the brand-erasure harness compiled its
+fixtures with `--cap-lints allow`, which caps `forbid` too. So no
+committed run of probes 16, 28 or 46 enforced `forbid(unsafe_code)`,
+and their "sound with no `unsafe`" rests on inspection: no fixture has
+the `unsafe` keyword. Follow-up 75 checks it.
+
+74. Probe 16, extended again: entry points such as `anchor` that require
+    `T: Rebrand<Of<'g> = T>`, so a stashed static token can't get back
+    into a `mutate`, which could make the stash harmless with no seal.
+    Not performance.
+75. Probe 16, extended again: every committed mode re-run with lints
+    uncapped, to confirm `forbid(unsafe_code)` holds. Not performance.
+76. Probe 16, extended again: the bare `unsafe` seal on the borrowed
+    views, to see whether it closes the stash through `Borrow`. Not
+    performance.

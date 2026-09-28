@@ -1424,3 +1424,16 @@ acyclic moves, and costly to reorder:
     and the backward search cost the same. Performance.
 35. Probe 14, extended again: a moved set inserted with fresh spacing,
     so repeated inserts into one gap stop relabelling. Performance.
+
+### 2026-09-28 05:10 -07:00, two more follow-ups
+
+From probe 22, which found maintained labels cost a queue its O(1)
+buckets rather than costing upkeep:
+
+36. `rfd-0005-height-queue`, RFD 5, performance. Incremental's way:
+    small-integer heights raised on link, with a bucket queue, the
+    height raises at moves counted, to see whether it wins back the 16%
+    crossover under switching.
+37. Probe 22, extended: the schedulers rerun over flat adjacency, to
+    check the ratios aren't an artefact of a vector-of-vectors graph.
+    Performance.

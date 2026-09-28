@@ -1488,3 +1488,13 @@ scalars and a copy per read for collections:
     for generic structs and enums, and whether `sample` can return it
     from a `OnceCell` with no `unsafe`, keeping RFD 4's `&A`. Not
     performance.
+
+### 2026-09-28 05:43 -07:00, two more follow-ups
+
+From probe 28, which derived `Rebrand` and found the orphan rules leave
+`Leaf` or Bough-side impls:
+
+47. Probe 16, extended again: derive `Trace` beside `Rebrand`, and test
+    that a skipped field and `Trace` agree. Not performance.
+48. Probe 16, extended again: a copy-free read for generic types
+    instantiated brand-free, such as `Tagged<u32>`. Not performance.

@@ -1313,3 +1313,10 @@ too. Those suggested so far, numbered after the thirteen:
 
 Extensions are new commits to the same probe. Phase 6 still waits for
 every probe, these included.
+
+### 2026-09-28 03:57 -07:00, one more follow-up
+
+20. Probe 10, extended: gates that read holds of the loop, so cells
+    take only reachable states rather than every valuation. It settles
+    whether state invariants add constructive loops outside the
+    exclusive gates a switch expresses. Not performance.

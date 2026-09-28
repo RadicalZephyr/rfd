@@ -1372,3 +1372,14 @@ map no help:
 A note for verification: probe 17's re-run moved the earlier
 variants' counts by up to 6.6%, most likely from code layout. Every
 instruction count reproduces only at the commit its result file cites.
+
+### 2026-09-28 04:26 -07:00, two more follow-ups
+
+From probe 16, which made the brand sound with no `unsafe` on stable:
+
+27. `rfd-0003-rebrand-cost`, RFD 3, performance. The copy a safe rebrand
+    makes on every read of a held value that contains tokens, against
+    an unchecked cast, on held values and snapshots.
+28. Probe 16, extended: a real `#[derive(Rebrand)]` proc macro, whether
+    it can give brand-free types a copy-free read, and what the orphan
+    rules force for foreign event types. Not performance.

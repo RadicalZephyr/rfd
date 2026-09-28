@@ -1622,3 +1622,17 @@ adjacency, the crossovers moving 3 to 5 points of quiet share:
 67. Probe 22, extended again: built nodes' slices given room from the
     start, to see whether building during the instant makes the flat
     layout's upkeep matter. Performance.
+
+### 2026-09-28 07:39 -07:00, two more follow-ups
+
+From probes 46 and 65, which derived borrowed views with no `unsafe`,
+and found a hand-written view impl can stash a static token, as the
+committed `view` can:
+
+68. Probe 16, extended again: whether a trait only the derive can
+    implement, sealed or `unsafe` with the derive writing the impl,
+    closes that route without breaking `forbid(unsafe_code)` in user
+    crates. Not performance.
+69. Probe 16, extended again: `accumulate_mut` at commit through the
+    mutable view, in a toy whose commit owns its values. Not
+    performance.

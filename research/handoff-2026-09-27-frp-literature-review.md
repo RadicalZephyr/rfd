@@ -1705,3 +1705,190 @@ already clear. 66 and 67 are partly answered by phase 6's wall-clock.
 
 Phase 6 starts once those three are committed, around 09:00 rather
 than 11:30, which leaves slack before 14:00.
+
+### 2026-09-28 08:36 -07:00, phase 5 done: the probes, and phase 6's commands
+
+Phase 5 is done. Every probe the stop left in is built, run where it
+doesn't need timing, and committed: `experiments@e7ad1a9` (the setup)
+to `experiments@8c9ed83`, one probe or extension at a time, each code
+commit followed by its results with the provenance line filled in.
+Zefira is awake and starts phase 6 in a session of her own; this one
+stops here.
+
+What's there:
+
+- The thirteen probes from phase 3, and the follow-ups built before the
+  stop: 14 to 53, 60, 65, 68 and 74 to 76, many as extensions of an
+  earlier probe. 29 bench targets, 14 of them wall-clock; binaries for
+  the rest; fixtures for code that must fail to compile; one workspace
+  member, the `Rebrand` derive.
+- `results/` holds every binary's output and every gungraun run, each
+  file named for its target and run. Timings taken during phase 5 are
+  in the scratch directory only, marked indicative.
+- The orchestrator's log of every report, with its numbers, is
+  `research-scratch-space/probes/reports.md`. Drafting can start there;
+  every number in it is in a committed result file.
+- `cargo fmt` and clippy with warnings as errors are clean across the
+  workspace. `cargo test --release --workspace` passes but for one
+  flaky assertion: `rfd_0006_lock_vs_queue_cost::tests::footprints_agree`
+  checks the ticket lock hands off in over half the units, which failed
+  once in a full parallel run and passed three times alone. It depends
+  on scheduling, not on the probe's numbers.
+
+Findings the review must report, with the probes behind them. The
+numbers are instruction counts unless marked; wall-clock is phase 6's.
+
+- **RFD 5's reasons for rejecting rank-ordered push don't hold on
+  their own** (contradicts a settled decision's stated reason). With
+  static heights a bucket queue beats the mark from about 16% quiet
+  (3). Under switching, Incremental's small-integer heights cost about
+  3% more than the mark when everything fires and win from about 5%
+  quiet, the re-ranking RFD 5 names coming to a fraction of a raise a
+  transaction (36, 53). With the confound removed that probe 53's
+  model had, the crossover stays near 5% quiet and the wins shrink
+  (60). Labels from an order-maintenance list lose to heights (22).
+- **RFD 5's per-move walk stays.** The DFS mark's grey state can't
+  replace it: it finds a cycle only when an input next reaches it, and
+  never if none does (1). Kept orders beat the walk on UI-shaped graphs
+  but not in general; with the sort removed, only once the old upstream
+  is about twice the new side (2, 14, 21, 34, 35, 52).
+- **RFD 3's collection trigger needs a work term** (contradicts the
+  settled trigger's sufficiency). Beside a large live graph it let
+  garbage pile up at about 8 times the cost of a work-paced trigger
+  (4, 15), and a per-input reference stays sound under uneven inputs
+  (23, 38, 39). No region term sees garbage a dropped guard releases.
+  An incremental mark with insertion barriers splits the pause about
+  ten times for about 9% (24, 42 to 44).
+- **RFD 3's "cannot be made a compile error" doesn't hold.** A lifetime
+  brand makes F62 a compile error on stable, soundly with no `unsafe`,
+  confirmed with lints uncapped (6, 16, 75). It costs a lifetime on
+  every type and helper that holds tokens and I/O inside callbacks, a
+  copy per read and write unless borrowed views replace `&A` (27, 45,
+  46), and a stash route through hand-written impls that entry bounds
+  narrow but don't close (47, 48, 68, 74, 76).
+- **RFD 2: the decoupledness mark can check `close`, not switches.**
+  One bit refuses F3 and costs little to compile (9, 19), but every
+  marker design accepts a loop smuggled through a switch (31, 32); a
+  mark on a switch's output closes that at the price of switches nested
+  in switches (50, 51). The census of refused loops supports plain
+  acyclicity (10, 20, 33).
+- **RFD 1: the creation cut is forgetful, and one rule covers it.** A
+  cut on state-holders and time-movers only never differs from a cut
+  on every primitive; the text leaks exactly on F6 and F89 shapes (11).
+  Child indices would catch more mutants, and what the oracle misses
+  is invisible to its programs (12).
+- **RFD 4: erasing the chain at the materializer** cuts F36's build
+  times to about a third for 3 instructions an event (7, wall-clock
+  pending). **Question 9**: a patch-carrying cell wins from small
+  sizes; a counted B-tree for positions and a fused upsert for maps
+  (8, 17, 25, 26, 40, 41); Z-set composition fails for two sources
+  upserting one key.
+- **RFD 6: an uncontended lock costs about 1%, RFD 6's queue 10 to 20%**
+  (contradicts the single-thread rationale's stated reason). Contended,
+  the lock loses more than the queue, mostly to a futex wake per unlock
+  and a wake across core complexes, per the counts and indicative
+  timings (13, 18, 29, 30, 49).
+
+Unclear results for Zefira to recheck: the height-queue crossover
+between 2% and 30% quiet is interpolated (60); the lock's mechanism
+rests on indicative timings (18, 29, 30, 49); probe 8's large-`Vec`
+rows are memmove artefacts under valgrind until wall-clock (8, 25).
+
+Choices made inside the plan:
+
+- Probes that must fail to compile are fixtures a binary compiles, not
+  targets. Compile time is measured by binaries that build generated
+  crates, run with the wall-clock benches.
+- A counts run that needs no timing is sometimes a library test, not a
+  binary, where the probe had no binary stub; its result file gives the
+  exact command.
+- The two sub-agents at once shared one repository; targets were
+  declared as stubs ahead of time so they never edited the manifest
+  together. Once, briefly, a third was started by mistake and stopped
+  before it wrote anything.
+- `strace` was installed with `sudo dnf` (probes 29 and 30), and
+  `libc` joined the dependencies for thread affinity.
+- Extensions changed some earlier probes' shared code, and a few
+  earlier counts moved by up to 6.6% from code layout. Every count
+  reproduces only at the commit its result file cites. Verification
+  must check out that commit.
+
+#### Phase 6: the commands
+
+Run from `~/prog/bough/experiments` on the idle machine: boost off,
+governor `performance`, nothing else running, as this night's first
+addition describes. Save each command's full output as
+`results/<target>-<date>.txt` with the provenance line, and commit.
+
+**Run `scripts/ratios.py` straight after each bench, before the next
+one.** Several benches share Criterion group names (`moves` and `build`
+in two, `nav` and `app` in two), so a later bench overwrites an earlier
+one's samples under `target/criterion`. Save the ratios with the bench.
+`ratios.py` compares each variant with its group's `baseline` only;
+the reports name the comparisons to read by hand.
+
+In order, RFDs 3 and 5 first, since they gate the build. Durations
+are the agents' estimates, not timed; the whole run is likely two to
+three hours.
+
+1. `cargo bench --bench rfd-0005-height-queue-wallclock` (about 9 min),
+   then `python3 scripts/ratios.py`.
+2. `cargo bench --bench rfd-0005-maintained-rank-queue-wallclock`, then
+   `python3 scripts/ratios.py settled mixed churn lazy upkeep flat-settled flat-mixed flat-churn flat-lazy`.
+3. `cargo bench --bench rfd-0005-heap-vs-mark-on-quiet-regions-wallclock`,
+   then `python3 scripts/ratios.py ui-small ui-large frame`.
+4. `cargo bench --bench rfd-0005-small-side-order-wallclock` (about 10
+   min), then `python3 scripts/ratios.py`.
+5. `cargo bench --bench rfd-0005-bounded-relink-check-wallclock`, then
+   `python3 scripts/ratios.py moves build`.
+6. `cargo bench --bench rfd-0005-demand-bounded-push-wallclock`, then
+   `python3 scripts/ratios.py nav app`.
+7. `cargo bench --bench rfd-0003-work-paced-trigger-wallclock` (about 8
+   min), then `python3 scripts/ratios.py nav app pause-nav pause-app uneven-spread uneven-sparse pause-uneven-spread pause-uneven-sparse uneven-lagging fast-path`.
+8. `cargo bench --bench rfd-0003-incremental-mark-wallclock`, then
+   `python3 scripts/ratios.py incremental-`.
+9. `cargo bench --bench rfd-0003-sweep-cost-wallclock` (about 5 min),
+   then `python3 scripts/ratios.py live10 live90`.
+10. `cargo bench --bench rfd-0003-rebrand-cost-wallclock` (about 4 min),
+    then `python3 scripts/ratios.py`.
+11. `cargo bench --bench rfd-0003-rebrand-write-cost-wallclock` (about 5
+    min), then `python3 scripts/ratios.py write_`.
+12. `cargo bench --bench rfd-0004-erased-materializer-wallclock`, then
+    `python3 scripts/ratios.py`; and
+    `cargo run --release --bin rfd-0004-erased-materializer` (compile
+    times, about 14 min).
+13. `cargo bench --bench rfd-0004-patch-cell-crossover-wallclock` (about
+    9 min), then `python3 scripts/ratios.py vec- map- compose`.
+14. `cargo run --release --bin rfd-0002-decoupled-marker -- --compile-time`
+    (about 7 min).
+15. `cargo bench --bench rfd-0006-lock-vs-queue-cost-wallclock` (about 7
+    min; the spreads and hand-off tables print after Criterion's
+    report), then `python3 scripts/ratios.py single contended footprint-`;
+    and `cargo run --release --bin rfd-0006-lock-vs-queue-cost -- --timed`.
+
+Next: phase 6, in Zefira's session. Then phase 7, drafting.
+
+#### Context
+
+Phase 5 of the FRP literature review is done. The thirteen probes and
+the follow-ups built before the stop are committed in `experiments`,
+with every instruction count and non-timing result in `results/`.
+Several findings contradict the stated reasons of settled decisions in
+RFDs 3, 5 and 6, and are reported as findings, as Zefira ruled. What's
+left is the wall-clock run, which needs the idle machine: fourteen
+Criterion benches and two compile-time binaries, listed above in order,
+RFDs 3 and 5 first.
+
+### ❓ **Running phase 6**
+
+Phase 6 runs the wall-clock benches in one batch on an idle machine.
+Zefira starts it in a session of her own. When?
+
+Running phase 6:
+
+- **(a)** When the machine can sit idle for about three hours: boost
+  off, the governor at `performance`, nothing else running. The session
+  runs the fifteen steps above in order and commits the results.
+
+➡️ **(a)** The instruction counts are in; only the wall-clock ratios
+wait, and they need the machine to themselves.

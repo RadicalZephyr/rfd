@@ -1406,3 +1406,10 @@ and depends:
 32. Probe 9, extended again: a split inside a `construct` that runs at a
     child instant, to see whether any path there escapes the
     per-instant rule. Not performance.
+
+### 2026-09-28 04:39 -07:00, one more follow-up
+
+33. Probe 10, extended again: every cell binding enumerated for
+    programs of two to four nodes, instead of one sampled, to see
+    whether a constructive loop outside the exclusive gates exists with
+    a changing cell and two or more inputs. Not performance.

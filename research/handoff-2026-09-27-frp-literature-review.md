@@ -1651,3 +1651,17 @@ complexes explains about 70% of the mutex's gap between placements:
     see whether the cross-complex cost is the remote wake path. Tried
     only if `perf` works in the container as it stands; nothing on the
     host is changed for it. Performance.
+
+### 2026-09-28 07:58 -07:00, two more follow-ups
+
+From probes 50 and 51, which found a mark on a switch's output refuses
+every smuggle and keeps navigation, at the price of a switch nested in
+a switch, and a last-open-loop rule with holes of its own:
+
+72. Probe 9, extended again: a generative brand per switch, to accept a
+    switch nested in a switch without reopening the smuggles. Not
+    performance.
+73. Probe 9, extended again: the last-open-loop rule with a generative
+    brand and an explicit epoch bump, to remove the hole where two
+    builds trade a loop, and the refusals of a loop in a `for` or an
+    `if`. Not performance.

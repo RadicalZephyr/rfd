@@ -1461,3 +1461,17 @@ ten thousand elements, and a fully lazy map wins by fusing its insert:
 41. Probe 8, extended again: a B-tree whose leaves share one index
     lookup for the source and the mapped collection, as a fused map
     node would. Performance.
+
+### 2026-09-28 05:33 -07:00, three more follow-ups
+
+From probe 24, which split the collection across units with insertion
+barriers:
+
+42. Probe 24, extended: garbage skipped by the region during the mark,
+    or the next cycle started sooner, to lower the floor that small
+    budgets hit. Performance.
+43. Probe 24, extended: a work debt keyed to the total region, to see
+    whether any debt pacing beats a fixed budget. Performance.
+44. Probe 24, extended: probe 23's uneven workload under a budget of
+    a thousand, where barriers and floating garbage would fire.
+    Performance.

@@ -1636,3 +1636,18 @@ committed `view` can:
 69. Probe 16, extended again: `accumulate_mut` at commit through the
     mutable view, in a toy whose commit owns its values. Not
     performance.
+
+### 2026-09-28 07:41 -07:00, two more follow-ups, one of them limited
+
+From probe 49, which found, indicatively, that a wake across core
+complexes explains about 70% of the mutex's gap between placements:
+
+70. Probe 13, extended again: whether wake cost and wake-to-run latency
+    are idle-state exit, tested only with a busy-spinning thread on the
+    sleeper's core. Capping idle states with `cpupower` would change
+    the host's power settings, which is Zefira's call, so it isn't
+    done. Performance.
+71. Probe 13, extended again: a trace of the wake through the kernel, to
+    see whether the cross-complex cost is the remote wake path. Tried
+    only if `perf` works in the container as it stands; nothing on the
+    host is changed for it. Performance.

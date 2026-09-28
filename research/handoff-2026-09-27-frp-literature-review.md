@@ -1236,3 +1236,30 @@ Next: phase 5 in a fresh session. It sets up `experiments` to the spec
 above, builds the thirteen probes one commit at a time, runs every probe
 that doesn't need wall-clock timing and every gungraun instruction
 count, and stops to ask for the idle machine.
+
+### 2026-09-28 02:15 -07:00, phase 5 starts, with phase 6's go given
+
+Zefira goes to bed and leaves the machine for about eight hours. Phase 5
+doesn't need an idle machine: its probes check behaviour or count
+instructions under valgrind. So she gave phase 6's go in advance, on one
+condition. If phase 5 ends clean, with every probe built and no stop,
+phase 6 runs in the same night. A fresh sub-agent runs it, given only
+this handoff and the repos, which keeps the point of the fresh-session
+rule. If phase 5 stops, phase 6 waits for her.
+
+The machine was checked before the start, from inside the container:
+
+- Closed on the host: Steam, a second Claude Code session, an editor's
+  rust-analyzer, and a distrobox GUI.
+- `uupd.timer`, the OS updater due at 04:06, is stopped for the night.
+  It restarts at the next boot. Its container upgrade is off in
+  `/etc/uupd/config.json` anyway, so the toolchain and valgrind can't
+  change under the run.
+- CPU boost is off (`/sys/devices/system/cpu/cpufreq/boost` reads 0),
+  the governor is `performance`, and the tuned profile is
+  `throughput-performance-bazzite`. Boost off trades speed for less
+  thermal variance; the note quotes only ratios.
+- The screen blanks after one minute, and idle suspend is `nothing`.
+- Load average 0.00 at the start. Still running and left alone:
+  gnome-shell, DisplayLink's manager, tailscaled, and a user timer that
+  curls crates.io every two hours.

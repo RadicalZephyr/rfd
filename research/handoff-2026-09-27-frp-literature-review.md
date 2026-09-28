@@ -1437,3 +1437,15 @@ buckets rather than costing upkeep:
 37. Probe 22, extended: the schedulers rerun over flat adjacency, to
     check the ratios aren't an artefact of a vector-of-vectors graph.
     Performance.
+
+### 2026-09-28 05:12 -07:00, two more follow-ups
+
+From probe 23, which found the per-input work term sound under uneven
+inputs:
+
+38. Probe 15, extended again: the rate of spurious collections against
+    the length of quiet stretches and the growth rate, with an input
+    that grows and then shrinks by releasing a guard. Performance.
+39. Probe 15, extended again: garbage on a medium-rate input whose
+    first transaction after a collection lags many navigations, to
+    bound the work term's worst misses. Performance.

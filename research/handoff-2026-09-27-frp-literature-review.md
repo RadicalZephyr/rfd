@@ -1498,3 +1498,15 @@ From probe 28, which derived `Rebrand` and found the orphan rules leave
     that a skipped field and `Trace` agree. Not performance.
 48. Probe 16, extended again: a copy-free read for generic types
     instantiated brand-free, such as `Tagged<u32>`. Not performance.
+
+### 2026-09-28 05:47 -07:00, one more follow-up, and strace
+
+Probes 29 and 30 installed `strace` in the container with `sudo dnf
+install strace`, to cross-check the futex counts. It turned out to
+disturb the run too much to use, and the counts come from a counting
+copy of std's mutex instead.
+
+49. Probe 13, extended again: the counting mutex pinned within one core
+    complex and across both, with the time per wake, to see whether a
+    wake across complexes explains the gap between placements.
+    Performance.

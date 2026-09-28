@@ -1683,3 +1683,25 @@ the `unsafe` keyword. Follow-up 75 checks it.
 76. Probe 16, extended again: the bare `unsafe` seal on the borrowed
     views, to see whether it closes the stash through `Borrow`. Not
     performance.
+
+### 2026-09-28 08:07 -07:00, phase 5 stops taking follow-ups
+
+Zefira chose to stop the follow-up chain. The later follow-ups had
+turned from checking findings to designing APIs Bough hasn't chosen, and
+would refine answers that no longer move a leaning. What finishes:
+
+- The two agents running: 52 (the backward search profiled), and 74 to
+  76, whose re-check of `forbid(unsafe_code)` with lints uncapped is a
+  validity check on committed claims.
+- 60 is built: it separates how much of the height queue's lead over
+  RFD 5's mark comes from a larger marked region, a confound in a
+  finding that contradicts a settled decision.
+
+Dropped, not built, each recorded above with what it would settle: 54,
+55, 56, 57, 58, 59, 61, 62, 63, 64, 66, 67, 69, 70, 71, 72, 73. The
+reason, in short: the brand and marker chains design options the
+grilling hasn't picked, and the rest tune constants inside findings
+already clear. 66 and 67 are partly answered by phase 6's wall-clock.
+
+Phase 6 starts once those three are committed, around 09:00 rather
+than 11:30, which leaves slack before 14:00.

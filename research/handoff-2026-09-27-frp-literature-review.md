@@ -1610,3 +1610,15 @@ proportion to its state, and two safe ways around it:
 65. With 46: derive the mutable borrowed view for generics and enums,
     and see whether a list view can offer `retain` and `sort_by` with
     no `&mut Vec` at the writer's brand. Not performance.
+
+### 2026-09-28 07:36 -07:00, two more follow-ups
+
+From probe 37, which found the scheduler ratios hold over flat
+adjacency, the crossovers moving 3 to 5 points of quiet share:
+
+66. Probe 22, extended again: flat slices without bounds checks, or true
+    compressed rows, timed by wall-clock, to see whether the layout's
+    cache gain moves the crossovers in time. Performance.
+67. Probe 22, extended again: built nodes' slices given room from the
+    start, to see whether building during the instant makes the flat
+    layout's upkeep matter. Performance.

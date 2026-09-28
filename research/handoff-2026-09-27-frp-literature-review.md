@@ -1320,3 +1320,22 @@ every probe, these included.
     take only reachable states rather than every valuation. It settles
     whether state invariants add constructive loops outside the
     exclusive gates a switch expresses. Not performance.
+
+### 2026-09-28 04:01 -07:00, two more follow-ups, and a cutoff
+
+From probe 14, which found an order-maintenance list keeps the relink
+check below the walk on every workload of probe 2's graph:
+
+21. Probe 14, extended: an adversarial shape where both the new inner's
+    upstream after the switch and the switch's downstream are large, to
+    see whether the two-way search's bound matters against the backward
+    one. Performance.
+22. `rfd-0005-maintained-rank-queue`, RFD 5, performance. Probe 3's
+    bucket queue with ranks from probe 14's maintained order instead of
+    static heights, its upkeep counted. It settles whether the switch
+    cost still justifies rejecting rank-ordered push.
+
+A choice inside the plan: follow-ups can breed follow-ups, and the night
+is finite. Phase 6's benches need about two hours on the idle machine.
+So a follow-up suggested after 06:30 is recorded in the last addition
+and not built, and phase 5 stops taking new work then.

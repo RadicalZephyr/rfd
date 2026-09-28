@@ -1394,3 +1394,15 @@ the state migrating:
 30. Probe 13, extended again: threads pinned to one core complex
     against split across both, to see whether the migration cost per
     line is a cross-complex cost. Performance.
+
+### 2026-09-28 04:33 -07:00, two more follow-ups
+
+From probe 19, which extended the marker to gate, sample, split, defer
+and depends:
+
+31. Probe 9, extended again: `close` returns the definition's token
+    re-marked decoupled, to see whether the one bit plus sequencing
+    removes both false refusals without rows. Not performance.
+32. Probe 9, extended again: a split inside a `construct` that runs at a
+    child instant, to see whether any path there escapes the
+    per-instant rule. Not performance.

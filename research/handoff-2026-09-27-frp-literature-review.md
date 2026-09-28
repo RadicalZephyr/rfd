@@ -1062,3 +1062,165 @@ reworded policy is for the grilling.
 She asked for phase 3 to go on in this session rather than a fresh one.
 Next: batch 14, the six crates at source and the crate table, then the
 phase 3 stop with the probe list and the must-read's outline.
+
+### 2026-09-28 01:49 -07:00, phase 3 done: the probes and the outline
+
+Batch 14 read the six crates at source, at the tags and commits in
+`literature/synthesis/14-crates-pins.md`, and tabled seventeen others:
+`literature@4ff07e4`. Every kept source is now read, and every batch has
+a synthesis file. Checked by hand: Sycamore already runs RFD 5's design,
+a DFS whose reverse post-order is the evaluation order, and it panics on
+the DFS's grey mark as a cycle (`sycamore-reactive@0.9.3 src/root.rs`).
+Jane Street's Incremental does order by heights, and re-heights
+incrementally, which fills the gap batch 01 found.
+
+No settled decision is contradicted beyond F89's stated reason, answered
+above.
+
+#### The probe list
+
+Fourteen batches proposed 23 probes. Overlaps are merged, so thirteen
+remain. Each line: the name, the RFD it serves, the claim it would settle,
+and whether it measures performance.
+
+1. `rfd-0005-cycle-in-mark`, RFD 5: whether the DFS mark's grey state
+   catches every same-instant cycle the per-move upstream walk does (F46,
+   F50, F19 and F56), so the walk and its 121 µs can go. Not performance;
+   an instruction count beside.
+2. `rfd-0005-bounded-relink-check`, RFD 5: whether a maintained `u32`
+   topological order, with deletions applied first, bounds a switch move
+   well below the upstream walk on a 10,000-node UI-shaped graph, with
+   per-subgraph dependency summaries as a variant. Performance. Moot if
+   1 succeeds.
+3. `rfd-0005-heap-vs-mark-on-quiet-regions`, RFD 5: whether a heap that
+   visits only firing nodes beats the mark plus flat loop when most
+   marked nodes stay quiet, and at what quiet fraction. Performance.
+4. `rfd-0005-demand-bounded-push`, RFDs 3 and 5: whether skipping nodes
+   no root reaches, flagged at collection, costs less than evaluating
+   garbage until it's collected (F66). Performance.
+5. `rfd-0003-sweep-cost`, RFD 3: how long a mark-sweep of the arena
+   takes at 1k, 10k and 100k slots with 10% and 90% live, to size the
+   collection trigger. Performance.
+6. `rfd-0003-branded-captures`, RFD 3: whether a lifetime brand on tokens,
+   as gc-arena brands its pointers, or a nightly auto trait, makes a
+   forgotten capture (F62) a compile error while `hold`, `construct` and
+   `anchor` stay writable. Not performance.
+7. `rfd-0004-erased-materializer`, RFD 4: whether erasing a fused chain at
+   its materializer, as a boxed closure, a state struct stepped through a
+   function pointer, or a normalized flat node, removes F36's per-chain
+   compile blow-up at depths two and three, within a few ns per event.
+   Performance, compile time and run time.
+8. `rfd-0004-patch-cell-crossover`, RFD 4 and question 9: the collection
+   size at which a cell carrying deltas beats a cell of the collection,
+   for a `Vec` and for a keyed map with Z-set deltas, two delta sources
+   in one instant, and a reader that reads rarely. Performance.
+9. `rfd-0002-decoupled-marker`, RFD 2: whether a one-bit decoupledness
+   marker type makes F3 a compile error while the counter that stops at
+   ten compiles, and at what compile time and error text. Row types are
+   the fallback. Not performance; compile time only.
+10. `rfd-0002-ternary-loop-census`, RFD 2: how many same-instant cycles
+    acyclicity refuses are constructive, and whether any fall outside
+    the exclusive gates switching already expresses. Not performance.
+11. `rfd-0001-forgetful-cut`, RFD 1: in a model over `T = [Int]`, whether
+    the creation cut always satisfies FRPNow's forgetfulness while the
+    text's replay fails exactly on F6 and F89 shapes, and whether a cut
+    on every constructed primitive ever differs from one on state-holders
+    and time-movers only. Not performance.
+12. `rfd-0001-child-index-mutants`, RFD 1: what fraction of mutants that
+    misplace an event among sibling child instants the oracle's
+    comparison catches, with and without child indices. Not performance.
+13. `rfd-0006-lock-vs-queue-cost`, RFD 6: the per-unit cost of a 500 ns
+    propagation run on the owner thread, behind an uncontended `Mutex`,
+    behind one contended by 2, 4 and 8 threads, and through a queue and
+    pump. Performance.
+
+#### The must-read's outline
+
+At most 1,000 words, findings keyed to the RFDs, each with a leaning.
+
+- **Header.** What was read and how, what was verified, and the flags:
+  which leanings rest on a paper's unreproduced number, and which on a
+  probe not yet run. No source is still abstract-only.
+- **RFD 1.**
+  - F89 is a semantics change. The text's `Split` is pure, and
+    forgetfulness is the principled reason for the cut, for F6 too.
+  - The oracle reaches the unique fixed point of a guarded system (F1).
+    `[Int]` isn't well-ordered, so arguments range over the instants a
+    run creates.
+  - GHC as the oracle gains a second reason.
+  - The harness's gap is trace length. Shrinking and shape coverage,
+    already built, belong in the policy.
+  - `steps` is sound in App. E's own model of a cell.
+- **RFD 2.**
+  - Acyclicity is Esterel v4's and Lustre's rule.
+  - Constructiveness wouldn't rescue F3.
+  - F3 needs `steps`, which ties questions 3 and 10.
+  - The cheapest static check is a decoupledness bit (probe 9).
+- **RFD 3.**
+  - Types in the modal line catch a forgotten capture (F62), not an
+    over-declaration (F63).
+  - Lifetime brands may make F62 a compile error, which challenges RFD
+    3's "cannot be made a compile error" (probe 6).
+  - Counting with a backup trace does see cycles, so RFD 3's first reason
+    is incomplete and its second carries it.
+  - A safe `Trace` is sound for generation-checked indices.
+  - Every GC-based FRP has F66.
+- **RFD 4.**
+  - "Linear" means affine; "exactly one consumer" is "at most one".
+  - Fusion is supported, and F36 has no answer in the literature (probe 7).
+  - Question 9: a cell that carries a change structure (Cai), Z-sets for
+    keyed data, and keyed partitions for stable traces (probe 8).
+- **RFD 5.**
+  - Every ranked system confirms the cost of ranks. Incremental pays it
+    incrementally.
+  - Sycamore ships the DFS mark. Its grey mark may replace the relink
+    walk (probes 1 and 2).
+  - F46 needs only deletions before insertions.
+  - F22 is a liveness gap, outside causality.
+- **RFD 6.**
+  - No source supports "threading costs overhead". An uncontended lock is
+    free (Drechsler et al., unreproduced; probe 13), and the Sodium book
+    argues for threads.
+  - What the sources do support: no listeners under a lock, and one order
+    of units the host can see.
+  - No system merges independent callers.
+- **RFD 7.**
+  - The Emfrp line moved from merging simultaneous events to ordering
+    them.
+  - No source folds a burst with a user fold.
+  - Every bounded system is static.
+  - Leanings for the bounded tier: a high-water mark, a depth cap for
+    child instants, fixed queue capacities.
+- **What to grill first.** RFD 3 and RFD 5, since they gate the build.
+
+Next: Zefira cuts probes (phase 4). Then phase 5 sets up `experiments`
+and builds what's left.
+
+#### Context
+
+Phase 3 of the FRP literature review is done. Every kept source is read,
+with reading notes by page, and each of fourteen batches has a synthesis
+file in `literature/synthesis/`. The batches proposed thirteen probes
+once overlaps were merged, listed above. The review gates the real
+build, and RFDs 3 and 5 most of all, so probes that could change a
+leaning there matter most. Phase 5 builds the probes that survive,
+commits one at a time, and runs every performance probe's instruction
+counts. Wall-clock runs wait for the machine to be idle.
+
+### ❓ **Which probes to build**
+
+Thirteen probes are listed above. Which survive to phase 5?
+
+Which probes to build:
+
+- **(a)** Build eight: 1, 2, 6, 7, 8, 9, 11 and 13. These are the ones
+  whose answer could change a leaning on RFDs 3, 4 and 5, plus the
+  cheapest checks on RFDs 1, 2 and 6's stated reasons. Cut 3 and 4,
+  whose leanings the literature already settles; 5, which the trigger
+  doesn't need yet; and 10 and 12, which would refine leanings that
+  don't turn on them.
+- **(b)** Build all thirteen. Phase 5 takes about twice as long, and the
+  wall-clock batch grows from five performance probes to eight.
+
+➡️ **(a)** Each cut probe either confirms a leaning the literature
+already supports or informs a choice that nothing costly depends on yet.

@@ -1530,3 +1530,20 @@ only, and the run-time check at a switch's moves stays.
     search, sort, unlink and relink, and a move that keeps the search's
     own order when it is already topological, the one lever left that
     could move where the list beats the walk. Performance.
+
+### 2026-09-28 06:25 -07:00, two more follow-ups
+
+From probe 36, which found Incremental's small-integer heights with a
+bucket queue cost about 3% more than RFD 5's mark when everything
+fires and win from about 5% quiet, under switching. That contradicts
+the reason RFD 5 gives for rejecting rank-ordered push; it is reported
+as a finding.
+
+53. Probe 36, extended: nodes built during the instant and evaluated
+    in it, which needs a height raise mid-evaluation with the cursor
+    already past. It is the case RFD 5's rejection names, and it
+    wasn't tested. Performance.
+54. Probe 36, extended: a local height repair after a refused move, to
+    see whether the height growth that refusals cause goes away
+    cheaply. It matters only if Bough carries on after a refusal
+    instead of poisoning. Performance.

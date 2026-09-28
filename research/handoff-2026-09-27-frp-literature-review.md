@@ -1571,3 +1571,16 @@ result, and one shared B-tree cuts its cost by about 40%:
 58. Probe 8, extended again: the shared B-tree with leaves of 32 pairs,
     the same bytes as the two-tree leaves, to see whether the gain is
     one descent or fewer bytes moved. Performance.
+
+### 2026-09-28 07:02 -07:00, two more follow-ups
+
+From probe 53, which found heights still beat RFD 5's mark once nodes
+built during the instant run in it, with the re-ranking RFD 5 names
+coming to a fraction of a raise a transaction:
+
+59. Probe 36, extended again: a navigation whose selector sits high, so
+    raises reach below the cursor, to test re-seating against
+    evaluating out of order. Performance.
+60. Probe 36, extended again: a mark that doesn't start from the root
+    event stream at every navigation, to separate how much of the
+    heights' lead is the larger marked region. Performance.

@@ -1271,3 +1271,11 @@ not a blocker. It is the finding to report, and it doesn't stop the
 probes. This replaces that case in the Rules' list of blockers from here
 on, for phases 5 and 6 and the verification pass. Crates that won't
 build, unreachable sources and ambiguous probe results still stop.
+
+### 2026-09-28 02:44 -07:00, unclear results are findings too
+
+Zefira, a few minutes later: an ambiguous probe result doesn't stop a
+phase either. It is reported as a finding, with what would settle it,
+and she rechecks unclear results once the whole job is done. Of the
+Rules' blockers, a crate that won't build and a source that can't be
+reached still stop a phase.

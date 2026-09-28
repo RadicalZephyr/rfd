@@ -1510,3 +1510,16 @@ copy of std's mutex instead.
     complex and across both, with the time per wake, to see whether a
     wake across complexes explains the gap between placements.
     Performance.
+
+### 2026-09-28 06:00 -07:00, two more follow-ups
+
+From probes 31 and 32. They found the decoupledness mark, in every
+design tried, accepts an illegal loop that hands a switch its own
+consumer's steps as a token, so a compile-time check can cover `close`
+only, and the run-time check at a switch's moves stays.
+
+50. Probe 9, extended again: when a close leaves no loop open, re-mark
+    everything, with type-state on `Build`. Not performance.
+51. Probe 9, extended again: switches that require decoupled inners at
+    the type level, to see whether that closes the hole and keeps the
+    navigation loop. Not performance.

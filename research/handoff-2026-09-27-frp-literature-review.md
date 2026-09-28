@@ -885,3 +885,33 @@ Fetching the six missing papers:
 ➡️ **(a)** Four of the six are core, and three bear directly on open
 questions: static causality checking, loop cost, and cells of
 collections. The two ACM open-access papers take a minute in a browser.
+
+### 2026-09-27 22:39 -07:00, phase 2 done, two requests pending
+
+Zefira chose (a) and fetched five of the six. Four came from the ACM
+Digital Library in her browser (Keating and Gale, Emfrp, XFRP, Yokoyama
+et al.), and Shiple et al. from IEEE Xplore. All five are the publishers'
+versions, each first page carries its title, and their records are
+filled in: `literature@661cf51`. 96 of the 98 kept sources now have a
+copy. The two without are the Sodium book, by design, and Maier and
+Odersky's incremental-lists paper.
+
+Maier and Odersky's ECOOP 2013 paper has no open copy. Zefira emailed
+Odersky for one. She supplied its abstract, which neither Crossref nor
+OpenAlex carries, and it is in the record, so the record is
+`abstract-only`. The abstract confirms why it ranks core: it names the
+problem Bough's read-through cells have. A time-varying collection
+propagates whether it changed, not what changed.
+
+Maier's 2013 EPFL thesis (no. 5805, doi:10.5075/epfl-thesis-5805)
+describes the same reactive sequence, so it is the paper's fallback. It
+has a record now, supporting and `abstract-only`: `literature@6f13389`.
+Its file is restricted on Infoscience, and Zefira requested access
+there.
+
+Next: phase 3, reading, in a fresh session, when Zefira says go. It
+doesn't wait on either request. If a copy arrives, it's saved as
+`maier-higher-order-reactive-programming-with-incremental-lists.pdf` or
+`maier-reactive-programming-abstractions-for-complex-event-logic-and.pdf`,
+and whichever session is running fills in the record. If neither
+arrives, the note scopes both to their abstracts.

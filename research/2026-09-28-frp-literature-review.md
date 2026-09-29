@@ -1263,3 +1263,492 @@ contradiction, and it rests on the probes' synthetic graphs.
   maintenance and queue overhead. Needs amortized analysis.
 - hammer-adapton-composable-demand-driven-incremental-computation §§2,
   5 and 6; call-by-push-value helps for §§3–4.
+
+## Memory and leaks (RFD 3)
+
+### What the literature says
+
+**Two failure modes, and every design picks which one it can see.**
+Rooting and tracing that under-approximate give use-after-free; ones that
+over-approximate give space leaks (jeffrey-josephine-using-javascript-to-safely-manage-the-lifetimes
+p. 8). In Bough those are a forgotten `depends`, F62, which ends in a
+stale token, and a `depends` with no inverse, F63, which kept fifty
+screens on the engine spike
+([research](./2026-09-24-engine-feasibility-spike.md)). No source in
+the batch fixes the second one while keeping Sodium's semantics.
+
+**The modal line catches F62 and permits F63.** In the RaTT line a value
+is *stable* when it can't reach temporal data, and a closure stored in the
+graph, run at later instants, may capture only stable values
+(krishnaswami-higher-order-functional-reactive-programming-without-spacetime-leaks
+pp. 3–4; bahr-modal-frp-for-all pp. 5–8). Read "temporal data" as "a
+Bough token". Then a `construct` builder capturing a cell token is
+Rattus's rejected `leakyMap` (bahr-modal-frp-for-all p. 8), and a closure
+that captures a delayed location and runs a step later dereferences a
+collected one, which is F62 caught by a type rule
+(bahr-simply-ratt-a-fitch-style-modal-calculus-for pp. 8–9, 15). The
+rewrite is to pass the cell in as an argument, so the dependency becomes
+an edge. But holding what you asked to hold is an *explicit* leak, and
+every calculus in the line permits it (bahr-simply-ratt-… p. 2;
+bahr-modal-frp-for-all pp. 27–28). Types make captures visible. They
+can't decide which retention was meant. The line gets its strongest
+promise, that nothing old is ever evaluated, by giving up persistent
+nodes: its machines delete every value more than one tick old, and the
+types "merely act as a set of guard rails"
+(krishnaswami-…-without-spacetime-leaks pp. 3–4). Async RaTT runs only
+computations reachable from an output whose clock contains the input
+(bahr-asynchronous-modal-frp pp. 15–17), which is scheduling bounded by
+liveness from the roots, and the one answer to F66 that keeps something
+like persistent nodes. Rattus leaves collection to GHC's ordinary tracing
+collector once the types guarantee old data is unreferenced
+(bahr-modal-frp-for-all pp. 34–35).
+
+**Rust's analogue of "stable" is a lifetime brand.** `'static` fails,
+since a `Copy` `u32` token is `'static`. `Copy` and `Trace` describe
+representation, not time. `Send` propagates through captures the way
+stability must, but Bough already uses it for `Threaded`. A user-defined
+auto trait with `impl !Stable` for every token is the exact analogue and
+needs nightly. A generative lifetime brand is stable Rust. gc-arena brands
+its pointers with an invariant `'gc`, so they "cannot escape the arena
+callbacks or be smuggled inside another arena"
+(gc-arena@v0.7.0 `src/arena.rs`:98–116), and a closure that captures a
+`Gc<'gc, _>` isn't `'static` and has no `Collect` impl, so it can't be
+stored at all (`src/gc.rs`:88–90, `src/static_wrapper.rs`:9–21). No one
+can generate a `Collect` impl for a closure or a generator, "nor any
+planned feature that would enable it" (kyren-gc-arena p. 3). Jeltsch's
+eras, an `ST`-style start-time parameter, are the FRP form of the same
+idea (apfelmus-frp-dynamic-event-switching pp. 4–5). The costs are in
+the sources too: a lifetime parameter on every type that holds a pointer,
+gc-arena's `TestRoot<'gc>` and shifgrethor's `Foo<'root>`
+(goregaokar-a-tour-of-safe-tracing-gc-designs-in pp. 11–12), and all
+access through a callback. gc-sequence passes a traced value into a
+closure as an argument instead of letting it capture one (goregaokar-…
+p. 12), which is RFD 3's rejected "closure-taking twins". Acar's library
+has Bough's `depends` problem outright: every free variable of a memoized
+expression is declared by hand, the library can't check its own
+discipline, and the author's conclusion is to leave the library for a
+compiler (acar-self-adjusting-computation pp. 131, 138, 233, 278).
+
+**Tracing and counting are duals, and the hybrids see cycles.** Tracing
+computes the least fixpoint of the reference-count equation and counting
+the greatest; the difference is exactly the cyclic garbage
+(bacon-a-unified-theory-of-garbage-collection pp. 4–5). So "counts
+cannot see cycles" is right for plain counting. But a counting collector
+with a backup trace or with trial deletion does collect cycles (pp. 9,
+10). In Bacon's taxonomy Bough is a tracing collector whose roots are
+kept by the API rather than found by scanning, the shape he calls
+*partial tracing* (p. 6). sodium-rust is the Rust instance of the hybrid:
+atomic counts plus Bacon–Rajan cycle collection after each outermost
+transaction, with closure captures declared as its trace
+(github.com/SodiumFRP/sodium-rust @3e93021 `src/impl_/gc_node.rs`:21–120,
+`src/impl_/lambda.rs`:5–8, 196). It needs the same declarations and adds
+counting on top. Deferred counting still counts writes into the heap
+(bacon-… p. 5), which for Bough means every token stored in a value, and
+a `Copy` token gives no hook there. So RFD 3's second reason, that
+tracing needs no counts and tokens can be `Copy`, is the one that
+carries.
+
+**`Trace` is safe for generation-checked indices, and nothing disagrees.**
+Every source that makes its trace trait `unsafe` does so because a missed
+field frees memory still reachable through a pointer
+(goregaokar-… p. 4; kyren-gc-arena p. 2;
+jeffrey-josephine-… p. 9). None argues that a missed field is unsafe when
+handles are checked indices, which is RFD 3's distinction.
+
+**Every GC-based FRP has F66, and none fixes it but by collecting
+sooner.** Garbage is evaluated until it's collected. Elerea calls it its
+"biggest problem" (patai-efficient-and-compositional-higher-order-streams
+p. 13). FrTime's strong update queue keeps about half the dead signals
+alive (cooper-integrating-dataflow-evaluation-into-a-practical-higher-order
+pp. 35–36). Scala.React's weak forward references make higher-order drag
+collectable, but work grows until the collector runs
+(maier-deprecating-the-observer-pattern-with-scala-react pp. 14, 16).
+Monadic FRP calls weak references a "non-solution" for exactly that
+reason (vanderploeg-monadic-functional-reactive-programming p. 11).
+Flapjax stops evaluating a stream once all its sinks are detached, a flag
+computed during propagation, which is reference counting by another name
+(meyerovich-flapjax-a-programming-language-for-ajax-applications p. 12).
+Tracing cost grows as 1/(1 − f) with the live fraction f, and a large,
+long-lived, mostly live graph is pessimal for it
+(hammer-memory-management-for-self-adjusting-computation pp. 1–2). So a
+trigger has to scale with the live graph. gc-arena paces incremental
+collection by allocation debt (gc-arena@v0.7.0 `src/arena.rs`:267–279).
+
+**Weak references fail Bough for a reason specific to Bough.** In FrTime,
+Scala.React and Elerea the host collector traces closures, so a
+deselected inner stays alive whenever anything that could reselect it
+holds it, and the weak edge decides only the unreachable case. Bough's
+arena can't see closure captures, so a weak edge would be the only edge
+(my reading of cooper-integrating-… p. 35 and maier-deprecating-… p. 14).
+RFD 3's reason, that weak references collect inners that must keep
+accumulating, is true because of that.
+
+**The Sodium book's model is RFD 3's.** Unreferenced logic is garbage,
+listeners are the roots, and its one worked leak is a switched-out
+object kept alive through a snapshot because it could in principle be
+bitten again, fixed by logic that switches itself out or by `once()`
+(blackheath-functional-reactive-programming, ch. 7, §7.4.1; ch. 8,
+§8.1.1).
+
+### The Rust prior art
+
+gc-arena is the nearest design and in production. Its "mutation xor
+collection" is Bough's "collection between units, never inside one", and
+it is `no_std` over `alloc` (gc-arena@v0.7.0 `src/lib.rs`:1–6,
+`src/arena.rs`:209–223). To hold a pointer outside a mutation you stash it
+in a `DynamicRootSet` and get a handle whose drop unroots it
+(`src/dynamic_roots.rs`:14–53), which is Bough's `Anchored`. Leptos and
+Sycamore hold `Copy` handles in a generational slot map, free a node when
+the owner scope that made it re-runs or drops, and panic with the place
+it was defined when a disposed handle is used
+(reactive_graph@v0.8.21 `reactive_graph/src/owner.rs`:34–46,
+`src/traits.rs`:66–90; sycamore-reactive@0.9.3 `src/node.rs`:72–121,
+`src/signals.rs`:150–194). That makes `depends`'s missing inverse
+automatic, at the price Bough refused: a node lives exactly as long as
+the scope that made it. carboxyl's derived streams hold their parents
+strongly and are held weakly back, "downstream owns upstream", which is
+the weak-reference scheme RFD 3 rejects (carboxyl@2a80080
+`src/stream/mod.rs`:191–246). sodium-rust has `depends` under the name
+`lambda1(f, deps)`.
+
+### What the probes found
+
+**A collection's cost, in transactions** (`rfd-0003-sweep-cost`). One
+collection of the arena costs as much as this many one-screen
+transactions, on the idle machine: 94 and 52 at 1,000 slots with 10% and
+90% live, 957 and 563 at 10,000, and about 11,400 and 11,900 at 100,000.
+Freeing dominates a mostly dead arena: the sweep is 9,370 of the 11,400
+at 10% live.
+
+**Garbage costs far more than collecting it** (`rfd-0005-demand-bounded-push`).
+With 9,000 abandoned screens a navigation costs 14,000 times a clean one
+until they are collected, and a collection costs 16,000. A mark that
+flags dead nodes without sweeping still leaves 377 times; a census that
+marks and prunes dependents without sweeping brings a transaction back to
+1.0. On F66's shape RFD 3's trigger collects about every second
+navigation, so 9,000 screens pile up only under the manual policy.
+
+**RFD 3's trigger needs a work term** (`rfd-0003-work-paced-trigger`).
+The trigger collects when nodes allocated plus guards released exceed the
+survivors. Beside a large live graph, the `app` shape with 430 screens
+kept live, it collects once every 435 navigations, and a click's region
+grows to 5,032 nodes against 25.5 clean. A per-input work term, the
+growth of each transaction's region past its input's region at the last
+collection, set against the survivors (`excess`), collects every 21
+navigations. On the idle machine, against collecting after every
+navigation:
+
+| shape | RFD 3's trigger | `excess` |
+|---|---|---|
+| `app`, 3,900 units | 1.23 | 0.12 |
+| `app`, worst pause | 2.99 | 1.09 |
+| `nav`, 3,900 units | 1.12 | 1.23 |
+| uneven inputs, garbage on frequent ones | 1.10 | 0.56 |
+| uneven inputs, garbage on rare ones | 0.60 | 0.54 |
+
+So the work term is worth about ten times on `app`, and costs about a
+tenth on F66's `nav` shape, where there's little garbage to pace. Its
+fast path, a click on a clean arena, is unmeasurable (0.994). A term on
+every region node, `total`, collects spuriously when regions are large
+beside the live set, and costs 2.2 times on the same click, spurious
+collections included.
+
+- Under four inputs firing at uneven rates with live regions that grow,
+  `excess` collects about as often as an oracle that paces on true dead
+  work, 37 times against 34, for 0.7% more visits. It misses only
+  garbage folded into an input's reference, and fires spuriously once
+  every 270 to 430 quiet units.
+- Garbage on a slow input lags: `excess` misses 500 to 600 units in a
+  row, peaking at 1.9 times the survivors. A reference counting only
+  region nodes born before the last collection (`marked`) misses none,
+  for 0.3% more instructions.
+- **No region term sees garbage a dropped guard releases.** A release
+  never shrinks a region before the next collection, since released
+  nodes stay in dependents lists until pruned. With guards dropped
+  through a long quiet stretch and no growth, both terms missed 2,079
+  units in a row, peaking at 11.1 times the survivors, and RFD 3's
+  release term never fired: 90 releases against about 14,000 survivors.
+  Total cost stayed at the oracle's, because that garbage sat on a slow
+  input.
+
+**The pause can be sliced** (`rfd-0003-incremental-mark`). On `app`, an
+atomic collection's worst unit marks about 10,000 live nodes. An
+incremental mark with Dijkstra insertion barriers, a fixed budget of k
+mark-node equivalents a unit, and the prune and sweep sliced too, on the
+idle machine against the atomic collection:
+
+| pace | worst pause | total time |
+|---|---|---|
+| k = 4,000 | 0.27 | 1.007 |
+| k = 1,000 | 0.12 | 1.16 |
+| k = 500, floating garbage counted | 0.10 | 1.28 |
+| k = 250 | 0.18 | 2.05 |
+| k = 1,000, prune and sweep atomic | 0.44 | 1.13 |
+
+Every barrier was needed, since switching one off let a reachable node
+end white, and the barriers' slow path shaded nothing on this workload.
+Pacing by debt lost to a fixed budget: allocation debt ran 2 cycles in
+30,000 units, because clicks allocate nothing, and debt on the whole
+region gave larger pauses at equal cost. With barriers compiled in and
+collection atomic, a whole run costs 1.007 of the unbarriered arena.
+
+**A lifetime brand makes F62 a compile error on stable**
+(`rfd-0003-branded-captures`, `rfd-0003-brand-erasure`). Tokens carry a
+fresh `'g` per `Runtime::mutate`, and captures go through `.with(env)`.
+
+- A forgotten capture, one through a helper, one through a switch and
+  one through an inner all fail with E0521, "borrowed data escapes
+  outside of closure", and every legal fixture builds, including a hold
+  of a struct of tokens, a construct capturing three, anchoring, the
+  RFD 4 screens example and a switch among captured tokens. `map_to` of a
+  token still builds, which is safe since F94 made `map_to` trace its
+  value.
+- A brand on construct-minted tokens only, an era, catches one of the
+  four. A nightly auto trait catches all four with a clear message, and
+  refuses a capture of `dyn Fn` and of a generic `T`, so it spreads like
+  `Send`.
+- The brand is sound with no `unsafe`: values are stored at
+  `'static` and restored to the current brand through a derivable
+  `Rebrand` trait. A wrong impl can point a token at the wrong live node
+  of the right type, silently, but can't forge, retype or carry a token
+  across `mutate`. Re-run with lints uncapped so `forbid(unsafe_code)`
+  was enforced, 0 of 92 rows changed.
+- `RemoteIo` survives: `Anchored` is `Send + Sync + 'static`, and a
+  queued transaction is a `for<'g>` closure.
+- **It leaves a route out.** Capture an `Anchored` and reopen it inside
+  the graph, and it builds and leaks. And a hand-written `Rebrand` or
+  borrowed view can stash a `'static` token in a thread-local; the next
+  use is a stale-token error, not unsafety. Bounds on the entry points
+  refuse 4 of 6 stash routes. An `unsafe` seal on the view traits closes
+  one more, and is exactly as strong as `forbid(unsafe_code)` itself.
+- **It costs a copy per read and write of a token-bearing collection.**
+  On the idle machine, per event through a listener: 1.0 for a scalar or
+  a struct of tokens, 1.12 for a nested struct, 1.94 for a `Vec` of
+  1,000 tokens. Per `accumulate_mut` event: 1.27 nested and 2.75 for the
+  `Vec`, so a growing token-bearing accumulator brings back the
+  quadratic cost RFD 4 added `accumulate_mut` to remove. A derived
+  borrowed view costs 0.98 to 1.02 everywhere, but changes the API: a
+  closure gets a view type, not `&A`, and gives up indexing, slices and
+  most traits.
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-sweep-cost-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0003-sweep-cost-wallclock
+python3 scripts/ratios.py live10 live90
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-demand-bounded-push-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-demand-bounded-push-wallclock
+python3 scripts/ratios.py nav app
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-work-paced-trigger-counts at experiments@408a6fe - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0003_work_paced_trigger::tests::counts -- --nocapture
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-work-paced-trigger-counts-uneven at experiments@d881c42 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0003_work_paced_trigger::tests::uneven_counts -- --nocapture
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-work-paced-trigger-counts-spurious-missed at experiments@000e929 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0003_work_paced_trigger::tests::spurious_missed_counts -- --nocapture
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-work-paced-trigger-instructions-spurious-missed at experiments@000e929 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0003-work-paced-trigger-instructions -- '*::spurious_missed::*'
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-work-paced-trigger-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0003-work-paced-trigger-wallclock
+python3 scripts/ratios.py nav app pause-nav pause-app uneven-spread uneven-sparse pause-uneven-spread pause-uneven-sparse uneven-lagging fast-path
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-incremental-mark-counts at experiments@3d83d68 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0003_incremental_mark::tests::counts -- --nocapture
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-incremental-mark-tests at experiments@3d83d68 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0003_incremental_mark::tests -- --nocapture --test-threads 1 --skip counts
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-incremental-mark-counts-extended at experiments@ac245d5 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0003_incremental_mark::tests::extended_counts -- --nocapture --test-threads 1
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-incremental-mark-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0003-incremental-mark-wallclock
+python3 scripts/ratios.py incremental-
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-branded-captures at experiments@754b931 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0003-branded-captures
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-brand-erasure at experiments@95010de - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0003-brand-erasure
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-brand-erasure at experiments@c8734b5 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0003-brand-erasure -- borrow
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-brand-erasure at experiments@b924d3f - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0003-brand-erasure -- uncapped
+cargo run --release --bin rfd-0003-brand-erasure -- entry
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-rebrand-cost-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0003-rebrand-cost-wallclock
+python3 scripts/ratios.py
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-rebrand-write-cost-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0003-rebrand-write-cost-wallclock
+python3 scripts/ratios.py write_
+```
+
+Two results disagree with themselves and need a recheck. The incremental
+mark's single-unit benches say the barriers' fast path costs 18% to 30%
+of a unit, while a whole run with barriers costs 0.7% and the instruction
+counts say two instructions a click; a single-unit bench of under a
+microsecond may be timing something else. And the `owned` way to write a
+token-bearing value, which the instruction counts found constant-time,
+costs 62 times a cast per update of a 1,000-element `Vec` on the idle
+machine, so whatever made it constant-time under valgrind doesn't hold
+there. Neither changes a leaning.
+
+### Settled decisions the evidence contradicts
+
+- **"An undeclared capture cannot be made a compile error without making
+  tokens unusable as data."** It can, on stable, soundly and without
+  `unsafe`, and tokens stay usable as data inside derived structs. What
+  RFD 3 really trades is a lifetime on every token-holding type, I/O
+  inside callbacks, a copy per read of token-bearing collections or a
+  borrowed-view API in place of RFD 4's `&A`, and a stash route that only
+  an `unsafe` seal narrows. The decision to use run-time `depends` may
+  still be right. Its stated reason isn't.
+- **The collection trigger.** RFD 3 says the trigger means "a graph that
+  neither allocates nor drops a guard never pays". True, and beside a
+  large live graph it lets garbage run at about ten times the cost of a
+  trigger paced against work, and triples the worst pause. Its release
+  term never fires when guards are dropped a few at a time.
+- **"Counts cannot see cycles."** True of plain counts, incomplete as a
+  reason: a counting collector with a backup trace sees them, and
+  sodium-rust ships one. RFD 3's other reason, `Copy` tokens with no
+  counts, is the one that carries.
+
+Safe `Trace`, tracing from explicit roots, collection between units and
+the rejection of weak references all stand.
+
+### The options for Bough
+
+For F62:
+
+1. Keep run-time `depends`, whose failure is a loud stale token.
+2. Brand tokens with a lifetime, captures through `.with(env)`, values
+   stored through a derived `Rebrand`, and borrowed views where a
+   token-bearing collection is read or accumulated.
+3. Scope lifetime to creation, as Leptos and Sycamore do. That gives
+   `depends` an inverse and changes Sodium's semantics.
+
+For F63: nothing in the literature fixes it without 3. `once()`, which
+releases its upstream after one event, is the book's structural answer
+to the one case it shows.
+
+For the trigger:
+
+1. Keep RFD 3's trigger.
+2. Add the per-input work term, with the born-before-the-last-collection
+   reference for lagging inputs, and find a release term that sees
+   released garbage, which no probe has.
+3. Also slice the mark, prune and sweep with a fixed budget, for hosts
+   that care about the pause.
+
+### Claude's leaning
+
+For F62, option 1, and rewrite the reason: the brand is possible and
+costs more than the error it prevents. But the brand is the kind of
+change RFD 6 says must be decided before signatures set, because it puts
+a lifetime on every type that holds a token, so it has to be decided
+before the real build, not after. For the trigger, option 2: the work
+term costs nothing measurable on a clean click and is worth ten times
+beside a large live graph. Leave slicing for when a host's frame budget
+asks for it, with k near 1,000 to 4,000. Reword the refcount reason to
+lead with `Copy` tokens.
+
+### Questions to grill
+
+- Would you put a lifetime on every token-holding type, and move I/O
+  inside callbacks, to make a forgotten `depends` a compile error? If
+  not now, then never, since retrofitting it touches every signature.
+- Is F63 a bug to prevent, or an explicit leak the program asked for,
+  which the library should only make visible?
+- Should `once()`-style release, a primitive that lets go of its
+  upstream, sit beside `depends` as a way to end a capture?
+- Does the work term go into RFD 3's trigger now, and what is the
+  release term that sees garbage a dropped guard leaves?
+- How often does collection run in real programs, every unit or on a
+  trigger, and who chooses the incremental budget?
+- Is `Copy` tokens the real reason counting lost, and should RFD 3 lead
+  with it?
+
+### Experiments this proposes for Bough
+
+- Port Oort's fighter or bough-gtk's list view to a branded token API on
+  a branch, and count the lifetimes, `.with` calls and callback moves it
+  takes. That's the cost side of option 2 on real code.
+- Log, per collection in those programs, the survivors, the nodes freed,
+  and the dead work since the last one, to see how far RFD 3's trigger
+  drifts from work in practice.
+- Try a release term that counts every region node after a release until
+  the next collection, the one fix for released garbage no probe built.
+
+### Reading path
+
+- goregaokar-a-tour-of-safe-tracing-gc-designs-in first; it summarizes
+  the Rust designs. Needs lifetimes and a little `Pin`.
+- kyren-gc-arena, then gc-arena's `src/collect.rs`, `src/gc.rs`:88–90 and
+  `src/static_wrapper.rs`. Needs generativity, invariant lifetime brands.
+- bahr-modal-frp-for-all §§1–3 for the capture rule; §4 needs natural
+  deduction and big-step semantics, and §5 step-indexed Kripke logical
+  relations.
+- bahr-simply-ratt-a-fitch-style-modal-calculus-for after
+  krishnaswami-higher-order-functional-reactive-programming-without-spacetime-leaks
+  §§1–3.
+- bacon-a-unified-theory-of-garbage-collection §§1–6. Needs mark-sweep,
+  counting and generational collection at textbook level.
+- jeffrey-josephine-using-javascript-to-safely-manage-the-lifetimes for
+  the two failure modes. Self-contained given Rust lifetimes.

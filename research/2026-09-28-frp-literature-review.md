@@ -37,14 +37,15 @@ instruction files don't, in their `map_*` benchmarks only: the fixture
 seeds std's `HashMap` per process, so those counts move by up to 11%
 from run to run. The note quotes none of them. The two futex tables
 depend on scheduling and tell the same story. Every wall-clock bench
-was re-run on the idle machine on a second day, from the same code. 92
-of 168 numbers fall inside the first run's intervals, which measure
-only the noise within one run. Most of the rest move by 1% to 5%, the
+was re-run on the idle machine on a second day, from the same code. For 92
+of 168 numbers the re-run's interval overlaps the first run's; the
+intervals measure only the noise within one run. Most of the rest move by 1% to 5%, the
 machine's drift between days, so the ratios here are good to a few
-percent; the cycle rows and the single-unit benches move more, and say
-so. Every wall-clock claim holds in both runs, as worded now; six
+percent. The cycle and adversarial rows and the single-unit benches
+move more, up to 45%, and a few other numbers 5% to 6%; every claim
+still holds on both days. Every wall-clock claim holds in both runs, as worded now; six
 were reworded, and single-run tails are marked as such. Compile times
-and the timed binary reproduce within 4%._
+and the timed binary reproduce within about 4%._
 
 ## The must-read
 
@@ -654,7 +655,7 @@ of their new inners during the instant: `settled`, `mixed`, `churn` and
   search costs 2.3 to 8.8 times the walk, and the two-way search 3.2 to
   11 times unless the switch's downstream is much smaller than the new
   inner's upstream. On a cycle the timings are noisy, moving by up to
-  40% between days. The backward search's cost is its search, sort and move, not
+  45% between days. The backward search's cost is its search, sort and move, not
   relabelling: with fresh spacing it relabels nothing and still costs
   2.6 to 7.1 times the walk's instructions on the adversary. Dropping
   the sort, moving the set in DFS post-order instead, brings it to 1.7

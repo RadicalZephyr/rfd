@@ -2300,3 +2300,32 @@ What "reproduces" means for wall-clock:
 ➡️ **(a)** A third run measures the drift again and will miss the same
 way. What Zefira needs to trust is the claims, and the drift is small
 next to every margin a leaning turns on.
+
+### 2026-09-29 08:47 -07:00, phase 8 done: the note is verified
+
+Zefira chose (a): a wall-clock ratio reproduces if a second day's run is
+within a few percent and supports the note's claim, since the
+machine's drift between days defeats overlapping intervals. Done since:
+
+- **The six failing claims are reworded** to what both days support,
+  and the lock's tail figures are marked as single draws (`9fbbaea`).
+  The wall-clock verifier re-checked them, twice, and found the header
+  undersold how far the adversarial rows move; fixed in `ad7ae7e` and
+  `05401c7`. Clean.
+- **The second day's result files are in `experiments`**
+  (`experiments@8f7eb89`), with the script as it ran,
+  `scripts/phase8-wallclock.sh`, since the note now quotes some of their
+  figures. Each quoted one has its provenance line.
+- **The note's header** now records the whole verification: what was
+  checked and how, the errors by kind, the two must-read fixes Zefira
+  approved, the count re-runs, and the wall-clock comparison.
+
+One thing is unconfirmed: the tuned profile on the second day. Phase 6
+had `latency-performance` set on the host; the container can't read it,
+so the re-run's log doesn't say.
+
+From here the note is kept as written, as `research/README.md` says.
+
+Next: phase 9 in a fresh session. Put the note in the book, with a stub
+in `src/research/` and a line in `src/SUMMARY.md` under Research, write
+the final addition, and point Zefira at the must-read. Nothing is open.

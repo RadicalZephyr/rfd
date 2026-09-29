@@ -1065,7 +1065,7 @@ crossover lower; wall-clock is what counts here.
   On the 9,997-node UI shape the bucket queue costs 1.25 of the mark
   when every marked node fires, 1.15 at 10% quiet, 1.02 at 26% quiet,
   0.79 at 50% and 0.21 at 89%. A binary heap costs 2.58 when everything
-  fires and breaks even near 50% quiet. On the frame shape the bucket
+  fires and breaks even between 45% and 75% quiet. On the frame shape the bucket
   queue costs 1.09 at 64 inputs and 0.94 at 1,024, and the heap 1.50 at
   both. So the log factor is real for a binary heap and small for a
   bucket queue. In instructions the mark was about 100 of every 130
@@ -1083,7 +1083,7 @@ crossover lower; wall-clock is what counts here.
   | 95% to 98% | 0.06 to 0.10 |
 
   Heights lose about a quarter when everything fires, break even near
-  30% quiet, and win ten to sixteen times when most of the region stays
+  30% quiet, and win ten to eighteen times when most of the region stays
   quiet. The instruction counts put break-even near 5% quiet; the
   wall-clock doesn't agree, and nothing was measured between 1% and 30%.
 - **The re-ranking RFD 5 names is small.** Over 300 transactions and
@@ -1102,11 +1102,11 @@ crossover lower; wall-clock is what counts here.
 - **Maintained sparse labels lose the bucket queue**
   (`rfd-0005-maintained-rank-queue`). Ranks from the switching section's
   order-maintenance list, in a binary heap, cost 2.35 to 2.55 of the
-  mark when everything fires and break even between 30% and 54% quiet. A
+  mark when everything fires and break even between 56% and 75% quiet. A
   radix heap does no better. Keeping the labels is cheap: 0.02 to 0.61
   of the walk's upkeep.
 - **Flat adjacency is faster in time, not in instructions.** Rerun over
-  flat edge arrays, the mark costs about 15% less time than over nested
+  flat edge arrays, the mark takes about 13% less time than over nested
   vectors, though it runs more instructions, and the conclusions above
   hold.
 
@@ -1194,7 +1194,7 @@ does it routinely. The log factor belongs to a binary heap; a bucket
 queue over small-integer heights doesn't have one. What the wall-clock
 leaves is a real trade, not a rejection: heights lose about a quarter
 when every marked node fires, and win from about 30% quiet, by up to
-sixteen times on mostly quiet regions. Whether Bough should rank depends
+eighteen times on mostly quiet regions. Whether Bough should rank depends
 on how quiet its marked regions are, which no one has measured on a real
 program.
 
@@ -1225,16 +1225,16 @@ program's quiet share is known. The UI shape is where Bough is slow
 today, a UI's marked regions are plausibly mostly quiet, and heights
 would also give the relink check for free. But the flat loop is what
 RFD 5, the spike and the oracle work already assume, a height raise can
-touch thousands of nodes at one link, and a quarter lost on the frame
-shape is not nothing. This is a leaning on a trade, not on a
+touch thousands of nodes at one link, and a quarter lost when a region
+fires whole is not nothing. This is a leaning on a trade, not on a
 contradiction, and it rests on the probes' synthetic graphs.
 
 ### Questions to grill
 
 - What share of a marked region stays quiet on Oort's fighter and on
   bough-gtk's list view? Above about 30%, heights win.
-- Would you take a quarter on the frame shape to win up to sixteen times
-  on a mostly quiet UI?
+- Would you give up a quarter when every marked node fires to win up to
+  eighteen times on a mostly quiet UI?
 - If heights come in, does the relink check come from the raise, and
   does the upstream walk go?
 - Is a single link that raises 7,000 nodes an acceptable pause, or does

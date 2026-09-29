@@ -45,7 +45,7 @@ wrong. RFDs 3 and 5 gate the build, so they come first.
   Leaning: keep the flat loop for now, reword the rejection as a trade,
   and measure a real program's quiet share.
 - *The per-move walk stays.* A DFS grey mark finds a cycle only when an
-  input next reaches it, and never if none does. On a UI-shaped graph a
+  input next reaches it. On a UI-shaped graph a
   move walks about 535 nodes, not ten thousand. An order-maintenance list
   that places new nodes before the switch costs 0.02 to 0.6 of the walk
   there, and more than the walk on adversarial shapes. Leaning: keep the
@@ -99,8 +99,9 @@ rule, sound and knowingly incomplete. The census of refused loops finds
 nothing a program would want that a switch can't write. F3 needs `steps`,
 which ties questions 3 and 10. A one-bit decoupledness mark refuses F3
 at compile time for 2% to 16% more compile time, but it and rows accept
-a loop smuggled through a switch. Only a `Switched` mark catches that,
-by refusing nested switches, so the run-time check stays. Leaning: keep plain acyclicity; hold the mark.
+a loop smuggled through a switch. Only a `Switched` mark on switch outputs
+catches that, at the price of nested switches, so the run-time check
+stays. Leaning: keep plain acyclicity; hold the mark.
 
 **RFD 4.** Streams are affine, "at most one consumer", not linear.
 Erasing a fused chain at its materializer builds F36's shapes in about
@@ -3126,7 +3127,7 @@ and where it came from. Sources on the lineage map only are marked there.
 - **sculthorpe-safe-functional-reactive-programming-through-dependent-types**. Neil Sculthorpe, Henrik Nilsson. *Safe Functional Reactive Programming through Dependent Types*. ICFP 2009. Core, read in full. Decoupledness in the type, and local time zero for a switched-in residual.
 - **shibanai-distributed-functional-reactive-programming-on-actor-based-runtime**. Kazuhiro Shibanai, Takuo Watanabe. *Distributed Functional Reactive Programming on Actor-Based Runtime*. AGERE 2018. Supporting, read in full. Independent sources need one order; source unification is Bough's pump.
 - **shiple-constructive-analysis-of-cyclic-circuits**. Thomas R. Shiple, Gérard Berry, Hervé Touati. *Constructive Analysis of Cyclic Circuits*. ED&TC 1996. Core, read in full. The algorithm behind constructiveness, and why it needs reachability over states.
-- **tc39-javascript-signals-standard-proposal**. Rob Eisenberg, Daniel Ehrenberg. *JavaScript Signals standard proposal*. TC39 proposal 2024. Core, read in full. Push-then-pull colouring, glitch-free because pull-based, and lossy as the flipside, and unsafe features fenced by name.
+- **tc39-javascript-signals-standard-proposal**. Rob Eisenberg, Daniel Ehrenberg. *JavaScript Signals standard proposal*. TC39 proposal 2024. Core, read in full. Push-then-pull colouring, glitch-free because pull-based, with lossiness the flipside; unsafe features fenced by name.
 - **vanderploeg-monadic-functional-reactive-programming**. Atze van der Ploeg. *Monadic Functional Reactive Programming*. Haskell Symposium 2013. Supporting, read in part. Emissions as the semantics, so observing steps is primitive; weak references a non-solution.
 - **vanderploeg-practical-principled-frp**. Atze van der Ploeg, Koen Claessen. *Practical Principled FRP: Forget the past, change the future, FRPNow!*. ICFP 2015. Core, read in full. Forgetfulness: a combinator taking its start from the past is inherently leaky. The reason F89's cut holds.
 - **vonbehren-why-events-are-a-bad-idea-for-high**. Rob von Behren, Jeremy Condit, Eric Brewer. *Why Events Are A Bad Idea (for high-concurrency servers)*. HotOS 2003. Supporting, read in full. The rebuttal, about independent server requests; it bears on Bough's I/O side, not the engine.

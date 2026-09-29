@@ -28,24 +28,24 @@ Bough's own notes, and each number against its result file. They found
 wrong numbers, 10 metadata (8 of them missing years), 9 internal, 3
 misattributed and 2 missing provenance lines. Each was fixed and
 re-checked by the verifier that found it; the fixes brought in 5 more,
-fixed the same way. Two fixes changed a must-read finding, with
-Zefira's approval: RFD 6 states no overhead reason, and not every
-bounded system compiles a static graph. The 66 result files that don't need
-wall-clock were re-run, each at the commit it cites. 62 reproduce, the
-instruction counts within 1%. The four `patch-cell-crossover`
-instruction files don't, in their `map_*` benchmarks only: the fixture
-seeds std's `HashMap` per process, so those counts move by up to 11%
-from run to run. The note quotes none of them. The two futex tables
-depend on scheduling and tell the same story. Every wall-clock bench
-was re-run on the idle machine on a second day, from the same code. For 92
-of 168 numbers the re-run's interval overlaps the first run's; the
-intervals measure only the noise within one run. Most of the rest move by 1% to 5%, the
-machine's drift between days, so the ratios here are good to a few
-percent. The cycle and adversarial rows and the single-unit benches
-move more, up to 45%, and a few other numbers 5% to 6%; every claim
-still holds on both days. Every wall-clock claim holds in both runs, as worded now; six
-were reworded, and single-run tails are marked as such. Compile times
-and the timed binary reproduce within about 4%._
+fixed the same way. Two fixes changed a must-read finding, with Zefira's
+approval: RFD 6 states no overhead reason, and not every bounded system
+compiles a static graph. The 66 result files that don't need wall-clock
+were re-run, each at the commit it cites. 62 reproduce, the instruction
+counts within 1%. The four `patch-cell-crossover` instruction files
+don't, in their `map_*` benchmarks only: the fixture seeds std's
+`HashMap` per process, so those counts move by up to 11% from run to
+run. The note quotes none of them. The two futex tables depend on
+scheduling and tell the same story. Every wall-clock bench was re-run on
+the idle machine on a second day, from the same code. For 92 of 168
+numbers the re-run's interval overlaps the first run's; the intervals
+measure only the noise within one run. Most of the rest move by 1% to
+5%, the machine's drift between days, so the ratios here are good to a
+few percent. The cycle and adversarial rows and the single-unit benches
+move more, up to 45%, and a few other numbers 5% to 6%. Every wall-clock
+claim holds in both runs, as worded now; six were reworded, and
+single-run tails are marked as such. Compile times and the timed binary
+reproduce within about 4%._
 
 ## The must-read
 

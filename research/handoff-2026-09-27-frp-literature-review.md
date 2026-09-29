@@ -2329,3 +2329,12 @@ From here the note is kept as written, as `research/README.md` says.
 Next: phase 9 in a fresh session. Put the note in the book, with a stub
 in `src/research/` and a line in `src/SUMMARY.md` under Research, write
 the final addition, and point Zefira at the must-read. Nothing is open.
+
+### 2026-09-29 09:05 -07:00, the second day's tuned profile
+
+Zefira set the host's tuned profile to `latency-performance` before
+phase 8's wall-clock run, as for phase 6. Read from the container with
+`distrobox-host-exec tuned-adm active`, which needs no sudo, the host
+reports "Current active profile: latency-performance". So both days ran
+with the same settings, and nothing is unconfirmed. Later runs can log
+the profile this way.

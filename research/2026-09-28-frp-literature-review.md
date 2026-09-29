@@ -580,7 +580,8 @@ twice (leptos@v0.8.21 `reactive_graph/src/effect/immediate.rs`:352–354).
 Leptos, Sycamore, salsa and Incremental all tie a node's life to the run
 that created it: an owner's re-run disposes what the last run made
 (leptos@v0.8.21 `reactive_graph/src/owner.rs`:34–46;
-sycamore-reactive@0.9.3 `src/signals.rs`:139–143, `src/root.rs`:160;
+sycamore-reactive@0.9.3 `packages/sycamore-reactive/src/signals.rs`:139–143,
+`packages/sycamore-reactive/src/root.rs`:160;
 salsa@salsa-v0.28.5 `src/tracked_struct.rs`:186–191). carboxyl's stream
 `switch` re-registers on each new inner and kills the old callback
 through a dropped token (carboxyl@2a80080 `src/stream/mod.rs`:445–475).
@@ -1468,9 +1469,9 @@ access through a callback. gc-sequence passes a traced value into a
 closure as an argument instead of letting it capture one (goregaokar-…
 p. 12), which is RFD 3's rejected "closure-taking twins". Acar's library
 has Bough's `depends` problem outright: every free variable of a memoized
-expression is declared by hand, the library doesn't check its own
-discipline statically, and checks little of it at run time, and the author's conclusion is to leave the library for a
-compiler (acar-self-adjusting-computation pp. 131, 138, 233, 278).
+expression is declared by hand, the library checks little of its own
+discipline, none of it statically, and the author's conclusion is to
+leave the library for a compiler (acar-self-adjusting-computation pp. 131, 138, 233, 278).
 
 **Tracing and counting are duals, and the hybrids see cycles.** Tracing
 computes the least fixpoint of the reference-count equation and counting
@@ -1546,8 +1547,9 @@ Sycamore hold `Copy` handles in a generational slot map, free a node when
 the owner scope that made it re-runs or drops, and panic when a
 disposed handle is used, naming where it was defined in debug builds
 (leptos@v0.8.21 `reactive_graph/src/owner.rs`:34–46,
-`reactive_graph/src/traits.rs`:66–90; sycamore-reactive@0.9.3 `src/node.rs`:72–121,
-`src/signals.rs`:150–194). That makes `depends`'s missing inverse
+`reactive_graph/src/traits.rs`:66–90; sycamore-reactive@0.9.3
+`packages/sycamore-reactive/src/node.rs`:72–121, `packages/sycamore-reactive/src/signals.rs`:148–149,
+190–201). That makes `depends`'s missing inverse
 automatic, at the price Bough refused: a node lives exactly as long as
 the scope that made it. carboxyl's derived streams hold their parents
 strongly and are held weakly back, so downstream owns upstream, which is
@@ -2040,7 +2042,7 @@ bet as RFD 4's fusion (hydro-dfir p. 1), and avoids per-node
 construction by generating each tick as one function from a macro
 (hydro@dfir_rs-v0.16.0 `dfir_lang/src/graph/meta_graph.rs`:813–816).
 Sycamore allocates a slot with five `Vec`s, a boxed callback and a boxed
-value per node (sycamore-reactive@0.9.3 `src/node.rs`:14–43); no crate
+value per node (sycamore-reactive@0.9.3 `packages/sycamore-reactive/src/node.rs`:14–43); no crate
 publishes a per-node construction cost to set beside Oort's.
 
 ### What the probes found

@@ -1752,3 +1752,308 @@ lead with `Copy` tokens.
   counting and generational collection at textbook level.
 - jeffrey-josephine-using-javascript-to-safely-manage-the-lifetimes for
   the two failure modes. Self-contained given Rust lifetimes.
+
+## Values and ownership (RFD 4)
+
+### What the literature says
+
+**"Linear" is the wrong word for Bough's streams.** Linear means consumed
+exactly once, affine at most once
+(bernardy-linear-haskell-practical-linearity-in-a-higher-order p. 2).
+Rust is affine, and its ownership is a uniqueness system: it sits with
+Clean among the uniqueness languages, not the linear ones (p. 23;
+marshall-linearity-and-uniqueness pp. 1, 6). The two coincide only when
+every value is substructural, and Bough has unrestricted values,
+`Shared<A>`. Linearity restricts the future: an unrestricted value can
+become linear, never the reverse. Uniqueness guarantees the past: a
+unique value can become shared, never the reverse (marshall-… pp. 5–8).
+Bough's `share` is Marshall's `borrow`, unique to unrestricted and
+one-way (p. 11), and what lets `hold` move an event out without `Clone`
+is that no one else can read it, the guarantee that licenses in-place
+update (p. 6). A `Stream<A>` can be dropped unconsumed, so RFD 4's
+"exactly one consumer" is at most one. The industrial case for the rule
+is Linear Haskell's: handing one first-class stream to several consumers
+is a bug "we have seen … several times" (bernardy-… pp. 26–27). That
+needs only no duplication, not an obligation to consume. Kiselyov's
+*linear* stream means one element per step of state
+(kiselyov-stream-fusion-to-completeness p. 8), a third meaning.
+
+**Fusion works, and its cost is code.** Stream fusion makes every step
+non-recursive and lets the optimizer inline the consumer's loop, the
+mechanism of RFD 4's chains (coutts-stream-fusion-from-lists-to-streams-to-nothing
+pp. 2–4). Its price is duplication: code grew 2.5% on single-module
+programs, 11% on multi-module and more than 25% for one program in
+twenty (p. 9; not reproduced), and the authors call relying on the
+optimizer fragile (p. 9). Staging fuses everything but zipping two nested
+streams (kiselyov-… pp. 10–11, Thm. 1), and its critique of trusting a
+general-purpose compiler is the risk Bough takes by fusing through
+monomorphization (p. 13). Bough's adapters are all per-event functions of
+at most one event, the easy fragment; the hard cases, zip and nested
+`flat_map`, are materializers in Bough. Causal commutative arrows
+normalize any switch-free chain to one loop over one pure function and
+one state, for 4.1 to 13.9 times over GHC's arrow translation
+(liu-causal-commutative-arrows-and-their-optimization pp. 5–6, 8; not
+reproduced). No source measures compile time, which is F36's problem, and
+none bounds the number of instantiations. Lustre's modular compilation
+keeps generated code "linear in the size of the source program" because a
+node compiles once whatever its context
+(biernacki-clock-directed-modular-code-generation-for-synchronous-data
+p. 9). FrTime's lowering, build the graph and then collapse nodes, gave
+up to 16,000 times on a microbenchmark and a slowdown on a program
+already written for it
+(cooper-integrating-dataflow-evaluation-into-a-practical-higher-order
+pp. 78–81; not reproduced).
+
+**A cell of a collection is the `Replace` change structure.** Cai et al.
+give every value a change set, an update ⊕ and a difference ⊖, and allow
+the fallback change `Replace v` (cai-a-theory-of-changes-for-higher-order-languages
+pp. 2, 9). Bough's `hold` is integration where every change is `Replace`,
+and `steps` is differentiation in that structure. DBSP's inversion
+theorem, I(D(s)) = D(I(s)) = s
+(budiu-dbsp-automatic-incremental-view-maintenance-for-rich-query p. 4),
+is `hold(x, steps(c)) = c` and `steps(hold(x, e)) = e`. With `Replace`, a
+lifted function's derivative is "recompute", which is exactly why a cell
+of a collection propagates *that* it changed and not *what*. Maier and
+Odersky's abstract names the same problem
+(maier-higher-order-reactive-programming-with-incremental-lists p. 1).
+
+**An incremental collection is the same pair over a richer structure.**
+
+- Over an abelian group, a delta stream integrated gives the collection,
+  and the incremental version of any operator Q is D ∘ Q ∘ I, composed by
+  the chain rule (budiu-dbsp-… p. 4, Prop. 3.2). Linear operators such as
+  filter, projection, grouping, count and sum are their own incremental
+  versions and store nothing; join is bilinear and needs both
+  integrals; `distinct` needs one; min and max need the whole input
+  (pp. 4, 6–7, 10; mcsherry-differential-dataflow pp. 7–8).
+- Z-sets, weighted elements with negative weights for removal, make
+  keyed data a group (budiu-dbsp-… pp. 4–5).
+- The group doesn't fit ordered collections: finding one is "not
+  obvious" for sorted or tree-shaped data (budiu-dbsp-… p. 12). Maier's
+  reactive sequences carry Ins and Rem atoms under non-commutative
+  concatenation, with `map` elementwise, `++` translating indices,
+  `foldUndo` for associative, commutative folds with an undo, and
+  `aggregate` over a balanced concat tree of cached partials
+  (maier-higher-order-reactive-programming-with-incremental-lists
+  pp. 6, 8, 11–15). They create one dependent per segment, not per
+  element, to keep the graph small (pp. 16–17). On the JVM `foldUndo`
+  won from about n = 15 and `map` from about 30 (pp. 20–21; not
+  reproduced). Pulses form a monoid and values a module over it
+  (maier-reactive-programming-abstractions-for-complex-event-logic-and
+  pp. 78–79).
+- A derivative is cheap only if it needs the change and not the base
+  value: *self-maintainability* (cai-… p. 8).
+- A structure is cheap to update only if its trace barely moves under the
+  change. "Any deterministic method for building the tree based on just
+  list position is not going to be stable—a single insert can change
+  everyone's position" (acar-self-adjusting-computation p. 95). Stable
+  structure is keyed by content with fixed randomness (pp. 84, 96–100,
+  234).
+- Flo's eager-execution law, input in pieces reaches the same state as
+  input all at once, is the correctness test for composing patches
+  (laddad-flo-a-semantic-foundation-for-progressive-stream-processing
+  p. 9).
+- A late-built operator starts from the whole current value as one change
+  (budiu-dbsp-… p. 7).
+- Reflex ships the idea as a type: `Incremental` with a `Patch` class and
+  patch-folding accumulators (reflex-reflex-class pp. 2, 4, 22).
+
+The Sodium book sees the problem and has no incremental answer. A naive
+merge over N streams is a line of N − 1 nodes, and its fixes are
+balanced trees and "switches built into the tree"
+(blackheath-functional-reactive-programming, ch. 7, §§7.6–7.7; ch. 8,
+§8.6).
+
+### The Rust prior art
+
+futures-signals pairs a latest-value cell, which "might skip changes",
+with a `SignalVec` of `VecDiff`s that "will never skip a change"
+(docs.rs/futures-signals/0.3.34). That is a cell of a collection plus a
+stream of its diffs, `steps` with a richer payload. Sycamore's
+`map_keyed` diffs whole collections by key after Solid's algorithm, each
+item mapped in its own child scope
+(sycamore-reactive@0.9.3 `packages/sycamore-reactive/src/iter.rs`:9–64),
+and Leptos's `reactive_stores` tracks nested fields with keyed `Patch`
+(docs.rs/reactive_stores/0.4.4). differential-dataflow and DBSP are
+Z-set collections in Rust (docs.rs/differential-dataflow/0.25.1;
+github.com/feldera/feldera @2ad179e `crates/dbsp`). DFIR claims
+"extremely low-latency execution via Rust monomorphization", the same
+bet as RFD 4's fusion (hydro-dfir p. 1), and avoids per-node
+construction by generating each tick as one function from a macro
+(hydro@dfir_rs-v0.16.0 `dfir_lang/src/graph/meta_graph.rs`:813–816).
+Sycamore allocates a slot with five `Vec`s, a boxed callback and a boxed
+value per node (sycamore-reactive@0.9.3 `src/node.rs`:14–43); no crate
+publishes a per-node construction cost to set beside Oort's.
+
+### What the probes found
+
+**Erasing the chain at the materializer removes most of F36**
+(`rfd-0004-erased-materializer`). The probe generates F36's chain shapes
+from data, 182 chain types at depth two and 1,640 at depth three, the
+spike's numbers, and builds each crate from clean three times.
+
+| design | release build, depth 2 | depth 3 | per event |
+|---|---|---|---|
+| boxed `dyn FnMut` at the materializer | 0.41 | 0.37 | 1.022 |
+| state struct stepped through a `fn` pointer | 0.33 | 0.29 | 1.028 |
+| normalized flat node, CCA-style | 1.04 | 1.04 | 0.981 |
+
+Ratios are to monomorphized materializers, 10.4 s and 100.7 s to build,
+35.6 ns an event, on the idle machine. Erasure compiles 7 node evaluation
+functions where the baseline compiles 910 and 8,200, and the depth-three
+binary shrinks from 18.7 MiB to 11.5 boxed and 7.4 through `fn`
+pointers. The flat node removes nothing, since each closure is still its
+own type. Erasure doesn't stop growth with the number of chain types:
+the adapters are still compiled per chain, and erased builds grow about
+8.7 times from depth two to three against the baseline's 9.7. The `fn`
+pointer design uses a little `unsafe`, and Bough's core is
+`forbid(unsafe_code)`, so boxed is the usable one.
+
+**A patch-carrying cell wins from small sizes, and the structure behind
+it matters more than the patches** (`rfd-0004-patch-cell-crossover`). The
+baseline is RFD 4's cell of the collection, an in-place accumulator with
+read-through derived cells. On the idle machine:
+
+- A `Vec` with `map` then `sum`, one insert or remove per instant, read
+  every instant: a flat `Vec` carrying positional deltas costs 0.33 to
+  0.67 of the baseline at every size, but only because both are linear
+  in n. A counted B-tree holding source and mapped values together costs
+  0.71 at 3 elements, 0.08 at 1,000 and under 0.001 at a million.
+- The same read every 16th instant: the flat delta loses at every size,
+  1.03 at 3 elements and 1.6 to 2.3 from 10,000 up, so the large-`Vec`
+  rows that looked like valgrind artefacts in the instruction counts are
+  real. The shared B-tree wins from 1,000 elements (0.36). A chunked rope
+  wins from 1,000 too, and loses to the B-tree from 10,000.
+- Appends at the end: the flat `Vec` delta is best at every size, and the
+  shared B-tree close behind.
+- A `HashMap` with filter then count, upserts as Z-sets: an eager delta
+  whose upsert is one insert on the source, the old value its retraction
+  (`fused`), costs 0.53 of the baseline at 3 entries and 0.22 at 10, read
+  every instant. Read every 16th instant it crosses between 10 (1.31) and
+  30 entries (0.75). A fully lazy map that buffers raw upserts until a
+  read wins at every size on rare reads, 0.83 at 3 entries. The plain
+  eager Z-set delta, built from separate retract and insert steps, costs
+  about twice the fused one, so fusion, not laziness, carries the map
+  result.
+- Consolidating k Z-sets in one instant costs 4.4 times concatenating k
+  commands at k = 2 and 75 times at k = 64: it sorts.
+- **Z-set composition fails for keyed maps.** Two sources upserting one
+  key in one instant, each against the state before it, compose into
+  weight −2 on the old value and +1 on each new one, which isn't a map.
+  Keyed collections need a combining function again, as `merge` does, and
+  positional patches from two sources need index translation.
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0004-erased-materializer at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0004-erased-materializer --
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0004-erased-materializer-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0004-erased-materializer-wallclock
+python3 scripts/ratios.py
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0004-patch-cell-crossover-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0004-patch-cell-crossover-wallclock
+python3 scripts/ratios.py vec- map- compose
+```
+
+The composition failure is a test in the probe's module, not a result
+file; at `experiments@daa6419`:
+
+```
+cargo test --release --lib rfd_0004_patch_cell_crossover::tests::same_key_conflict
+```
+
+### Settled decisions the evidence contradicts
+
+None found. "Linear" is a naming problem, not a broken reason: what
+`hold` and `merge` need is that no second consumer exists, which
+uniqueness gives. Fusion by monomorphization is supported, and its known
+cost is the one F36 found. Lazy read-through cells stand: pending deltas
+sum, so laziness survives even an incremental cell.
+
+### The options for Bough
+
+On the word: keep "linear", or say "move-only" and "at most one
+consumer", with one line in the glossary on why it isn't linear.
+
+On F36:
+
+1. Keep full monomorphization and bound chain depth where programs build
+   chains from data, as RFD 4 has it.
+2. Erase at the materializer boundary with a boxed closure, one indirect
+   call per chain per event, and keep monomorphization for the chain
+   itself.
+3. Offer both, erased by default.
+
+On open question 9:
+
+1. Cells of collections only, and the usual advice.
+2. A patch-carrying cell in core, `holdPatch(init, Stream<P>)` with
+   `P` a change structure: ⊕, a nil change, composition within an instant
+   tested by Flo's law. Keyed collections on Z-sets with a combining
+   function for same-key conflicts, positional ones on a counted B-tree,
+   in a library.
+3. Incremental collections in core.
+4. Interoperate with DBSP's crate instead of building a library.
+
+### Claude's leaning
+
+Say "move-only, at most one consumer", and keep the word "linear" out of
+the docs. For F36, option 2: a third of the build time for about 2% an
+event, in safe code, and full monomorphization stays available for
+programs that don't build chains from data. That leaning rests on a
+generated program, not a real one. For question 9, option 2. The contract
+should be Cai's change structure, not an abelian group, so ordered deltas
+fit and same-key conflicts get a function; the library's structures
+should be counted B-trees and content-keyed partitions, since the probe
+found the data structure worth more than the patches, and the eager
+fused upsert is the map operator to start from.
+
+### Questions to grill
+
+- Do you mean "exactly one consumer" or "at most one"? Should dropping an
+  unconsumed `Stream` warn?
+- Has any real program, not the data-driven test binary, hit F36?
+- Would one indirect call per chain per event be acceptable to compile
+  every materializer once?
+- Should the patch cell's contract require an abelian group, which gives
+  commutative merging and DBSP's free operators, or stay at Cai's change
+  structure so ordered deltas and keyed conflicts fit?
+- Is "`hold` and `steps` are integrate and differentiate over `Replace`"
+  a framing you want in RFD 4, given it makes a cell of a collection a
+  special case of an incremental one?
+- Should an incremental-collection library live in the Bough workspace,
+  or should Bough interoperate with DBSP?
+
+### Experiments this proposes for Bough
+
+- Build bough-gtk's list view on a patch-carrying cell over a counted
+  B-tree, beside the cell-of-`Vec` version, and time a scroll and an
+  insert at the list sizes it really has.
+- Measure release build time for Oort's fighter with full
+  monomorphization and with boxed materializers, to see whether F36 bites
+  a real program at all.
+
+### Reading path
+
+- marshall-linearity-and-uniqueness §§1–3 for the vocabulary. Needs
+  substructural type systems at the level of "linear, affine, unique".
+- coutts-stream-fusion-from-lists-to-streams-to-nothing §§2–5, then
+  kiselyov-stream-fusion-to-completeness §3. §§4–6 of Kiselyov need
+  multi-stage programming.
+- budiu-dbsp-automatic-incremental-view-maintenance-for-rich-query
+  §§2–4. Self-contained given abelian groups.
+- cai-a-theory-of-changes-for-higher-order-languages §§2 and 5 for change
+  structures and self-maintainability.
+- maier-higher-order-reactive-programming-with-incremental-lists, after
+  maier-deprecating-the-observer-pattern-with-scala-react for levels.
+  Needs balanced binary trees and monoids.
+- acar-self-adjusting-computation Part III for trace stability. Needs
+  randomized analysis, skip lists and treaps.

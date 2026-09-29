@@ -19,7 +19,7 @@ section that quotes it. A paper's number is that paper's claim, marked
 "not reproduced". Bough's own numbers are cited to the research note that
 measured them._
 
-_Verification, 2026-09-29, in part. Fresh verifiers, given the note,
+_Verification, 2026-09-29. Fresh verifiers, given the note,
 `literature`, `experiments` and none of the drafting, checked it in
 seven slices. They checked about 1,600 claims: each against its page in
 the stored PDF, the crate clone at its pinned commit, the Sodium book or
@@ -36,8 +36,15 @@ instruction counts within 1%. The four `patch-cell-crossover`
 instruction files don't, in their `map_*` benchmarks only: the fixture
 seeds std's `HashMap` per process, so those counts move by up to 11%
 from run to run. The note quotes none of them. The two futex tables
-depend on scheduling and tell the same story. The wall-clock re-runs
-are still to do._
+depend on scheduling and tell the same story. Every wall-clock bench
+was re-run on the idle machine on a second day, from the same code. 92
+of 168 numbers fall inside the first run's intervals, which measure
+only the noise within one run. Most of the rest move by 1% to 5%, the
+machine's drift between days, so the ratios here are good to a few
+percent; the cycle rows and the single-unit benches move more, and say
+so. Every wall-clock claim holds in both runs, as worded now; six
+were reworded, and single-run tails are marked as such. Compile times
+and the timed binary reproduce within 4%._
 
 ## The must-read
 
@@ -646,13 +653,13 @@ of their new inners during the instant: `settled`, `mixed`, `churn` and
 - **It isn't bounded in general.** On an adversarial shape the backward
   search costs 2.3 to 8.8 times the walk, and the two-way search 3.2 to
   11 times unless the switch's downstream is much smaller than the new
-  inner's upstream. On a cycle none beats the walk
-  by much. The backward search's cost is its search, sort and move, not
+  inner's upstream. On a cycle the timings are noisy, moving by up to
+  40% between days. The backward search's cost is its search, sort and move, not
   relabelling: with fresh spacing it relabels nothing and still costs
   2.6 to 7.1 times the walk's instructions on the adversary. Dropping
   the sort, moving the set in DFS post-order instead, brings it to 1.7
-  to 3.0 times the walk's time (wall-clock), and to 0.73 to 1.13 on
-  cycles.
+  to 3.0 times the walk's time (wall-clock), and to 0.61 to 1.24 on
+  cycles over two days' runs, sometimes beating the walk there.
 - **Where the list pays.** On a mixed adversary, a new inner reading
   some old nodes before the switch and some new ones after it, the
   no-sort backward search beats the walk once the old upstream is
@@ -716,6 +723,13 @@ cargo test --release --lib rfd_0005_small_side_order::tests::nosort_counts -- --
 ```
 
 > rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-small-side-order-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-small-side-order-wallclock
+python3 scripts/ratios.py
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-29 - rfd-0005-small-side-order-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
 
 ```
 cargo bench --bench rfd-0005-small-side-order-wallclock
@@ -1773,6 +1787,13 @@ cargo bench --bench rfd-0003-incremental-mark-wallclock
 python3 scripts/ratios.py incremental-
 ```
 
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-29 - rfd-0003-incremental-mark-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0003-incremental-mark-wallclock
+python3 scripts/ratios.py incremental-
+```
+
 > rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-branded-captures at experiments@754b931 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
 
 ```
@@ -1826,7 +1847,7 @@ cargo bench --bench rfd-0003-rebrand-write-cost-instructions
 
 Two results disagree with themselves and need a recheck. The incremental
 mark's single-unit benches say the barriers' fast path costs 18% to 30%
-of a unit, while a whole run with barriers costs 0.7% and the instruction
+of a unit, and 17% to 53% on a second day, while a whole run with barriers costs 0.7% and the instruction
 counts say two instructions a click; a single-unit bench of under a
 microsecond may be timing something else. And the `owned` way to write a
 token-bearing value, which the instruction counts found constant-time,
@@ -2114,14 +2135,16 @@ read-through derived cells. On the idle machine:
   real. The shared B-tree wins from 1,000 elements (0.36). A chunked rope
   wins from 1,000 too, but loses to the shared B-tree wherever it wins,
   and to the plain B-tree from 10,000.
-- Appends at the end: the flat `Vec` delta is best at every size, and the
-  shared B-tree close behind.
+- Appends at the end: the flat `Vec` delta is best or tied at every
+  size, and the shared B-tree close behind; in one of four runs the
+  B-tree edged it at 10 elements.
 - A `HashMap` with filter then count, upserts as Z-sets: an eager delta
   whose upsert is one insert on the source, the old value its retraction
   (`fused`), costs 0.53 of the baseline at 3 entries and 0.22 at 10, read
   every instant. Read every 16th instant it crosses between 10 (1.31) and
   30 entries (0.75). A fully lazy map that buffers raw upserts until a
-  read wins at every size on rare reads, 0.83 at 3 entries. The plain
+  read wins or ties at every size on rare reads, 0.83 at 3 entries; its
+  rows move with the hash seed, by up to 8% at 3 entries. The plain
   eager Z-set delta, built from separate retract and insert steps, costs
   about twice the fused one, so fusion, not laziness, carries the map
   result.
@@ -2152,6 +2175,31 @@ python3 scripts/ratios.py
 cargo bench --bench rfd-0004-patch-cell-crossover-wallclock
 python3 scripts/ratios.py vec- map- compose
 ```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-29 - rfd-0004-patch-cell-crossover-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0004-patch-cell-crossover-wallclock
+python3 scripts/ratios.py vec- map- compose
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-29 - rfd-0004-patch-cell-crossover-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0004-patch-cell-crossover-wallclock
+python3 scripts/ratios.py vec- map- compose
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-29 - rfd-0004-patch-cell-crossover-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0004-patch-cell-crossover-wallclock
+python3 scripts/ratios.py vec- map- compose
+```
+
+The three second-day runs are
+`results/rfd-0004-patch-cell-crossover-wallclock-run1-2026-09-29.txt` to
+`-run3-`, one process each, so each has its own hash seed.
 
 The composition failure is a test in the probe's module, not a result
 file; at `experiments@daa6419`:
@@ -2430,13 +2478,15 @@ In instructions, the uncontended lock adds 39 and 18 a unit to about
 2,200, and the queue 299 and 419.
 
 - The lock's latency is worse than its throughput. At 2 threads the p99
-  wait to acquire is 19.9 µs and the p99.9 58 µs; at 8, 39.5 µs and 61
-  µs. The longest wait, 165 µs, was at 2 threads. With 2 threads one of
-  them ran 11,087 units in a row, since std's mutex is unfair (F78). The
-  queue's p99 send is 1.5 µs at 2 producers and 16.7 µs at 8.
+  wait to acquire is 18 to 20 µs and the p99.9 40 to 58 µs; at 8, 40 to
+  42 µs and 61 to 65 µs, over two days' runs. The tails are single
+  draws: the longest wait was 165 µs in one run and 224 µs in the other,
+  and one thread ran 11,087 units in a row in one and 451 in the other,
+  since std's mutex is unfair (F78). The queue's p99 send is 1.5 to 1.9
+  µs at 2 producers and 17 to 18 µs at 8.
 - **The contended lock's extra cost is mostly a futex wake per unlock,
   not the graph's state moving between cores.** Grown to 256 KiB of state
-  per unit, the lock changes threads in under 1% of units, yet a copy of
+  per unit, the lock changes threads in about 1% of units, yet a copy of
   std's mutex still makes about one `futex_wake` call a unit, and std's
   workers sleep about as often. The counts depend on scheduling: 0.73 to
   0.97 wakes and 0.78 to 0.94 sleeps in the recorded run, 0.85 to 0.95
@@ -2449,7 +2499,7 @@ In instructions, the uncontended lock adds 39 and 18 a unit to about
   about 1.9 µs against 0.9 within one, which accounts for most of the
   gap. Those per-call times come from the timed binary, the best of three
   runs each, on the idle machine; the bench's single run gives 1.65 µs
-  against 0.92; its "INDICATIVE" label is fixed text from before the
+  against 0.92, and 1.87 against 0.96 on a second day; its "INDICATIVE" label is fixed text from before the
   idle run.
 
 > rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0006-lock-vs-queue-cost-instructions at experiments@d16fe99 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
@@ -2459,6 +2509,13 @@ cargo bench --bench rfd-0006-lock-vs-queue-cost-instructions
 ```
 
 > rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0006-lock-vs-queue-cost-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0006-lock-vs-queue-cost-wallclock
+python3 scripts/ratios.py single contended footprint-
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-29 - rfd-0006-lock-vs-queue-cost-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
 
 ```
 cargo bench --bench rfd-0006-lock-vs-queue-cost-wallclock

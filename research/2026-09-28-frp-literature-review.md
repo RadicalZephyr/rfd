@@ -23,6 +23,116 @@ _Verification: not yet done. Phase 8 of the handoff checks every claim
 against its page in the stored copy, re-runs every probe, and records
 here what it checked, how, and the errors it found and fixed._
 
+## The must-read
+
+Ninety-nine sources were read from their stored copies, and six crates
+at source. Thirteen probes and their follow-ups ran, timed on the idle
+machine. Nothing rests on an abstract alone; a leaning that rests on a
+paper's unreproduced number says so.
+
+Six findings contradict what a settled decision says: five stated
+reasons, and RFD 3's collection trigger. No decision's core is shown
+wrong. RFDs 3 and 5 gate the build, so they come first.
+
+**RFD 5.**
+
+- *The reasons for rejecting rank-ordered push don't hold on their own.*
+  Incremental-style heights, raised when a link would point downhill,
+  re-rank at a fraction of a raise a transaction, and a bucket queue has
+  no log factor. On the idle machine heights cost about a quarter more
+  when a whole region fires, break even near 30% quiet, and win up to
+  eighteen times on mostly quiet regions, and the raise finds cycles.
+  Leaning: keep the flat loop for now, reword the rejection as a trade,
+  and measure a real program's quiet share.
+- *The per-move walk stays.* A DFS grey mark finds a cycle only when an
+  input next reaches it, and never if none does. On a UI-shaped graph a
+  move walks about 535 nodes, not ten thousand. An order-maintenance list
+  that places new nodes before the switch costs 0.02 to 0.6 of the walk
+  there, and more than the walk on adversarial shapes. Leaning: keep the
+  walk, and Brent's guard.
+- F22 is liveness, outside the loop rule.
+
+**RFD 3.**
+
+- *"An undeclared capture cannot be made a compile error" doesn't hold.*
+  A lifetime brand on tokens makes F62 a compile error on stable, soundly,
+  with no `unsafe`, and tokens stay usable as data. It costs a lifetime
+  on every token-holding type, I/O inside callbacks, a copy per read of a
+  token-bearing collection (1.9 times per event at a thousand tokens)
+  unless borrowed views replace `&A`, and a stash route only an `unsafe`
+  seal narrows. Leaning: keep `depends` and reword the reason. But a
+  brand touches every signature, so it's now or never.
+- *The collection trigger needs a work term.* Beside a large live graph
+  RFD 3's trigger lets garbage run about ten times longer than a trigger
+  paced against each input's region growth, and triples the worst pause.
+  The work term costs nothing measurable on a clean unit. No region term
+  sees garbage a dropped guard releases, and RFD 3's release term never
+  fired. Leaning: add the work term; find a release term.
+- *Counting with a backup trace sees cycles.* RFD 3's other reason,
+  `Copy` tokens, carries the rejection.
+- Modal types catch F62, not F63: explicit leaks stay legal. Every
+  GC-based FRP has F66. Safe `Trace` is sound for checked indices.
+- A fixed-budget incremental mark cuts the worst pause eightfold for 16%
+  more time.
+
+**RFD 1.**
+
+- *F89 is a semantics change.* The text states its creation rule for
+  four primitives, not `Split`. Forgetfulness is the principled reason for the cut (FRPNow's Lemmas 1
+  and 2), and it covers F6 too. The probe finds the text leaking at every
+  F89-shaped node and the cut at none, and one rule, a creation time on
+  state-holders and time-movers, never differs from a cut on everything.
+  Leaning: restate the exceptions as "the text is leaky; Bough is
+  forgetful".
+- The oracle reaches the unique fixed point of a guarded system, by
+  Banach's theorem, not a least fixpoint. `[Int]` isn't well ordered, so
+  arguments range over the instants a run creates, with non-Zeno as the
+  side condition.
+- `steps` is sound in App. E's own model, where a cell is a step
+  sequence. Leaning: an `operational` module, not a feature flag.
+- The oracle's comparison needs no child indices. Leaning: put shrinking,
+  labelled shapes and long engine-only traces in the policy.
+
+**RFD 2.** Acyclicity is Esterel v4's, Lustre's and Keating and Gale's
+rule, sound and knowingly incomplete. The census of refused loops finds
+nothing a program would want that a switch can't write. F3 needs `steps`,
+so questions 3 and 10 are one question. A one-bit decoupledness mark
+refuses F3 at compile time for 2% to 16% more compile time, but every mark
+design accepts a loop smuggled through a switch, so the run-time check at
+moves stays. Leaning: keep plain acyclicity; hold the mark.
+
+**RFD 4.** Streams are affine, "at most one consumer", not linear.
+Erasing a fused chain at its materializer builds F36's shapes in a third
+of the time for 2% an event. For cells of collections, a patch-carrying
+cell wins from small sizes, its data structure matters most, and Z-set
+composition fails when two sources upsert one key. Leaning: erase by default; a patch cell over Cai's change structure in
+core, with counted B-trees and fused upserts in a library. The first
+leaning rests on a generated program, not a real one.
+
+**RFD 6.** *No source supports "threading costs overhead".* An
+uncontended `Mutex` costs 1% to 5% a unit; RFD 6's own queue costs 11% to
+15%. Contended, the lock loses more. Drechsler et al.'s 20% to 25% for concurrent propagation is not
+reproduced, and their "uncontended lock is free" is asserted. The Sodium
+book argues *for* threads. What the sources do support: no listeners
+under a lock, one order of units the host can see. Leaning: keep the single thread, change the
+reasons.
+
+**RFD 7.** Every bounded system compiles a static graph; the embedded
+line moved from merging simultaneous events to ordering them; nobody
+folds a burst with a user's fold. Leanings: a slot high-water mark, a
+child-instant depth cap, fixed queue capacities with a full-queue
+`IoError`.
+
+**Unclear, for a recheck.** The height queue's break-even between 1% and
+30% quiet is interpolated. The incremental mark's single-unit benches
+disagree with its whole-run bench, and the `owned` rebrand's wall-clock
+with its instruction counts. Neither changes a leaning. The lock's
+mechanism rests on one timed run.
+
+**What to grill first.** RFD 3's brand, since it must be decided before
+signatures set, and its trigger. Then RFD 5's ranks, after a real
+program's quiet share is measured.
+
 ## Semantics and time (RFD 1)
 
 ### What the literature says

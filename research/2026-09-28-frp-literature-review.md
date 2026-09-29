@@ -2740,3 +2740,220 @@ mechanised, do it to prove the creation cuts, not as an oracle.
   Needs labelled transition systems and bisimulation.
 - bourke-a-formally-verified-compiler-for-lustre. Needs Lustre's clocks,
   big-step semantics and simulation proofs.
+
+## The lineage map
+
+Where Bough's ideas come from, by branch, oldest first. An arrow is "led
+to" or "was answered by". A dagger marks a source on the map only, not
+read. Continuous time is here and nowhere else: Bough is discrete.
+
+- **Classic FRP, continuous time.** Fran, Elliott and Hudak 1997† →
+  first principles, Wan and Hudak 2000† → RT-FRP 2001 → E-FRP 2002 →
+  E-FRP with priorities 2007. Push-pull, Elliott 2009, with denotational
+  design 2009 → the Sodium book's App. E 2016 → **Bough**.
+- **Arrowized FRP.** Arrows, Hughes 2000† → Yampa, FRP continued 2002 →
+  arrows and robots 2003† → the arrow space leak 2007 → causal
+  commutative arrows 2009 → safe FRP through dependent types 2009 →
+  keeping calm 2010 → wormholes 2012† → FRP refactored 2016† → testing
+  and debugging 2017 → Rhine 2018 → FRP restated 2019† → runtime
+  verification 2020† → loopy 2023.
+- **First-class and higher-order FRP.** Elerea, Patai 2010 →
+  reactive-banana 2011 and 2015 → Reflex (Hackage) → monadic FRP 2013 →
+  FRPNow 2015. Sodium and reactive-banana are "equivalent apart from
+  naming" (blackheath-functional-reactive-programming, ch. 1, §1.9).
+- **Dynamic dataflow in a host language.** Frappé 2001† → FrTime 2006,
+  thesis 2008 → Flapjax 2009 → Scala.React 2012, incremental lists 2013,
+  thesis 2013 → REScala 2014† → distributed REScala 2014 → thread-safe
+  REScala 2018. DREAM 2014† → Margara and Salvaneschi 2018 →
+  Historiographer 2023†. Elm 2013 → farewell to FRP 2016. The survey,
+  2013, maps this branch.
+- **Modal and guarded types.** Nakano 2000† → guarded domain theory
+  2011† → ultrametric semantics 2011 → bounded space 2012 → without
+  spacetime leaks 2013 → fair reactive programming 2014 → Simply RaTT
+  2019 → diamonds 2021 → Rattus 2022 → asynchronous modal FRP 2023,
+  in Haskell 2023† → property-based testing for async FRP 2026. LTL types
+  2012 and causality for free 2013† sit beside it; Jeltsch 2012† links it
+  to temporal logic.
+- **Synchronous languages.** Kahn networks 1974† → Lucid 1985† → Lustre
+  1987†, 1991; Esterel 1992†; SIGNAL 1991†; Statecharts 1987†; SDF
+  1987† → synchronous Kahn networks 1996 → modular causality 2001 →
+  Esterel's foundations 2000† and constructive semantics 2002, with
+  cyclic circuits 1996 and timed ternary simulation 2012† → the survey
+  twelve years later 2003† → delayed actions 2004 → clock-directed code
+  2008 → modular static scheduling 2009 → modular memory 2012 → clock
+  refinement 2013 → sequential constructiveness 2014 → SCCharts 2014 →
+  fixed-point semantics for constructive scheduling 2015 → Vélus 2017.
+  Copilot 2010 → its verifier 2023, extended 2026. Céu 2015. Superdense
+  time, Lee and Zheng 2005.
+- **Incremental computation.** Attribute grammars 1981† → computational
+  circuits 1990† → the categorized bibliography 1993† → order in a list,
+  Dietz and Sleator 1987† → self-adjusting computation 2005 → adaptive
+  functional programming 2006 → its memory management 2008 → traceable
+  data types 2010† → Adapton 2014 → a theory of changes 2014 → build
+  systems à la carte 2018. Jane Street's Incremental 2015; rustc's
+  red-green algorithm and salsa.
+- **Dynamic topological order.** Pearce and Kelly 2006 → their batch
+  algorithm 2010 → HKMST 2012 → Bender et al. 2016 → Bernstein and
+  Chechik 2018† → the dynamic graph survey 2022†.
+- **Dataflow at scale.** Naiad 2013 and differential dataflow 2013 →
+  its foundations 2015 → shared arrangements 2020† → DBSP 2023 → Flo 2025
+  and DFIR. Deterministic dataflow foundations 2020†.
+- **Values and fusion.** Stream fusion 2007 → stream fusion to
+  completeness 2017. Linear Haskell 2018 → linearity and uniqueness 2022.
+- **Fine-grained signals.** MobX and Preact → Reactively 2022 → the TC39
+  proposal 2024 → Leptos's `reactive_graph`, Sycamore.
+- **Embedded FRP.** Emfrp 2016 → XFRP 2018 → recursive data types 2021†
+  → update-timing switching 2024. Juniper 2016. Hailstorm 2020†. The
+  bare-metal reactive VM 2022† → reactive programming without functions
+  2024. Parallel FRP 1999†.
+- **Threads and events.** Ousterhout 1996 → von Behren et al. 2003 → Lee
+  2006.
+- **Collection in Rust.** Bacon et al. 2004 → Rust for high-performance
+  GC 2016† → shifgrethor 2018 → Josephine 2018 → Goregaokar's tour 2021
+  → gc-arena.
+
+## The crate table
+
+The six crates read at source, pinned in
+`literature/synthesis/14-crates-pins.md`, then the rest from docs.rs,
+READMEs and single files at a named commit. Read on 2026-09-28. "Not
+stated" means the source read was silent.
+
+| Crate | Version | Semantics | Glitch freedom | Memory strategy | Threading | Source |
+|---|---|---|---|---|---|---|
+| `reactive_graph` (Leptos) | 0.2.15, leptos v0.8.21 | Signals, memos, effects; dependencies tracked per run; no instant, no switching | Reactively's: push `Check`/`Dirty` colours, pull to evaluate, `PartialEq` cut-off | `Copy` handles in a process-wide slot map; nodes live as long as their owner scope; stale use panics | Every node `Send + Sync` behind `RwLock`s, with a lock-order rule | leptos-rs/leptos @584c3a2 `reactive_graph/src/` |
+| `sycamore-reactive` | 0.9.3 | Signals, memos, effects in one node type; dynamic dependencies; `batch` | DFS reverse post-order, then a flat loop; grey mark panics on a cycle; pull for a dirty read | `Copy` handles into a slot map; ownership by creation scope; explicit recursive dispose | `thread_local!` root, `RefCell` nodes; single-threaded | sycamore-rs/sycamore @48e55bb `packages/sycamore-reactive/src/` |
+| `gc-arena` | 0.7.0 | A collector, not a reactive library | n/a | Incremental mark-sweep between `mutate` calls, paced by allocation debt; `'gc`-branded `Copy` pointers; `unsafe trait Collect` with a safe derive | Single-threaded (`Cell`, `Rc`) | kyren/gc-arena @d527c45 `src/` |
+| `salsa` | 0.28.5 | Incremental queries over revisions; no events | Demand-driven validation with backdating; opt-in fixed-point cycles, capped at 200 | IDs with a 32-bit generation; tracked structs die with the query run that made them; LRU eviction | Parallel readers, one cancelling writer | salsa-rs/salsa @d434f88 `src/` |
+| DFIR (`dfir_rs`, `dfir_lang`) | 0.16.0 | Ticks over batches; static graph from a macro; `defer_tick` to the next tick | Topological order fixed at compile time; cycles within a tick refused | Operator state in a slot vector with a lifespan per tick, loop or forever | One instance per thread; tasks spawned local | hydro-project/hydro @118b356 `dfir_rs/`, `dfir_lang/` |
+| `carboxyl` | 0.2.2 (master) | Sodium-like streams and signals; cells read before the instant | Callbacks fire in registration order; a diamond through `merge` fires twice | Downstream holds upstream strongly, upstream holds downstream weakly | One global `Mutex` around each transaction | milibopp/carboxyl @2a80080 `src/` |
+| Incremental (OCaml) | v0.17.0 | Vars, `map`, `bind`, observers, `stabilize` | Recompute heap by height; heights raised on link, which finds cycles | Only nodes with a path to an observer are kept; `bind` invalidates what it made | Single-threaded | janestreet/incremental @v0.17.0 `src/incremental_intf.ml`:90–260 |
+| sodium-rust | 2.1.3 (source at master 3e93021) | Sodium's streams and cells, explicit transactions | DFS order with a visited flag, no ranks | Atomic counts plus Bacon–Rajan cycle collection; captures declared with `lambda1(f, deps)` | `Arc`/`Mutex` everywhere, `unsafe impl Send/Sync` over a `Cell` | SodiumFRP/sodium-rust @3e93021 `src/impl_/` |
+| futures-signals | 0.3.34 | Latest-value signals that may skip; `SignalVec` diffs that never skip | Not stated; lossy polling | `Mutable` like `Arc` + `RwLock` | `Send + Sync` | docs.rs |
+| rxrust | 0.15.0 | ReactiveX observables | Not stated | `Rc` or `Arc` context, chosen at compile time | Local or shared; tokio schedulers | README, docs.rs |
+| frappe | 0.4.7 | Eager push streams; pulled `Fn() -> T` signals | No transactions in the source read | Derived streams hold their parents | `Send + Sync` closures | wolfiestyle/frappe master |
+| dioxus-signals | 0.7.10 | Signals and memos; subscription on render reads | Not stated | `Copy` handles in `generational-box`, dropped with their owner | Unsync by default, sync storage optional | docs.rs |
+| adapton | 0.3.31 | Demanded computation graph, nominal memoization | Dirty on write, clean on demand | Not stated | Not stated | docs.rs |
+| incremental-rs | 0.2.8 | A port of Incremental | Height-ordered recompute heap, cut-off | `Rc` state; dropping an observer unloads what only it needed | Single-threaded | cormacrelf/incremental-rs @5ba8209 |
+| anchors | 0.6.0 | Adapton-style pull, Incremental-style push for observed nodes | Not stated | Not stated | Single-threaded by default | docs.rs (repo archived) |
+| differential-dataflow | 0.25.1 | Collections of `(data, time, diff)` updates | Outputs complete for a time once the probe says so | Arrangements of updates | Data-parallel over timely workers | docs.rs |
+| timely | 0.31.0 | Dataflow with timestamps and frontiers | Frontiers tell when a time is complete | Not stated | One worker per thread, processes across machines | docs.rs, README |
+| dbsp | 0.357.0 | Circuits over Z-set streams; nested circuits to a fixed point | Per step, by circuit order | Storage and a buffer cache for spilling | Multithreaded, data-parallel | feldera/feldera @2ad179e `crates/dbsp` |
+| floem_reactive | 0.2.0 | Leptos-style signals, memos, effects, scopes | Not stated | Signals in a runtime map, scoped | `thread_local!` runtime | docs.rs, `src/runtime.rs` |
+| i-slint-core (properties) | 1.18.1 | Property bindings with dependency tracking | Not stated | Pinned properties with dependency lists | Not stated | docs.rs |
+| comemo | 0.5.1 | Constrained memoization of tracked calls | Validity checked against recorded constraints | Global cache, explicit evict | Not stated | docs.rs |
+| incremental-topo | 0.3.1 | Pearce–Kelly incremental topological order | n/a | Nodes in a generational arena | Not stated | docs.rs |
+| discro | 0.35.0 | One shared latest value, publisher and subscribers | Not stated | Not stated | On `tokio::sync::watch` | docs.rs |
+| reactive_stores | 0.4.4 | Field-level tracking of nested state; keyed `Patch` | A field update notifies parents and children, not siblings | On `reactive_graph` | As `reactive_graph` | docs.rs |
+
+Two crates the handoff named aren't reactive and have no row. Bevy's
+change detection records ticks on components for systems to check when
+they run, and pushes nothing to dependents (docs.rs/bevy_ecs/0.19.1).
+Xilem rebuilds a lightweight view tree, Elm-style, with no dependency
+graph (linebender/xilem README).
+
+## Annotated bibliography
+
+Every kept source, by stem, with what it gave Bough. The records in
+`literature` hold the reading notes by page, the stored copy's version
+and where it came from. Sources on the lineage map only are marked there.
+
+- **abadi-foundations-of-differential-dataflow**. Martín Abadi, Frank McSherry, Gordon D. Plotkin. *Foundations of Differential Dataflow*. FoSSaCS 2015. Core, read in full. Product partial orders for nested loops; expressly excludes the lexicographic order `T = [Int]` is, and gives F1's loop equation a unique solution when feedback shifts the index.
+- **acar-adaptive-functional-programming**. Umut A. Acar, Guy E. Blelloch, Robert Harper. *Adaptive Functional Programming*. ACM TOPLAS 2006. Supporting, read in part. The journal form of the thesis's library; its one addition for Bough is why order maintenance beats integer ranks with re-ranking.
+- **acar-self-adjusting-computation**. Umut A. Acar. *Self-Adjusting Computation*. PhD thesis, CMU 2005. Core, read in full. Change propagation over order-maintenance time stamps, and trace stability: why a cell of a collection is slow and a content-keyed structure isn't.
+- **aguado-denotational-fixed-point-semantics-for-constructive-scheduling-of**. Joaquín Aguado, Michael Mendler, Reinhard von Hanxleden, Insa Fuhrmann. *Denotational Fixed-Point Semantics for Constructive Scheduling of Synchronous Concurrency*. Acta Informatica 2015. Core, read in full. The closest formal precedent for the order on `T = [Int]`, and the shape a real least-fixpoint argument needs, which the oracle's rounds don't have.
+- **apfelmus-frp-dynamic-event-switching**. Heinrich Apfelmus. *FRP - Dynamic Event Switching*. Blog post 2011. Supporting, read in full. The time-leak argument against unrestricted switching, and three answers, Jeltsch's era types the most direct.
+- **apfelmus-frp-release-of-reactive-banana-version-1-0**. Heinrich Apfelmus. *FRP — Release of reactive-banana version 1.0*. Blog post 2015. Supporting, read in full. Start-time generators shipped as reactive-banana's `Moment` monad; no simultaneous occurrences within one event.
+- **bacon-a-unified-theory-of-garbage-collection**. David F. Bacon, Perry Cheng, V. T. Rajan. *A unified theory of garbage collection*. OOPSLA 2004. Core, read in full. Tracing and counting as least and greatest fixpoints; counting with a backup trace sees cycles, so RFD 3's first reason is incomplete.
+- **bahr-asynchronous-modal-frp**. Patrick Bahr, Rasmus Ejlers Møgelberg. *Asynchronous Modal FRP*. ICFP 2023. Core, read in full. One input on one channel per step, with clocks per delayed value; runs only what an output's clock reaches, and statically bounds dependencies through switching.
+- **bahr-diamonds-are-not-forever**. Patrick Bahr, Christian Uldal Graulund, Rasmus Ejlers Møgelberg. *Diamonds are not forever: liveness in reactive programming with guarded recursion*. POPL 2021 (PACMPL 5, POPL). Supporting, read in part. A guarded fixed point can't promise that something happens; the formal form of F22.
+- **bahr-modal-frp-for-all**. Patrick Bahr. *Modal FRP for all: Functional reactive programming without space leaks in Haskell*. JFP 2022. Core, read in full. Rattus: what a type-checked capture rule costs a host language, and the clearest statement that explicit leaks stay legal.
+- **bahr-simply-ratt-a-fitch-style-modal-calculus-for**. Patrick Bahr, Christian Uldal Graulund, Rasmus Ejlers Møgelberg. *Simply RaTT: A Fitch-style Modal Calculus for Reactive Programming Without Space Leaks*. ICFP 2019. Core, read in full. A closure that captures a delayed location and runs a step later is F62, caught by a type rule.
+- **bainomugisha-a-survey-on-reactive-programming**. Engineer Bainomugisha, Andoni Lombide Carreton, Tom van Cutsem, Stijn Mostinckx, Wolfgang de Meuter. *A Survey on Reactive Programming*. ACM Computing Surveys 2013. Supporting, read in part. The standard taxonomy; which systems let glitches through.
+- **barenz-rhine-frp-with-type-level-clocks**. Manuel Bärenz, Ivan Perez. *Rhine: FRP with Type-Level Clocks*. Haskell Symposium 2018. Supporting, read in part. Simultaneity only on one clock, schedules and resampling buffers: vocabulary for input slots and the pump.
+- **bender-a-new-approach-to-incremental-cycle-detection-and**. Michael A. Bender, Jeremy T. Fineman, Seth Gilbert, Robert E. Tarjan. *A New Approach to Incremental Cycle Detection and Related Problems*. ACM TALG 2016. Core, read in full. Weak topological levels paid for by raising them; correct under deletions with no useful bound.
+- **bernardy-linear-haskell-practical-linearity-in-a-higher-order**. Jean-Philippe Bernardy, Mathieu Boespflug, Ryan R. Newton, Simon Peyton Jones, Arnaud Spiwack. *Linear Haskell: Practical Linearity in a Higher-Order Polymorphic Language*. POPL 2018. Supporting, read in part. Linear means exactly once, and Rust is a uniqueness language; the industrial case for one consumer per stream.
+- **berry-the-constructive-semantics-of-pure-esterel**. Gérard Berry. *The Constructive Semantics of Pure Esterel*. Draft book 2002. Core, read in full. Constructiveness, the class acyclicity undercuts; Bough's rule is Esterel v4's. Incarnations are the nearest model for creation at a child instant.
+- **biernacki-clock-directed-modular-code-generation-for-synchronous-data**. Dariusz Biernacki, Jean-Louis Colaço, Grégoire Hamon, Marc Pouzet. *Clock-directed Modular Code Generation for Synchronous Data-flow Languages*. LCTES 2008. Core, read in full. What Bough's rejected static engine would be; modular compilation keeps code linear in the source, unlike F36.
+- **blackheath-functional-reactive-programming**. Stephen Blackheath, Anthony Jones. *Functional Reactive Programming*. Manning 2016. Core, read in part. The semantics Bough is held to. States its creation rule for four primitives only, hides steps for continuous time, and argues for threads.
+- **bourke-a-formally-verified-compiler-for-lustre**. Timothy Bourke, Lélio Brun, Pierre-Évariste Dagand, Xavier Leroy, Marc Pouzet, Lionel Rieg. *A Formally Verified Compiler for Lustre*. PLDI 2017. Core, read in full. Vélus: what mechanised fidelity to a dataflow semantics costs, and validation in place of proof for a scheduler.
+- **budiu-dbsp-automatic-incremental-view-maintenance-for-rich-query**. Mihai Budiu, Tej Chajed, Frank McSherry, Leonid Ryzhyk, Val Tannen. *DBSP: Automatic Incremental View Maintenance for Rich Query Languages*. VLDB 2023. Core, read in full. Integration and differentiation over an abelian group; which operators are free, and a strictness rule for feedback that is Bough's loop rule.
+- **cai-a-theory-of-changes-for-higher-order-languages**. Yufei Cai, Paolo G. Giarrusso, Tillmann Rendel, Klaus Ostermann. *A Theory of Changes for Higher-Order Languages: Incrementalizing λ-Calculi by Static Differentiation*. PLDI 2014. Supporting, read in full. Change structures with a `Replace` fallback: a cell of a collection is the trivial one, and the contract a patch cell should take.
+- **caspi-synchronous-kahn-networks**. Paul Caspi, Marc Pouzet. *Synchronous Kahn networks*. ICFP 1996. Supporting, read in full. Guardedness as the whole deadlock check, and dynamic networks under a synchronous semantics losing their memory bound.
+- **cave-fair-reactive-programming**. Andrew Cave, Francisco Ferreira, Prakash Panangaden, Brigitte Pientka. *Fair reactive programming*. POPL 2014. Supporting, read in part. The may and must split from the other side; the history of `import` and why it was removed to manage space.
+- **claessen-quickcheck-a-lightweight-tool-for-random-testing-of**. Koen Claessen, John Hughes. *QuickCheck: A Lightweight Tool for Random Testing of Haskell Programs*. ICFP 2000. Core, read in full. The method of RFD 1's policy: executable specifications as oracles, distribution as the tester's job.
+- **cooper-embedding-dynamic-dataflow-in-a-call-by-value**. Gregory H. Cooper, Shriram Krishnamurthi. *Embedding Dynamic Dataflow in a Call-by-Value Language*. ESOP 2006. Core, read in full. FrTime's height-ordered queue, its repair when a branch is taller, and deletion of what a switched-out branch built.
+- **cooper-integrating-dataflow-evaluation-into-a-practical-higher-order**. Gregory H. Cooper. *Integrating Dataflow Evaluation into a Practical Higher-Order Call-by-Value Language*. PhD thesis, Brown University 2008. Supporting, read in part. FrTime in full: a consistency proof with control edges, weak edges that aren't enough, lowering as fusion, lifted collections.
+- **coutts-stream-fusion-from-lists-to-streams-to-nothing**. Duncan Coutts, Roman Leshchinskiy, Don Stewart. *Stream Fusion: From Lists to Streams to Nothing at All*. ICFP 2007. Core, read in full. The fusion Bough's chains do, and its price in code size.
+- **cuoq-modular-causality-in-a-synchronous-stream-language**. Pascal Cuoq, Marc Pouzet. *Modular Causality in a Synchronous Stream Language*. ESOP 2001. Core, read in full. Rows of recursion variables: the modular static loop check, and its false rejections.
+- **czaplicki-a-farewell-to-frp**. Evan Czaplicki. *A Farewell to FRP*. Blog post 2016. Supporting, read in full. Elm dropped signals for learnability, not semantics or speed.
+- **czaplicki-asynchronous-functional-reactive-programming-for-guis**. Evan Czaplicki, Stephen Chong. *Asynchronous Functional Reactive Programming for GUIs*. PLDI 2013. Core, read in full. Elm bans signals of signals over history, keeps a total event order, and relaxes it only with `async`.
+- **drechsler-distributed-rescala-an-update-algorithm-for-distributed-reactive**. Joscha Drechsler, Guido Salvaneschi, Ragnar Mogk, Mira Mezini. *Distributed REScala: An Update Algorithm for Distributed Reactive Programming*. OOPSLA 2014. Core, read in full. Glitch freedom across hosts needs a coordinator at admission; observer-linked networks aren't glitch-free as a whole.
+- **drechsler-thread-safe-reactive-programming**. Joscha Drechsler, Ragnar Mogk, Guido Salvaneschi, Mira Mezini. *Thread-Safe Reactive Programming*. OOPSLA 2018. Core, read in full. The one measurement of making propagation concurrent; its uncontended-lock claim is asserted, not measured.
+- **elliott-denotational-design-with-type-class-morphisms**. Conal Elliott. *Denotational design with type class morphisms (extended version)*. LambdaPix technical report 2009-01. Supporting, read in part. The principle behind fidelity: equal meanings must be indistinguishable, which makes `steps` a leak for a `T → A` model.
+- **elliott-push-pull-functional-reactive-programming**. Conal Elliott. *Push-Pull Functional Reactive Programming*. Haskell Symposium 2009. Core, read in full. The model App. E is based on; keeps simultaneous occurrences and replays inner events at generation time, the counter-position to F89's cut.
+- **gemunde-clock-refinement-in-imperative-synchronous-languages**. Mike Gemünde, Jens Brandt, Klaus Schneider. *Clock refinement in imperative synchronous languages*. EURASIP Journal on Embedded Systems 2013. Core, read in full. Substeps inside a step on a static clock tree; on a close reading it sides with the text's F89 replay.
+- **gerard-a-modular-memory-optimization-for-synchronous-data-flow**. Léonard Gérard, Adrien Guatto, Cédric Pasteur, Marc Pouzet. *A Modular Memory Optimization for Synchronous Data-Flow Languages: Application to Arrays in a Lustre Compiler*. LCTES 2012. Core, read in full. Evidence that a static engine grows into an optimising compiler.
+- **goregaokar-a-tour-of-safe-tracing-gc-designs-in**. Manish Goregaokar. *A Tour of Safe Tracing GC Designs in Rust*. Blog post 2021. Core, read in full. The Rust GC design space; every `Trace` there is `unsafe` because every design names objects by pointer.
+- **haeupler-incremental-cycle-detection-topological-ordering-and-strong-component**. Bernhard Haeupler, Telikepalli Kavitha, Rogers Mathew, Siddhartha Sen, Robert E. Tarjan. *Incremental Cycle Detection, Topological Ordering, and Strong Component Maintenance*. ACM TALG 2012. Core, read in full. Every efficient cycle detector keeps an order; limited search is Bough's walk bounded by it, and deletions void the bounds.
+- **halbwachs-the-synchronous-data-flow-programming-language-lustre**. N. Halbwachs, P. Caspi, P. Raymond, D. Pilaud. *The synchronous data flow programming language LUSTRE*. Proceedings of the IEEE 1991. Supporting, read in part. Every cycle through a `pre`, and false cycles refused knowingly: Bough's loop rule in 1991.
+- **hammer-adapton-composable-demand-driven-incremental-computation**. Matthew A. Hammer, Khoo Yit Phang, Michael Hicks, Jeffrey S. Foster. *Adapton: Composable, Demand-Driven Incremental Computation*. PLDI 2014. Core, read in full. Demand-driven repair: laziness wins when little is demanded and loses when all of it is.
+- **hammer-memory-management-for-self-adjusting-computation**. Matthew A. Hammer, Umut A. Acar. *Memory Management for Self-Adjusting Computation*. ISMM 2008. Core, read in full. Tracing costs 1/(1 − f) and a large live graph is pessimal; owner-based reclamation needs a theorem Bough's semantics lacks.
+- **helbling-juniper-a-functional-reactive-programming-language-for-the**. Caleb Helbling, Samuel Z. Guyer. *Juniper: A Functional Reactive Programming Language for the Arduino*. FARM 2016. Core, read in full. The one embedded FRP with a dynamic graph, and no memory bound; its case against tracing is asserted.
+- **hydro-dfir**. Hydro Project. *DFIR*. Hydro documentation. Supporting, read in full. DFIR's introduction page only; the crate at source answers the questions it can't.
+- **ischard-a-mechanized-formalization-of-an-frp-language-with**. Jordan Ischard, Frédéric Dabrowski, Jules Chouquet, Frédéric Loulergue. *A Mechanized Formalization of an FRP Language with Effects*. SAC 2025. Supporting, read in full. A price point: mechanising a small switching-free arrow language took 5 kLOC and found broken proof sketches.
+- **jeffrey-josephine-using-javascript-to-safely-manage-the-lifetimes**. Alan Jeffrey. *Josephine: Using JavaScript to safely manage the lifetimes of Rust data*. arXiv 2018. Supporting, read in full. Under-approximate rooting is use-after-free, over-approximate is a leak: F62 and F63.
+- **jeffrey-ltl-types-frp**. Alan Jeffrey. *LTL types FRP: Linear-time Temporal Logic Propositions as Types, Proofs as Functional Reactive Programs*. PLPV 2012. Supporting, read in part. Decoupled functions as LTL's constrains; fixed points need a well-ordering, which `[Int]` lacks.
+- **kaiabachev-e-frp-with-priorities**. Roumen Kaiabachev, Walid Taha, Angela Zhu, Jun Inoue. *E-FRP With Priorities*. Rice University technical report (extended version of the EMSOFT 2007 paper). Core, read in full. Pre-emption by abort and restart, with a permutation theorem; the latency cost of Bough's non-pre-emptive drain.
+- **keating-this-is-driving-me-loopy**. Finnbar Keating, Michael B. Gale. *This Is Driving Me Loopy: Efficient Loops in Arrowized Functional Reactive Programs*. Haskell Symposium 2023. Core, read in full. No direct dependency cycle means a static order exists, with opaque functions: acyclicity is exactly right there.
+- **kiselyov-stream-fusion-to-completeness**. Oleg Kiselyov, Aggelos Biboudis, Nick Palladinos, Yannis Smaragdakis. *Stream Fusion, to Completeness*. POPL 2017. Core, read in full. Fusion by staging, what's hard (zip, nesting), and the risk of trusting a general-purpose compiler.
+- **krishnaswami-higher-order-functional-reactive-programming-in-bounded-space**. Neelakantan R. Krishnaswami, Nick Benton, Jan Hoffmann. *Higher-order functional reactive programming in bounded space*. POPL 2012. Core, read in full. Affine allocation permissions bound the graph statically; too precise to use, by its authors' own later account.
+- **krishnaswami-higher-order-functional-reactive-programming-without-spacetime-leaks**. Neelakantan R. Krishnaswami. *Higher-order functional reactive programming without spacetime leaks*. ICFP 2013. Core, read in full. Stability, and the machine that deletes the past, with types as guard rails; persistent two-way nodes defeat reachability GC.
+- **krishnaswami-ultrametric-semantics-of-reactive-programs**. Neelakantan R. Krishnaswami, Nick Benton. *Ultrametric Semantics of Reactive Programs*. LICS 2011. Supporting, read in part. Guarded definitions have unique fixed points by Banach's theorem, which is F1's status.
+- **kyren-gc-arena**. kyren. *gc-arena*. Repository README. Supporting, read in full. Mutation xor collection, allocation-debt pacing, and a branded pointer no closure can capture.
+- **laddad-flo-a-semantic-foundation-for-progressive-stream-processing**. Shadaj Laddad, Alvin Cheung, Joseph M. Hellerstein, Mae Milano. *Flo: a Semantic Foundation for Progressive Stream Processing*. POPL 2025. Core, read in full. Eager execution as the law patch composition must obey; no global instant.
+- **lee-operational-semantics-of-hybrid-systems**. Edward A. Lee, Haiyang Zheng. *Operational Semantics of Hybrid Systems*. HSCC 2005. Core, read in full. Superdense time, the depth-two case of `T = [Int]`, and non-Zeno as the side condition F22 breaks.
+- **lee-the-problem-with-threads**. Edward A. Lee. *The Problem with Threads*. IEEE Computer 2006. Core, read in full. Deterministic ends by deterministic means; the handle queue is the one nondeterministic merge.
+- **liu-causal-commutative-arrows-and-their-optimization**. Hai Liu, Eric Cheng, Paul Hudak. *Causal commutative arrows and their optimization*. ICFP 2009. Core, read in full. Any switch-free arrow program normalizes to one loop, one function and one state; no compile-time cost reported.
+- **liu-plugging-a-space-leak-with-an-arrow**. Hai Liu, Paul Hudak. *Plugging a Space Leak with an Arrow*. ENTCS 2007. Supporting, read in part. A laziness leak Bough's loops through a node can't have: a feedback combinator must reuse its node.
+- **maier-deprecating-the-observer-pattern-with-scala-react**. Ingo Maier, Martin Odersky. *Deprecating the Observer Pattern with Scala.React*. EPFL technical report 2012. Core, read in full. Levels with abort and hoist under dynamic dependencies, which forces side-effect-free nodes.
+- **maier-higher-order-reactive-programming-with-incremental-lists**. Ingo Maier, Martin Odersky. *Higher-Order Reactive Programming with Incremental Lists*. ECOOP 2013 (LNCS 7920). Core, read in full. Reactive sequences carrying Ins and Rem deltas: the main source for open question 9.
+- **maier-reactive-programming-abstractions-for-complex-event-logic-and**. Ingo Maier. *Reactive Programming Abstractions for Complex Event Logic and Dynamic Data Dependencies*. PhD thesis, EPFL, no. 5805. Supporting, read in part. Scala.React at thesis length: proofs of level-ordered propagation, pulse monoids, coalesced turns and domains.
+- **margara-on-the-semantics-of-distributed-reactive-programming**. Alessandro Margara, Guido Salvaneschi. *On the Semantics of Distributed Reactive Programming: the Cost of Consistency*. IEEE TSE 2018. Core, read in full. Consistency levels from FIFO to atomic, and the cost of each, all of it distributed.
+- **marshall-linearity-and-uniqueness**. Danielle Marshall, Michael Vollmer, Dominic Orchard. *Linearity and Uniqueness: An Entente Cordiale*. ESOP 2022. Supporting, read in part. Which of the two Bough's streams are: unique, with `share` as a one-way borrow.
+- **mcsherry-differential-dataflow**. Frank McSherry, Derek G. Murray, Rebecca Isaacs, Michael Isard. *Differential dataflow*. CIDR 2013. Core, read in full. Collections as multisets over partially ordered versions; which operators keep traces.
+- **meyerovich-flapjax-a-programming-language-for-ajax-applications**. Leo A. Meyerovich, Arjun Guha, Jacob Baskin, Gregory H. Cooper, Michael Greenberg, Aleks Bromfield, Shriram Krishnamurthi. *Flapjax: A Programming Language for Ajax Applications*. OOPSLA 2009. Supporting, read in part. Ranks without a stated repair, and a detach flag that stops dropped subgraphs without a collection.
+- **milomg-super-charging-fine-grained-reactive-performance**. milomg. *Super Charging Fine-Grained Reactive Performance*. Blog post 2022. Core, read in full. Three glitch-free designs for signals; the colouring is Bough's mark, then pull.
+- **minsky-introducing-incremental**. Yaron Minsky. *Introducing Incremental*. Jane Street Tech Blog, 18 July 2015. Core, read in full. Introduces Incremental and says nothing about heights; the source is its code.
+- **mokhov-build-systems-a-la-carte**. Andrey Mokhov, Neil Mitchell, Simon Peyton Jones. *Build Systems à la Carte*. ICFP 2018. Core, read in full. Topological, restarting and suspending schedulers: where RFD 5's design sits.
+- **murray-naiad-a-timely-dataflow-system**. Derek G. Murray, Frank McSherry, Rebecca Isaacs, Michael Isard, Paul Barham, Martín Abadi. *Naiad: A Timely Dataflow System*. SOSP 2013. Core, read in full. Nested timestamps in production; a different semantics from `T = [Int]`.
+- **nielsen-property-based-testing-for-asynchronous-functional-reactive-programming**. Christian Emil Nielsen, Mathias Faber Kristiansen, Patrick Bahr. *Property-Based Testing for Asynchronous Functional Reactive Programming Using Linear Temporal Logic*. PADL 2026. Core, read in full. LTL properties over clocked traces; only safety can fail on a finite trace.
+- **nilsson-functional-reactive-programming-continued**. Henrik Nilsson, Antony Courtney, John Peterson. *Functional Reactive Programming, Continued*. Haskell Workshop 2002. Supporting, read in part. Yampa: second-class signals, both switch timings, and switched-out signal functions as frozen continuations.
+- **oeyen-reactive-programming-without-functions**. Bjarno Oeyen, Joeri De Koster, Wolfgang De Meuter. *Reactive Programming without Functions*. Programming 2024. Supporting, read in part. Strongly, eventually and weakly reactive; Bough with `construct` is weakly reactive.
+- **ousterhout-why-threads-are-a-bad-idea-for-most**. John Ousterhout. *Why Threads Are A Bad Idea (for most purposes)*. USENIX ATC invited talk 1996. Core, read in full. Asserts events are faster, with no data; its better slide is that callbacks don't work with locks.
+- **patai-efficient-and-compositional-higher-order-streams**. Gergely Patai. *Efficient and Compositional Higher-Order Streams*. WFLP 2010 (LNCS 6559, 2011). Core, read in full. Start-time generators, a creation-time semantics, and F66 as its own biggest problem.
+- **pearce-a-batch-algorithm-for-maintaining-a-topological-order**. David J. Pearce, Paul H. J. Kelly. *A Batch Algorithm for Maintaining a Topological Order*. ACSC 2010 (CRPIT Vol. 102). Core, read in full. Batch insertion pays only for large batches.
+- **pearce-a-dynamic-topological-sort-algorithm-for-directed-acyclic**. David J. Pearce, Paul H. J. Kelly. *A Dynamic Topological Sort Algorithm for Directed Acyclic Graphs*. ACM Journal of Experimental Algorithmics, Vol. 11, Article No. 1.7. Core, read in full. One integer per node and a search of the affected region; the probes found it loses when inners are built in the instant.
+- **perez-testing-and-debugging-functional-reactive-programming**. Ivan Perez, Henrik Nilsson. *Testing and Debugging Functional Reactive Programming*. ICFP 2017 (Proc. ACM Program. Lang. 1, ICFP). Core, read in full. Record and replay, and bugs that appear only on long traces.
+- **pike-copilot-a-hard-real-time-runtime-monitor**. Lee Pike, Alwyn Goodloe, Robin Morisset, Sebastian Niller. *Copilot: A Hard Real-Time Runtime Monitor*. RV 2010. Core, read in full. Constant space by forbidding anonymous streams; a sufficient, not necessary, loop condition.
+- **pouzet-modular-static-scheduling-of-synchronous-data-flow-networks**. Marc Pouzet, Pascal Raymond. *Modular Static Scheduling of Synchronous Data-flow Networks: An efficient symbolic representation*. EMSOFT 2009. Core, read in full. Input-to-output summaries of subgraphs; the probes found they never beat the walk on Bough's shape.
+- **reflex-reflex-class**. Ryan Trinkle. *Reflex.Class: the Reflex FRP interface*. Hackage documentation. Core, read in full. The richest production switching API; the reason for the old stream at the switch instant, and `Dynamic`'s rule for observing steps.
+- **rust-incremental-compilation-in-detail**. The Rust compiler team. *Incremental compilation in detail*. rustc dev guide. Supporting, read in full. rustc's red-green marking: pull with cut-off, and fingerprinting as the main cost.
+- **santanna-structured-synchronous-reactive-programming-with-ceu**. Francisco Sant' Anna, Roberto Ierusalimschy, Noemi Rodriguez. *Structured Synchronous Reactive Programming with Céu*. Modularity 2015. Core, read in full. One reaction at a time, and bounded dynamic creation by declared pools with lexical lifetimes.
+- **sawada-emfrp-a-functional-reactive-programming-language-for-small**. Kensuke Sawada, Takuo Watanabe. *Emfrp: A Functional Reactive Programming Language for Small-Scale Embedded Systems*. Modularity 2016 companion. Core, read in full. A static embedded FRP that still collects between iterations.
+- **schneider-causality-analysis-of-synchronous-programs-with-delayed-actions**. K. Schneider, J. Brandt, T. Schuele. *Causality Analysis of Synchronous Programs with Delayed Actions*. CASES 2004. Core, read in full. A delay moves a cycle into the next step, it doesn't remove it; causality is syntactic.
+- **scott-trustworthy-runtime-verification-via-bisimulation-experience-report**. Ryan G. Scott, Ivan Perez, Alwyn E. Goodloe, Mike Dodds, Robert Dockins. *Trustworthy Runtime Verification via Bisimulation (Extended Experience Report)*. arXiv:2607.01363 (extended version of the ICFP 2023 experience report). Core, read in full. Per-program bisimulation, a year's work, and the admission that a re-encoded semantics is trusted code.
+- **sculthorpe-keeping-calm-in-the-face-of-change**. Neil Sculthorpe, Henrik Nilsson. *Keeping Calm in the Face of Change: Towards Optimisation of FRP by Reasoning about Change*. Higher-Order and Symbolic Computation 2010. Supporting, read in part. The start-time argument in full, `runningInEB`'s cut, and when a step signal changes.
+- **sculthorpe-safe-functional-reactive-programming-through-dependent-types**. Neil Sculthorpe, Henrik Nilsson. *Safe Functional Reactive Programming through Dependent Types*. ICFP 2009. Core, read in full. Decoupledness in the type, and local time zero for a switched-in residual.
+- **shibanai-distributed-functional-reactive-programming-on-actor-based-runtime**. Kazuhiro Shibanai, Takuo Watanabe. *Distributed Functional Reactive Programming on Actor-Based Runtime*. AGERE 2018. Supporting, read in full. Independent sources need one order; source unification is Bough's pump.
+- **shiple-constructive-analysis-of-cyclic-circuits**. Thomas R. Shiple, Gérard Berry, Hervé Touati. *Constructive Analysis of Cyclic Circuits*. ED&TC 1996. Core, read in full. The algorithm behind constructiveness, and why it needs reachability over states.
+- **tc39-javascript-signals-standard-proposal**. Rob Eisenberg, Daniel Ehrenberg. *JavaScript Signals standard proposal*. TC39 proposal. Core, read in full. Push-then-pull colouring, glitch-free because signals are lossy, and unsafe features fenced by name.
+- **vanderploeg-monadic-functional-reactive-programming**. Atze van der Ploeg. *Monadic Functional Reactive Programming*. Haskell Symposium 2013. Supporting, read in part. Emissions as the semantics, so observing steps is primitive; weak references a non-solution.
+- **vanderploeg-practical-principled-frp**. Atze van der Ploeg, Koen Claessen. *Practical Principled FRP: Forget the past, change the future, FRPNow!*. ICFP 2015. Core, read in full. Forgetfulness: a combinator taking its start from the past is inherently leaky. The reason F89's cut holds.
+- **vonbehren-why-events-are-a-bad-idea-for-high**. Rob von Behren, Jeremy Condit, Eric Brewer. *Why Events Are A Bad Idea (for high-concurrency servers)*. HotOS 2003. Supporting, read in full. The rebuttal, about independent server requests; it bears on Bough's I/O side, not the engine.
+- **vonhanxleden-sccharts-sequentially-constructive-statecharts-for-safety-critical-applications**. Reinhard von Hanxleden, Björn Duderstadt, Christian Motika, Steven Smyth, Michael Mendler, Joaquín Aguado, Stephen Mercer, Owen O'Brien. *SCCharts: sequentially constructive statecharts for safety-critical applications: HW/SW-synthesis for a conservative extension of synchronous statecharts*. PLDI 2014. Supporting, read in part. Whole-program evaluation beat active-parts-only on speed and jitter for small models.
+- **vonhanxleden-sequentially-constructive-concurrency-a-conservative-extension-of-the**. Reinhard von Hanxleden, Michael Mendler, Joaquín Aguado, Björn Duderstadt, Insa Fuhrmann, Christian Motika, Stephen Mercer, Owen O'Brien, Partha Roop. *Sequentially Constructive Concurrency—A Conservative Extension of the Synchronous Model of Computation*. ACM TECS 2014. Core, read in full. Program order widens constructiveness, and Bough has none; names "reads before writes" and relative writes.
+- **wan-event-driven-frp**. Zhanyong Wan, Walid Taha, Paul Hudak. *Event-Driven FRP*. PADL 2002. Core, read in full. Events compiled to interrupt handlers, never simultaneous: the ancestor of input slots.
+- **wan-real-time-frp**. Zhanyong Wan, Walid Taha, Paul Hudak. *Real-Time FRP*. ICFP 2001. Core, read in full. Bounded space and time per step, bought by discarding the old mode at a switch.
+- **withoutboats-shifgrethor-i-garbage-collection-as-a-rust-library**. withoutboats. *Shifgrethor I: Garbage collection as a Rust library*. Blog post 2018. Core, read in full. An overview; freedom of reference is what index handles give up.
+- **yokoyama-switching-mechanism-for-update-timing-of-time-varying**. Akihiko Yokoyama, Sosuke Moriguchi, Takuo Watanabe. *Switching Mechanism for Update Timing of Time-Varying Values in an FRP Language for Small-Scale Embedded Systems*. ICSCA 2024. Supporting, read in full. The embedded line moved from merging same-time events to ordering them, and collapses bursts to a bit.

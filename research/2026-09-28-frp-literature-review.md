@@ -78,10 +78,11 @@ wrong. RFDs 3 and 5 gate the build, so they come first.
 **RFD 1.**
 
 - *F89 is a semantics change.* The text states its creation rule for
-  four primitives, not `Split`. Forgetfulness is the principled reason for the cut (FRPNow's Lemmas 1
-  and 2), and it covers F6 too. The probe finds the text leaking at every
-  F89-shaped node and the cut at none, and one rule, a creation time on
-  state-holders and time-movers, never differs from a cut on everything.
+  four primitives, not `Split`. Forgetfulness is the principled reason
+  for the cut (FRPNow's Lemmas 1 and 2), and it covers F6 too. The probe
+  finds the text leaking at every F89-shaped node and the cut at none,
+  and one rule, a creation time on state-holders and time-movers, never
+  differs from a cut on everything.
   Leaning: restate the exceptions as "the text is leaky; Bough is
   forgetful".
 - The oracle reaches the unique fixed point of a guarded system, by
@@ -97,25 +98,26 @@ wrong. RFDs 3 and 5 gate the build, so they come first.
 rule, sound and knowingly incomplete. The census of refused loops finds
 nothing a program would want that a switch can't write. F3 needs `steps`,
 so questions 3 and 10 are one question. A one-bit decoupledness mark
-refuses F3 at compile time for 2% to 16% more compile time, but every mark
-design accepts a loop smuggled through a switch, so the run-time check at
-moves stays. Leaning: keep plain acyclicity; hold the mark.
+refuses F3 at compile time for 2% to 16% more compile time, but every
+mark design accepts a loop smuggled through a switch, so the run-time
+check at moves stays. Leaning: keep plain acyclicity; hold the mark.
 
 **RFD 4.** Streams are affine, "at most one consumer", not linear.
 Erasing a fused chain at its materializer builds F36's shapes in a third
 of the time for 2% an event. For cells of collections, a patch-carrying
 cell wins from small sizes, its data structure matters most, and Z-set
-composition fails when two sources upsert one key. Leaning: erase by default; a patch cell over Cai's change structure in
-core, with counted B-trees and fused upserts in a library. The first
-leaning rests on a generated program, not a real one.
+composition fails when two sources upsert one key. Leaning: erase by
+default; a patch cell over Cai's change structure in core, with counted
+B-trees and fused upserts in a library. The first leaning rests on a
+generated program, not a real one.
 
 **RFD 6.** *No source supports "threading costs overhead".* An
-uncontended `Mutex` costs 1% to 5% a unit; RFD 6's own queue costs 11% to
-15%. Contended, the lock loses more. Drechsler et al.'s 20% to 25% for concurrent propagation is not
-reproduced, and their "uncontended lock is free" is asserted. The Sodium
-book argues *for* threads. What the sources do support: no listeners
-under a lock, one order of units the host can see. Leaning: keep the single thread, change the
-reasons.
+uncontended `Mutex` costs 1% to 5% a unit; RFD 6's own queue costs 11%
+to 15%. Contended, the lock loses more. Drechsler et al.'s 20% to 25% for
+concurrent propagation is not reproduced, and their "uncontended lock is
+free" is asserted. The Sodium book argues *for* threads. What the sources
+do support: no listeners under a lock, one order of units the host can
+see. Leaning: keep the single thread, change the reasons.
 
 **RFD 7.** Every bounded system compiles a static graph; the embedded
 line moved from merging simultaneous events to ordering them; nobody
@@ -1175,9 +1177,9 @@ crossover lower; wall-clock is what counts here.
   On the 9,997-node UI shape the bucket queue costs 1.25 of the mark
   when every marked node fires, 1.15 at 10% quiet, 1.02 at 26% quiet,
   0.79 at 50% and 0.21 at 89%. A binary heap costs 2.58 when everything
-  fires and breaks even between 45% and 75% quiet. On the frame shape the bucket
-  queue costs 1.09 at 64 inputs and 0.94 at 1,024, and the heap 1.50 at
-  both. So the log factor is real for a binary heap and small for a
+  fires and breaks even between 45% and 75% quiet. On the frame shape,
+  where everything fires, the bucket queue costs 1.09 at a width of 64
+  entities and 0.94 at 1,024, and the heap 1.50 at both. So the log factor is real for a binary heap and small for a
   bucket queue. In instructions the mark was about 100 of every 130
   instructions a marked node costs.
 - **Heights raised at link time, Incremental's way, under switching**

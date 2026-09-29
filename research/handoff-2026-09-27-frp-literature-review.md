@@ -2217,3 +2217,86 @@ The wall-clock re-runs:
 
 ➡️ **(a)** The map rows are the only ones known to vary with the seed,
 and three runs of one bench add about twenty minutes.
+
+### 2026-09-29 08:50 -07:00, phase 8 stopped again: the wall-clock rule
+
+Zefira answered (a) to all three questions at 06:30, and said the
+machine was idle. Done since:
+
+- **The must-read's two findings are fixed** (`fb30418`, `5b45917`): the
+  overhead reason is the no-std handoff's, and RFD 6's own, the host
+  owns the schedule, stands; every bounded system compiles a static graph
+  or bounds creation up front. Other wording was trimmed to keep 1,000
+  words, and the verifier found both fixes clean.
+- **The wall-clock re-run ran** 06:32 to 08:27, every step without
+  failure: a copy of `scripts/phase6.sh` from a scratch worktree at
+  `daa6419`, so `experiments` is untouched, with the patch-cell bench
+  three times. Boost stayed off and the governor `performance`
+  throughout; the container can't read the tuned profile, so the log
+  doesn't claim one. Nothing else ran but one read-only verifier for a
+  few minutes. The script, results, log and Criterion samples are in
+  `research-scratch-space/verify/wallclock/`.
+- **A fresh verifier compared** every wall-clock number the note quotes
+  with the re-run, 168 numbers and derived claims. Its report is
+  `verify/wallclock/report.md`.
+
+What the comparison found:
+
+- **92 reproduce by the handoff's rule, overlapping intervals. 76
+  don't.** Criterion's intervals are 0.2% to 0.5% wide, and this machine
+  moves 1% to 5% from one day to the next, so an interval rarely
+  overlaps across days. For 69 of the 76 the note's claim still holds,
+  and for about 20 its rounded figure doesn't change.
+- **Six claims don't hold as worded:** no-sort's "0.73 to 1.13" on
+  cycles is 0.61 to 1.24 now, beating the walk by 40% on two cycle
+  shapes, whose rows swing by up to 40% between runs; the flat `Vec`
+  delta isn't best for appends at every size in one of three runs; the
+  fully lazy map loses at 10 entries in one of three runs, a
+  hash-seed row; the barriers' fast path is 17% to 53% of a unit, not
+  18% to 30%, already flagged for a recheck; the lock changes threads in
+  1.2% of units, not under 1%; and the bench's cross-complex wake is
+  1.87 µs, not 1.65.
+- **The lock's tail figures are single draws:** the longest wait moved
+  from 165 µs at 2 threads to 224 µs at 8, and the longest run by one
+  thread from 11,087 units to 451. The median and p99 story holds.
+- **Compile times and the timed binary reproduce,** within 4%.
+- **No must-read finding changes.** Every number it quotes holds as
+  worded, the rounding included.
+
+Nothing in the note is changed by this yet. The handoff says to stop if
+a number still doesn't reproduce after one re-run, and the question is
+whether a third run would tell anything.
+
+#### Context
+
+Phase 8 re-ran every wall-clock bench of the FRP literature review on
+the idle machine, from the same code as phase 6, and compared it with
+the numbers the note quotes. The handoff's rule is that a wall-clock
+ratio reproduces if its interval overlaps the quoted one. 92 of 168
+numbers do. The other 76 miss by 1% to 5%, because Criterion's
+intervals, a few tenths of a percent wide, only measure the noise within
+one run, not the drift between days. 69 of the 76 still support what
+the note says. Six claims fail as worded, and one bench's tail figures
+don't repeat. None of it changes the must-read. The handoff says to
+stop when a number still doesn't reproduce after one re-run.
+
+### ❓ **What "reproduces" means for wall-clock**
+
+Overlapping intervals fail across days on this machine even when
+nothing has changed. What should the rule be?
+
+What "reproduces" means for wall-clock:
+
+- **(a)** A ratio reproduces if the re-run is within 5% of it and
+  supports the claim the note makes with it. The note's header says
+  its wall-clock ratios are good to a few percent, measured on two days.
+  The six failing claims are reworded to what both runs support, the
+  noisy cycle rows and single-run tail figures are marked as such, and
+  there's no third run. Verification then finishes in this session.
+- **(b)** Keep the handoff's rule. The benches behind the 76 misses run
+  once more, about two hours on the idle machine, and whatever still
+  misses stops the phase again.
+
+➡️ **(a)** A third run measures the drift again and will miss the same
+way. What Zefira needs to trust is the claims, and the drift is small
+next to every margin a leaning turns on.

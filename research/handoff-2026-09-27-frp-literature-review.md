@@ -2059,3 +2059,160 @@ Zefira chose (a). She starts phase 8 in a fresh session once her weekly
 usage resets, in a few hours. It checks claims against pages and re-runs
 the instruction counts first, and asks for the idle machine only when it
 reaches the wall-clock benches. Nothing else is open.
+
+### 2026-09-29 06:05 -07:00, phase 8 stopped: two must-read fixes and the idle machine
+
+Phase 8 ran from 03:28. The claims check and the instruction-count
+re-runs are done; the wall-clock re-runs aren't started. It stops on
+three things: two fixes that would change a must-read finding, the
+handoff's stop, and the idle machine the wall-clock needs. The note's
+header says where verification stands.
+
+How it ran. The brief every verifier got is
+`research-scratch-space/verify/brief.md`, with `claims-task.md` and
+`probes-task.md` beside it. Each verifier was a fresh sub-agent given the
+note, `literature`, `experiments`, Bough's notes and the crate clones,
+and none of the drafting. At most two ran at once: the probe verifier
+throughout, and the claims verifiers one at a time.
+
+- **Claims, in seven slices:** semantics with verification and testing;
+  switching with loops; scheduling; memory; values with concurrency;
+  embedded with the lineage map and crate table; and last the
+  bibliography, with the must-read checked against the corrected
+  sections. About 1,600 claims, 99 errors: 27 overstated, 14 misread, 12
+  unsupported, 11 wrong pages, 11 wrong numbers, 10 metadata (8 missing
+  years), 9 internal, 3 misattributed, 2 missing provenance lines. None
+  of the numbers the must-read quotes was wrong. I fixed each slice's
+  errors, and the verifier that found them re-checked what changed until
+  it was clean. The fixes brought in five more errors, all caught that
+  way. Commits `3c0be00` to `a89bb57` on this branch.
+- **Probes:** all 66 result files that don't need wall-clock, re-run
+  from a scratch clone, each at the commit it cites. 62 reproduce, every
+  instruction count within 1%; `same_key_conflict` passes at `daa6419`.
+  The re-runs and scripts are in `research-scratch-space/verify/probes/`.
+
+What the probe re-runs found besides:
+
+- **The four `rfd-0004-patch-cell-crossover` instruction files don't
+  reproduce in their `map_*` benchmarks,** after a clean second run. The
+  fixture builds std `HashMap`s with the default per-process seed, so
+  those counts move by up to 11% between runs. Every `vec_*` and
+  `compose_*` benchmark matches exactly. The note quotes no `map_*`
+  instruction count; its map numbers are wall-clock, which is one seed
+  too.
+- **The futex tables depend on scheduling.** The story holds, about one
+  wake per unlock at 256 KiB, but the ranges moved, so the note now gives
+  both runs'. The pinned table's cross-complex wakes came out lower than
+  within-complex in the original run and higher in the re-run; the note
+  claims no direction for them.
+- **Three phase 5 runs came from working trees with two or three
+  uncommitted tests**
+  (`small-side-order-counts-adversarial`,
+  `maintained-rank-queue-counts`, `height-queue-counts-pull`). Their
+  tables reproduce byte for byte at the cited commits; only libtest's
+  "filtered out" count differs.
+- **A trap for any later re-run:** a shared `CARGO_TARGET_DIR` across
+  `git archive` trees silently links a stale `bough-experiments`,
+  because the archive's file times are older than the artifact. Touch
+  each tree before building. The first pass hit this and was thrown
+  away.
+
+Choices made inside the plan:
+
+- **The verifiers couldn't write files;** the harness refuses sub-agent
+  writes. Their reports came back as messages, and the slice summaries
+  in `verify/` are mine.
+- **Wording-only must-read fixes were made,** and listed here so Zefira
+  can reverse them: garbage costs ten times as much, not runs ten times
+  longer; a `Switched` mark does catch a smuggled loop, at the price of
+  nested switches; erasure builds in about two-fifths of the time, not a
+  third; Drechsler et al. call an uncontended lock negligible, not free;
+  F3 ties questions 3 and 10. Each keeps its finding and leaning. The
+  must-read was 1,008 words by `wc -w` at phase 7; it's trimmed to 1,000.
+- **Crate citations name the repository's tag** (`leptos@v0.8.21`, not
+  `reactive_graph@`), with paths from the repository root.
+- **Paragraphs the fixes left over-long were refilled** in a commit of
+  their own, whitespace only, checked by comparing normalized text.
+
+Next: Zefira's answers below. Then the wall-clock re-runs on the idle
+machine: the fifteen steps of phase 6 through `scripts/phase6.sh` at
+`daa6419`, each ratio compared by overlapping intervals with the one the
+note quotes. Then the header's last line, and phase 9.
+
+#### Context
+
+Phase 8 of the FRP literature review verified the note's claims and
+re-ran its instruction counts. Every error found is fixed except two,
+where the fix would change what a must-read finding says, so they wait.
+Both sections behind them are already corrected.
+
+The first is RFD 6. The must-read says six findings contradict what a
+settled decision says, "five stated reasons, and RFD 3's collection
+trigger", and one of the five is the single thread's overhead reason.
+But RFD 6 states no overhead or determinism reason. Its one reason is
+that a host owns the schedule, which the evidence supports. The overhead
+claim is the no-std handoff's, and "a transaction is a pure function of
+its inputs" is RFD 2's, given for the re-entrancy check.
+
+The second is RFD 7. The must-read says "Every bounded system compiles
+a static graph". The embedded section's own sources disagree:
+Krishnaswami, Benton and Hoffmann prove a bound for a language with
+switching, Céu preallocates declared pools of dynamic instances, and
+Oeyen et al. bound conditional signals and dynamic deployments. What
+holds is that every bounded system either compiles a static graph or
+bounds creation up front.
+
+### ❓ **The RFD 6 finding in the must-read**
+
+RFD 6 states no overhead reason for the single thread. How should the
+must-read put the finding that no source supports "threading costs
+overhead"?
+
+The RFD 6 finding in the must-read:
+
+- **(a)** Say whose reason it is. The must-read counts four stated
+  reasons of RFDs, plus the no-std handoff's overhead claim, which the
+  single thread was built on and no source supports. RFD 6's own reason,
+  the host owns the schedule, stands. The leaning is unchanged: keep the
+  single thread and write its reasons down.
+- **(b)** Keep the count at five stated reasons, treating the no-std
+  handoff's rationale as the settled decision's. The header records that
+  RFD 6 itself doesn't state it.
+
+➡️ **(a)** The must-read is what you'll read, and it shouldn't say an RFD
+argues something it doesn't. It costs a few words, trimmed elsewhere.
+
+### ❓ **The RFD 7 finding in the must-read**
+
+"Every bounded system compiles a static graph" is too strong. What should
+the must-read say?
+
+The RFD 7 finding in the must-read:
+
+- **(a)** "Every bounded system compiles a static graph or bounds
+  creation up front", as the section now says. It keeps "no static engine
+  in core" supported, and it puts a pooled `construct` on the table,
+  which RFD 7's own text already names as the other option.
+- **(b)** Keep the sentence, and let the section carry the
+  qualification.
+
+➡️ **(a)** The pools are the most useful thing the embedded line offers
+the bounded tier, and the must-read shouldn't hide them.
+
+### ❓ **The wall-clock re-runs**
+
+The wall-clock re-runs need the machine idle for about two hours: boost
+off, the governor at `performance`, nothing else running, as for phase
+6. When, and do the patch-cell map benches get extra runs?
+
+The wall-clock re-runs:
+
+- **(a)** When the machine can sit idle, a fresh session runs the fifteen
+  steps at `daa6419` and compares each ratio with the note's. The
+  patch-cell bench runs three times, so the map rows show their spread
+  across hash seeds. A map result the note quotes stands only if all
+  three agree with it.
+- **(b)** The same, but the patch-cell bench runs once, like the rest.
+
+➡️ **(a)** The map rows are the only ones known to vary with the seed,
+and three runs of one bench add about twenty minutes.

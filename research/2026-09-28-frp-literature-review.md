@@ -3025,8 +3025,7 @@ stated" means the source read was silent.
 | discro | 0.35.0 | One shared latest value, publisher and subscribers | Not stated | Not stated | On `tokio::sync::watch` | docs.rs |
 | reactive_stores | 0.4.4 | Field-level tracking of nested state; keyed `Patch` | A field update notifies parents and children, not siblings | On `reactive_graph` | As `reactive_graph` | docs.rs |
 
-Two crates that come up in Bough's planning aren't reactive and have no
-row. Bevy's
+Two crates considered for the table aren't reactive and have no row. Bevy's
 change detection records ticks on components for systems to check when
 they run, and pushes nothing to dependents (docs.rs/bevy_ecs/0.19.1).
 Xilem rebuilds a lightweight view tree, Elm-style, with no dependency

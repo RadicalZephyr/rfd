@@ -2057,3 +2057,301 @@ fused upsert is the map operator to start from.
   Needs balanced binary trees and monoids.
 - acar-self-adjusting-computation Part III for trace stability. Needs
   randomized analysis, skip lists and treaps.
+
+## Concurrency and the I/O edge (RFD 6)
+
+### What the literature says
+
+A word first. Lee's and Drechsler's "transactions" are the database
+sense, speculative and abortable (lee-the-problem-with-threads p. 11),
+though Drechsler's are abort-free
+(drechsler-thread-safe-reactive-programming p. 11). Bough's is one
+logical instant, never aborted. Below, "transaction" means Bough's.
+
+**Most glitch-free systems run one propagation at a time.** Scala.React
+and Distributed REScala take a global lock
+(drechsler-thread-safe-reactive-programming p. 2), and REScala and
+Flapjax forbid concurrent propagation. Combining concurrent propagation
+with glitch freedom was "an open research problem" in 2018
+(margara-on-the-semantics-of-distributed-reactive-programming p. 19).
+Céu reacts to an event completely before handling the next, the
+environment can't interrupt a reaction, and inputs queue for later
+reactions (santanna-structured-synchronous-reactive-programming-with-ceu
+p. 2). FrTime's engine thread drains a message queue at the start of each
+cycle, which is Bough's pump (cooper-embedding-dynamic-dataflow-in-a-call-by-value
+p. 9). Scala.React isolates independent graphs in *domains* that run
+concurrently and talk asynchronously
+(maier-reactive-programming-abstractions-for-complex-event-logic-and
+pp. 33–34), which is Bough's handles between runtimes.
+
+**The cost of making propagation concurrent is measured once.** MV-RP
+makes REScala thread-safe with abort-free strict serializability, using
+conservative two-phase locking, multiversion reads and retrofitting of
+dynamic edges (drechsler-thread-safe-reactive-programming pp. 12–15,
+Thm. 1). Single-threaded it costs 20% to 25% against a global lock, and
+55% for an STM scheduler (pp. 21–23; not reproduced). Under extreme
+contention with updates of about 6.5 µs it never beats the global lock,
+and it pays off only with about 160 µs of user work per update or low
+contention (pp. 19, 21–23; not reproduced). Bough's units are far
+cheaper than 6.5 µs, so Bough sits further into the region where
+concurrent propagation loses. The same paper says an uncontended global
+lock is negligible single-threaded (p. 21), but that's asserted, not
+measured: its single-threaded global-lock run is its own baseline. It
+also names what goes wrong without care: two threads' changes absorbed
+into one reevaluation make an Event skip a value (pp. 8–9). Scala.Rx and
+QUARP do that by design and so support only Signals, since "randomly
+skipping some values is not usable for Events" (p. 2).
+
+**No source supports "threading costs overhead" for Bough.** Ousterhout's
+slides assert it, "Events faster than threads on single CPU: No locking
+overheads. No context switching", with no data
+(ousterhout-why-threads-are-a-bad-idea-for-most p. 7). Lustre and Quartz
+assert that fine-grained concurrency is inefficient and single-threaded
+code gets exact WCET, without measuring
+(halbwachs-the-synchronous-data-flow-programming-language-lustre p. 32;
+schneider-causality-analysis-of-synchronous-programs-with-delayed-actions
+pp. 1, 9). Elm's JavaScript backend couldn't use Web Workers because their
+overhead was too high, with no numbers
+(czaplicki-asynchronous-functional-reactive-programming-for-guis p. 10).
+And the Sodium book's Ousterhout passage argues *for* threads. It quotes
+"Unless we need true CPU concurrency, events are better", then argues
+that in the multicore age "threads are no longer optional" and "shared
+mutable state is the real culprit"
+(blackheath-functional-reactive-programming, App. B, §B.4). Sodium's
+`send()` is "absolutely thread-safe" from any context (ch. 8, §8.1.1).
+
+**What the sources do support.** Determinism by deterministic means:
+"deterministic ends should be accomplished with deterministic means",
+with nondeterminism explicit and only where it's needed
+(lee-the-problem-with-threads p. 17). Lee's model is Kahn networks,
+deterministic processes joined by queues, with an explicit
+nondeterministic merge where one is wanted (p. 13). In Bough that merge
+is the handle queue: which thread's call lands first. And listeners
+outside locks: "Callbacks don't work with locks"
+(ousterhout-… p. 4), and Lee's observer-pattern example, where locks
+around notification deadlock and notification outside the lock reorders
+values (lee-… pp. 8–9). The Sodium book's own rules are about listeners:
+no `send()` inside a callback, since "we can't maintain correct processing
+order", and a worker thread's result goes back as a new transaction
+(blackheath-functional-reactive-programming, ch. 8, §8.1.4; ch. 11,
+§11.1.2). The book names the cost Bough pays too: a hop through another
+thread makes a transition non-atomic, so an intermediate state is
+observable (ch. 14, §14.3.1).
+
+**Half of RFD 6's determinism reason is kept by serializable concurrency
+too.** MV-RP's histories are equivalent to a serial run of the same
+transactions (drechsler-thread-safe-reactive-programming pp. 10–11, 15),
+so each still computes what it would alone. What concurrency gives up is
+that the order of units is fixed in one place before they run. In Bough
+the order is the queue's at the pump; under MV-RP it's decided as
+transactions race (p. 14).
+
+**Simultaneity at the edge.** In every reactive system in the batch the
+caller decides what's simultaneous: Distributed REScala's admitting
+thread changes a set of sources in one turn
+(drechsler-distributed-rescala-an-update-algorithm-for-distributed-reactive
+pp. 3, 7), and REScala's `update(i1 -> v1, i2 -> v2)` is one transaction
+while every other call is its own (drechsler-thread-safe-reactive-programming
+pp. 7, 16). None merges independent callers, and one calls the merge a
+bug. Async RaTT takes one input on one channel per step, and the run
+time schedules the order (bahr-asynchronous-modal-frp pp. 3, 15–16).
+Rhine says events are simultaneous only on the same clock, a schedule
+must choose an order when ticks coincide, and resampling buffers are
+"fundamentally asynchronous: input and output never happen
+simultaneously" (barenz-rhine-frp-with-type-level-clocks pp. 6–8). In
+Rhine's words, an input slot is a resampling buffer from the interrupt
+clock to the pump clock, and the pump's order is a schedule. FRPNow goes
+the other way, putting every event that completes between rounds into
+the next round (vanderploeg-practical-principled-frp pp. 10–11), and
+Scala.React coalesces pending edits into one turn, last wins, because a
+turn per edit lags when edits outpace propagation
+(maier-reactive-programming-abstractions-for-complex-event-logic-and
+pp. 35, 42). The book lets several sends to different sinks share an
+explicit transaction (blackheath-functional-reactive-programming, ch. 8,
+§8.1.2); Bough's "two slots are never simultaneous" narrows that.
+
+**Where Bough sits.** In Margara and Salvaneschi's levels, one runtime
+is atomic, the top one: one unit at a time gives complete glitch freedom,
+and every read goes through the `Runtime` between units
+(margara-… p. 5). Their measured costs of the higher levels, 20.6 ms
+against 33.8 ms and 40.4 ms average latency in simulation, are all lock
+and message traffic across processes (p. 13; not reproduced), which a
+single thread doesn't pay. Across runtimes it's different: connecting
+glitch-free networks by observer notifications "would not result in an
+overall glitch free system"
+(drechsler-distributed-rescala-… p. 4). Two Bough runtimes joined by a
+`RemoteIo` give each other FIFO per link and nothing more.
+
+### The Rust prior art
+
+Every Rust design that runs FRP-like propagation keeps one logical
+writer per step, and uses threads by serialising, by snapshot and cancel,
+or by sharding, never by propagating one transaction on several threads.
+
+- carboxyl takes one global `static` `Mutex` around every transaction,
+  and its `send_async` spawns a thread per send and voids ordering
+  between sends (carboxyl@2a80080 `src/transaction.rs`:11–77,
+  `src/stream/mod.rs`:43–100).
+- Leptos makes every node `Send + Sync` behind `RwLock`s, with a
+  lock-order rule, a comment that a value write "Can block endlessly if
+  the user is has a ReadGuard on the value", and per-thread bookkeeping
+  so parallel effect runs don't both subscribe
+  (reactive_graph@v0.8.21 `reactive_graph/src/computed/inner.rs`:14–24,
+  147–151; `src/effect/immediate.rs`:208–251).
+- salsa runs parallel readers of one revision and a single writer who
+  sets a cancellation flag and blocks until the readers finish, which
+  "could deadlock if there is a single worker with two handles"
+  (salsa@salsa-v0.28.5 `src/storage.rs`:152–165).
+- DFIR runs one single-threaded instance per process, with tasks spawned
+  local (hydro@dfir_rs-v0.16.0 `dfir_rs/src/scheduled/context.rs`:407–415).
+- timely and DBSP shard data across workers, each running the whole
+  circuit (docs.rs/timely/0.31.0; github.com/feldera/feldera @2ad179e
+  `crates/dbsp/src/circuit/runtime.rs`:1–2).
+- sodium-rust wraps everything in `Arc` and `Mutex`, with `unsafe impl
+  Send/Sync` over a `Cell` colour (github.com/SodiumFRP/sodium-rust
+  @3e93021 `src/impl_/gc_node.rs`:52–59).
+
+### What the probes found
+
+`rfd-0006-lock-vs-queue-cost` times a unit of about 500 ns, a 50-node
+flat propagation, run five ways: on the owner thread; behind an
+uncontended `Mutex`; behind one contended by 2, 4 and 8 threads; and
+through RFD 6's queue and pump, boxed on the sender with a wake flag. On
+the idle machine, against the owner thread:
+
+| | one unit | a burst of 64 |
+|---|---|---|
+| uncontended `Mutex` | 1.047 | 1.009 |
+| RFD 6's queue | 1.145 | 1.115 |
+
+| threads | contended `Mutex` | queue with that many producers |
+|---|---|---|
+| 2 | 1.73 | 1.31 |
+| 4 | 1.92 | 1.45 |
+| 8 | 2.07 | 1.60 |
+
+In instructions, the uncontended lock adds 39 and 18 a unit to about
+2,200, and the queue 299 and 419.
+
+- The lock's latency is worse than its throughput. At 2 threads the p99
+  wait to acquire is 19.9 µs and the p99.9 58 µs; at 8, 39.5 µs and 61
+  µs, with a longest wait of 165 µs. With 2 threads one of them ran
+  11,087 units in a row, since std's mutex is unfair (F78). The queue's
+  p99 send is 1.5 µs at 2 producers and 16.7 µs at 8.
+- **The contended lock's extra cost is mostly a futex wake per unlock,
+  not the graph's state moving between cores.** Grown to 256 KiB of state
+  per unit, the lock changes threads in under 1% of units, yet a copy of
+  std's mutex still makes 0.73 to 0.97 `futex_wake` calls a unit, and
+  std's workers sleep 0.78 to 0.94 times. The queue's cost stays flat as
+  the state grows: 1.01 to 1.02 at 256 KiB.
+- **A wake across the chip's two core complexes costs more.** Pinned
+  within one complex, the lock costs 1.12 at 256 KiB with 2 threads;
+  split across both, 1.38. The timed run puts a cross-complex wake at
+  about 1.9 µs against 0.9 within one, which accounts for most of the
+  gap. Those per-call times come from the timed binary, one run each, on
+  the idle machine; its "INDICATIVE" label is fixed text from before the
+  idle run.
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0006-lock-vs-queue-cost-instructions at experiments@d16fe99 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0006-lock-vs-queue-cost-instructions
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0006-lock-vs-queue-cost-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0006-lock-vs-queue-cost-wallclock
+python3 scripts/ratios.py single contended footprint-
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0006-lock-vs-queue-cost at experiments@44fad84 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0006-lock-vs-queue-cost
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0006-lock-vs-queue-cost at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0006-lock-vs-queue-cost -- --timed
+```
+
+### Settled decisions the evidence contradicts
+
+**The single thread's overhead reason.** The no-std handoff's claim that
+threading costs overhead has no source, and in Rust an uncontended
+`Mutex` around the engine costs 1% to 5% a unit, while RFD 6's own queue
+costs 11% to 15%. So overhead is no argument against a `Mutex`-wrapped
+engine callable from any thread. Under contention the lock does lose
+more than the queue, 1.7 to 2.1 against 1.3 to 1.6, and its tail waits
+are tens of microseconds, but that's a latency argument, not the
+overhead one.
+
+The decision itself stands on other reasons the sources support:
+listeners never run under a lock, the order of units is one explicit
+sequence the host can see, and the host owns the schedule. RFD 6 already
+rejects Sodium Java's run-at-once model on the schedule, not on cost,
+which is the right ground. Atomic visibility without aborts is
+supported: MV-RP is abort-free for the same reason Bough is, side effects
+that can't be undone (drechsler-thread-safe-reactive-programming pp. 2,
+9), and Margara rejects optimistic protocols on the same ground (p. 19).
+
+### The options for Bough
+
+1. Keep RFD 6 and restate its reasons: simple, one host-visible order of
+   units, the host owns the schedule, listeners never under a lock. Drop
+   overhead, and drop "a transaction is a pure function of its inputs",
+   which is true but not bought by the single thread.
+2. Also allow a `Mutex`-wrapped runtime as a third way in, for callers
+   who want to run a unit now from another thread and accept listeners
+   running on that thread.
+3. Also record the order units reach the queue, so a run can be
+   replayed.
+
+### Claude's leaning
+
+Option 1. The engine stays single-threaded; the reasons change. Say in
+RFD 6 that the order in which units from different threads reach the
+queue is the one nondeterministic merge, in Lee's sense, and that
+everything after the pump is deterministic. Use Rhine's words for input
+slots and the pump if they help. Option 2 is cheap in throughput and
+brings back the listener problem the queue exists to avoid. Option 3
+belongs to verification; see there.
+
+### Questions to grill
+
+- Is RFD 6's determinism reason about the order of units being one
+  explicit sequence, rather than a transaction being a pure function of
+  its inputs, which serializable concurrency also keeps?
+- Should RFD 6 drop the overhead argument, given an uncontended lock
+  costs less than the queue it chose?
+- Is losing Sodium's explicit multi-send transaction across several
+  slots deliberate, and does RFD 7 say so?
+- If two runtimes are ever wired together through handles, do we promise
+  only FIFO per link, and say so?
+- Should the order units reach the queue be observable or recordable?
+
+### Experiments this proposes for Bough
+
+- Time bough-gtk and the chat room with the real engine behind the queue,
+  to see what share of a unit the queue's 11% to 15% is once real
+  listeners and payloads run.
+- Measure pump latency, send to listener, under a tokio driver at 2, 4
+  and 8 producer tasks, the number that matters more to a UI than
+  throughput.
+
+### Reading path
+
+- lee-the-problem-with-threads. Self-contained; §6 is easier with a
+  picture of Kahn process networks.
+- ousterhout-why-threads-are-a-bad-idea-for-most, then
+  vonbehren-why-events-are-a-bad-idea-for-high for the rebuttal, which
+  concerns independent server requests and matters little to the engine.
+- drechsler-thread-safe-reactive-programming. Needs serializability,
+  two-phase locking and MVCC at database-textbook level.
+- margara-on-the-semantics-of-distributed-reactive-programming for the
+  levels. Needs vector clocks and FIFO, causal and sequential
+  consistency.
+- barenz-rhine-frp-with-type-level-clocks §§3–4 for clocks, schedules and
+  resampling buffers. Needs Haskell type families.

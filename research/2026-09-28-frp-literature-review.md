@@ -576,10 +576,10 @@ the evaluation order, and a panic, "cyclic reactive dependency", when
 the DFS meets a `Temp` node (sycamore-reactive@0.9.3
 `packages/sycamore-reactive/src/root.rs`:193–277). Leptos has no cycle
 detection; `ImmediateEffect` only warns when a run recurses more than
-twice (reactive_graph@v0.8.21 `reactive_graph/src/effect/immediate.rs`:352–354).
+twice (leptos@v0.8.21 `reactive_graph/src/effect/immediate.rs`:352–354).
 Leptos, Sycamore, salsa and Incremental all tie a node's life to the run
 that created it: an owner's re-run disposes what the last run made
-(reactive_graph@v0.8.21 `reactive_graph/src/owner.rs`:34–46;
+(leptos@v0.8.21 `reactive_graph/src/owner.rs`:34–46;
 sycamore-reactive@0.9.3 `src/signals.rs`:139–143, `src/root.rs`:160;
 salsa@salsa-v0.28.5 `src/tracked_struct.rs`:186–191). carboxyl's stream
 `switch` re-registers on each new inner and kills the old callback
@@ -1179,9 +1179,10 @@ a dirty node read during the loop
 (sycamore-reactive@0.9.3 `packages/sycamore-reactive/src/root.rs`:193–235,
 121–130). It reuses its sort buffer between propagations (lines 26,
 198–207). Leptos is Reactively's colour-then-pull with a `PartialEq`
-cut-off (reactive_graph@v0.8.21 `reactive_graph/src/lib.rs`:67–69,
-`src/computed/inner.rs`:69–177, `src/computed/memo.rs`:173–191). sodium-rust runs changed nodes at the
-end of a transaction in DFS order with a visited flag and no ranks
+cut-off (leptos@v0.8.21 `reactive_graph/src/lib.rs`:67–69,
+`reactive_graph/src/computed/inner.rs`:69–177,
+`reactive_graph/src/computed/memo.rs`:173–191). sodium-rust runs changed
+nodes at the end of a transaction in DFS order with a visited flag and no ranks
 (github.com/SodiumFRP/sodium-rust @3e93021
 `src/impl_/sodium_ctx.rs`:233–262, 298–355). incremental-rs keeps
 Incremental's design, a queue per height up to a maximum
@@ -1456,7 +1457,7 @@ callbacks or be smuggled inside another arena"
 (gc-arena@v0.7.0 `src/arena.rs`:98–116), and a closure that captures a
 `Gc<'gc, _>` isn't `'static` and has no `Collect` impl, so it can't be
 stored at all (`src/gc.rs`:88–90, `src/static_wrapper.rs`:9–21). No one
-can generate a `Collect` impl for a closure or a generator, "nor any
+can generate a `Collect` impl for a generator's state machine, "nor any
 planned feature that would enable it" (kyren-gc-arena p. 3). Jeltsch's
 eras, an `ST`-style start-time parameter, are the FRP form of the same
 idea (apfelmus-frp-dynamic-event-switching pp. 4–5). The costs are in
@@ -1467,8 +1468,8 @@ access through a callback. gc-sequence passes a traced value into a
 closure as an argument instead of letting it capture one (goregaokar-…
 p. 12), which is RFD 3's rejected "closure-taking twins". Acar's library
 has Bough's `depends` problem outright: every free variable of a memoized
-expression is declared by hand, the library can't check its own
-discipline, and the author's conclusion is to leave the library for a
+expression is declared by hand, the library doesn't check its own
+discipline statically, and checks little of it at run time, and the author's conclusion is to leave the library for a
 compiler (acar-self-adjusting-computation pp. 131, 138, 233, 278).
 
 **Tracing and counting are duals, and the hybrids see cycles.** Tracing
@@ -1483,7 +1484,7 @@ kept by the API rather than found by scanning, the shape he calls
 atomic counts plus Bacon–Rajan cycle collection after each outermost
 transaction, with closure captures declared as its trace
 (github.com/SodiumFRP/sodium-rust @3e93021 `src/impl_/gc_node.rs`:21–120,
-`src/impl_/lambda.rs`:5–8, 196). It needs the same declarations and adds
+`src/impl_/sodium_ctx.rs`:288–294, `src/impl_/lambda.rs`:5–8, 196). It needs the same declarations and adds
 counting on top. Deferred counting still counts writes into the heap
 (bacon-… p. 5), which for Bough means every token stored in a value, and
 a `Copy` token gives no hook there. So RFD 3's second reason, that
@@ -1500,8 +1501,9 @@ handles are checked indices, which is RFD 3's distinction.
 **Every GC-based FRP has F66, and none fixes it but by collecting
 sooner.** Garbage is evaluated until it's collected. Elerea calls it its
 "biggest problem" (patai-efficient-and-compositional-higher-order-streams
-p. 13). FrTime's strong update queue keeps about half the dead signals
-alive (cooper-integrating-dataflow-evaluation-into-a-practical-higher-order
+p. 13). In FrTime a strong update queue would keep about half the dead
+signals alive, so its queue holds them weakly too
+(cooper-integrating-dataflow-evaluation-into-a-practical-higher-order
 pp. 35–36). Scala.React's weak forward references make higher-order drag
 collectable, but work grows until the collector runs
 (maier-deprecating-the-observer-pattern-with-scala-react pp. 14, 16).
@@ -1535,20 +1537,20 @@ bitten again, fixed by logic that switches itself out or by `once()`
 ### The Rust prior art
 
 gc-arena is the nearest design and in production. Its "mutation xor
-collection" is Bough's "collection between units, never inside one", and
+collection" (kyren-gc-arena p. 2) is Bough's "collection between units, never inside one", and
 it is `no_std` over `alloc` (gc-arena@v0.7.0 `src/lib.rs`:1–6,
 `src/arena.rs`:209–223). To hold a pointer outside a mutation you stash it
 in a `DynamicRootSet` and get a handle whose drop unroots it
-(`src/dynamic_roots.rs`:14–53), which is Bough's `Anchored`. Leptos and
+(`src/dynamic_roots.rs`:14–53, 134–140), which is Bough's `Anchored`. Leptos and
 Sycamore hold `Copy` handles in a generational slot map, free a node when
-the owner scope that made it re-runs or drops, and panic with the place
-it was defined when a disposed handle is used
-(reactive_graph@v0.8.21 `reactive_graph/src/owner.rs`:34–46,
-`src/traits.rs`:66–90; sycamore-reactive@0.9.3 `src/node.rs`:72–121,
+the owner scope that made it re-runs or drops, and panic when a
+disposed handle is used, naming where it was defined in debug builds
+(leptos@v0.8.21 `reactive_graph/src/owner.rs`:34–46,
+`reactive_graph/src/traits.rs`:66–90; sycamore-reactive@0.9.3 `src/node.rs`:72–121,
 `src/signals.rs`:150–194). That makes `depends`'s missing inverse
 automatic, at the price Bough refused: a node lives exactly as long as
 the scope that made it. carboxyl's derived streams hold their parents
-strongly and are held weakly back, "downstream owns upstream", which is
+strongly and are held weakly back, so downstream owns upstream, which is
 the weak-reference scheme RFD 3 rejects (carboxyl@2a80080
 `src/stream/mod.rs`:191–246). sodium-rust has `depends` under the name
 `lambda1(f, deps)`.
@@ -1597,19 +1599,19 @@ collections included.
 
 - Under four inputs firing at uneven rates with live regions that grow,
   `excess` collects about as often as an oracle that paces on true dead
-  work, 37 times against 34, for 0.7% more visits. It misses only
-  garbage folded into an input's reference, and fires spuriously once
-  every 270 to 430 quiet units.
+  work, 37 times against 34, for 0.7% more visits. It misses mostly
+  garbage folded into an input's reference, and fires spuriously at most
+  once every 270 quiet units, and not at all with short quiet stretches.
 - Garbage on a slow input lags: `excess` misses 500 to 600 units, up
-  to 300 in a row, peaking at 1.9 times the survivors. A reference counting only
-  region nodes born before the last collection (`marked`) misses none,
+  to 300 in a row, peaking at about twice the survivors. A reference
+  counting only region nodes born before the last collection (`marked`) misses none,
   for 0.3% more instructions.
 - **No region term sees garbage a dropped guard releases.** A release
   never shrinks a region before the next collection, since released
   nodes stay in dependents lists until pruned. With guards dropped
   through a long quiet stretch and no growth, both terms missed 2,079
   units in a row, peaking at 11.1 times the survivors, and RFD 3's
-  release term never fired: 90 releases against about 14,000 survivors.
+  release term never fired: 90 releases against about 10,000 survivors.
   Total cost stayed at the oracle's, because that garbage sat on a slow
   input.
 
@@ -1640,7 +1642,7 @@ fresh `'g` per `Runtime::mutate`, and captures go through `.with(env)`.
 
 - A forgotten capture, one through a helper, one through a switch and
   one through an inner all fail with E0521, "borrowed data escapes
-  outside of closure", and every legal fixture builds, including a hold
+  outside of closure" (outside of function, for the helper), and every legal fixture builds, including a hold
   of a struct of tokens, a construct capturing three, anchoring, the
   RFD 4 screens example and a switch among captured tokens. `map_to` of a
   token still builds, which is safe since F94 made `map_to` trace its
@@ -1669,7 +1671,8 @@ fresh `'g` per `Runtime::mutate`, and captures go through `.with(env)`.
   1,000 tokens. Per `accumulate_mut` event: 1.27 nested and 2.75 for the
   `Vec`, so a growing token-bearing accumulator brings back the
   quadratic cost RFD 4 added `accumulate_mut` to remove. A derived
-  borrowed view costs 0.98 to 1.02 everywhere, but changes the API: a
+  borrowed view costs 0.98 to 1.03 per event everywhere, but changes
+  the API: a
   closure gets a view type, not `&A`, and gives up indexing, slices and
   most traits.
 
@@ -1782,6 +1785,18 @@ cargo bench --bench rfd-0003-rebrand-write-cost-wallclock
 python3 scripts/ratios.py write_
 ```
 
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-incremental-mark-instructions at experiments@3d83d68 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0003-incremental-mark-instructions
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0003-rebrand-write-cost-instructions at experiments@2813ee0 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0003-rebrand-write-cost-instructions
+```
+
 Two results disagree with themselves and need a recheck. The incremental
 mark's single-unit benches say the barriers' fast path costs 18% to 30%
 of a unit, while a whole run with barriers costs 0.7% and the instruction
@@ -1827,8 +1842,9 @@ For F62:
    `depends` an inverse and changes Sodium's semantics.
 
 For F63: nothing in the literature fixes it without 3. `once()`, which
-releases its upstream after one event, is the book's structural answer
-to the one case it shows.
+releases its upstream after one event, and logic that switches itself
+out are the book's two structural answers to the one case it shows, and
+it warns that `once()` may not free anything in practice.
 
 For the trigger:
 
@@ -2338,8 +2354,8 @@ or by sharding, never by propagating one transaction on several threads.
   lock-order rule, a comment that a value write "Can block endlessly if
   the user is has a ReadGuard on the value", and per-thread bookkeeping
   so parallel effect runs don't both subscribe
-  (reactive_graph@v0.8.21 `reactive_graph/src/computed/inner.rs`:14–24,
-  147–151; `src/effect/immediate.rs`:208–251).
+  (leptos@v0.8.21 `reactive_graph/src/computed/inner.rs`:14–24,
+  147–151; `reactive_graph/src/effect/immediate.rs`:208–251).
 - salsa runs parallel readers of one revision and a single writer who
   sets a cancellation flag and blocks until the readers finish, which
   "could deadlock if there is a single worker with two handles"

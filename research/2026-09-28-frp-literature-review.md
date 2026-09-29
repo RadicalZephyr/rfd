@@ -1458,8 +1458,8 @@ collections included.
   work, 37 times against 34, for 0.7% more visits. It misses only
   garbage folded into an input's reference, and fires spuriously once
   every 270 to 430 quiet units.
-- Garbage on a slow input lags: `excess` misses 500 to 600 units in a
-  row, peaking at 1.9 times the survivors. A reference counting only
+- Garbage on a slow input lags: `excess` misses 500 to 600 units, up
+  to 300 in a row, peaking at 1.9 times the survivors. A reference counting only
   region nodes born before the last collection (`marked`) misses none,
   for 0.3% more instructions.
 - **No region term sees garbage a dropped guard releases.** A release

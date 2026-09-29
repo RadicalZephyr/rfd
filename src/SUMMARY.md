@@ -42,3 +42,4 @@
 - [Swappable edges: client/server as two graphs, migration, and a free differential test](./notes/2026-10-06-swappable-edges.md)
 - [What the expressibility port has to express](./notes/2026-10-08-mema-expressibility-scope.md)
 - [What a thousand rows cost](./notes/2026-09-29-row-cost-probe.md)
+- [Where Bough fits](./notes/2026-09-29-where-bough-fits.md)

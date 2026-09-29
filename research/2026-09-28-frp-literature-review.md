@@ -645,3 +645,316 @@ switch-instant asymmetry and cite Reflex's reason for it.
   are heavy theory Bough doesn't need.
 - The Incremental source's `incremental_intf.ml`, lines 90–260, is a
   self-contained description of heights and `bind`.
+
+## Loops and causality (RFDs 2, 5)
+
+### What the literature says
+
+**Bough's loop rule is the synchronous languages' rule.** RFD 2 keeps
+the same-instant dependency graph acyclic, with a read of a cell from
+before the instant and a child instant as the only ways round. That is
+Esterel v4's rule, which Berry calls the usual rule for dataflow
+languages, and every program it accepts is constructive
+(berry-the-constructive-semantics-of-pure-esterel pp. 13, 55). It is
+Lustre's rule, that every cycle contains a `pre`, and Lustre refuses
+false cycles such as `X = if C then Y else Z; Y = if C then Z else X`
+knowingly, since deciding them is undecidable in general
+(halbwachs-the-synchronous-data-flow-programming-language-lustre p. 14).
+It is Copilot's, where a weighted dependency graph whose every loop
+passes a delay is sufficient for a unique meaning and the converse fails
+(pike-copilot-a-hard-real-time-runtime-monitor p. 8, Thm. 1). It is
+DBSP's, where feedback is well defined when the operator on the cycle is
+strict, depending only on inputs before `t`
+(budiu-dbsp-automatic-incremental-view-maintenance-for-rich-query p. 3,
+Prop. 2.9, Lem. 2.10). A snapshot reads the cell before the instant,
+which is DBSP's `z⁻¹`. It is Naiad's and Lee's: every cycle has a
+feedback vertex, or a delay or integrator found by dependence analysis
+(murray-naiad-a-timely-dataflow-system p. 2;
+lee-operational-semantics-of-hybrid-systems p. 17). And it is exactly
+right for opaque functions. Keating and Gale prove that a loop with no
+direct dependency cycle, delays excluded, can be rewritten to a strict
+form with an execution order known at compile time, treating `arr` as a
+black box that depends on everything
+(keating-this-is-driving-me-loopy pp. 8–11, Thm. 4.5). The theorem gives
+that one direction; that a cycle has no such order is the paper's
+statement about its implementation (p. 2), not a proved result.
+
+**What the rule refuses that constructiveness accepts.** Berry's users
+dismissed acyclicity as too restrictive: "Users ask us to control
+feedback, not to restrict it" (berry-… p. 13). Constructive analysis
+accepts three more kinds of cycle (pp. 40–41, 50, 55;
+shiple-constructive-analysis-of-cyclic-circuits pp. 5–6):
+
+- (a) halves of the cycle in mutually exclusive branches;
+- (b) false paths ruled out by facts already known this instant;
+- (c) halves separated by a delay, which Bough already accepts.
+
+In Bough terms, (a) is a stream cycle through `gate c` and
+`gate (not c)`. Since cells are read before the instant, the conditions
+are known when the instant starts, as Esterel's inputs and registers
+are (berry-… p. 108). Bough's answer to "only one of these matters at a
+time" is switching: a `switch_stream` removes the unselected edge. (b)
+needs value-level facts, which a push engine doesn't reason about.
+Constructiveness costs reachability over states, which Bough can't do
+over unbounded values and a run-time graph
+(shiple-constructive-analysis-of-cyclic-circuits p. 4). It makes
+acceptance depend on how each primitive treats unknown inputs
+(schneider-causality-analysis-of-synchronous-programs-with-delayed-actions
+pp. 10–11), and it changes Bough's error from "this graph has a cycle"
+to "in some reachable state, this is undetermined". Scade's users accept
+the extra restriction
+(pouzet-modular-static-scheduling-of-synchronous-data-flow-networks
+p. 18).
+
+Sequential constructiveness accepts more still, but only through program
+order between statements (vonhanxleden-sequentially-constructive-concurrency-a-conservative-extension-of-the
+pp. 2–3, 21). A Bough instant is a dataflow graph with no statement
+order, so SC widens nothing here. It does name Bough's choice. It weighs
+"all reads before any writes", under which reads see the previous tick,
+and rejects it as less expressive, not as unsound (p. 15). `accumulate_mut`
+is its relative write (p. 13), and a cell is Aguado et al.'s registered
+variable, supplied at the start of the instant, for which read-safety
+holds trivially
+(aguado-denotational-fixed-point-semantics-for-constructive-scheduling-of
+pp. 19, 37). That is the formal reason a cell read is never an ordering
+dependency.
+
+**F3 isn't a program constructiveness would rescue.** In
+`c = hold 0 (merge ticks (map (+1) (steps c)))`, an instant without
+`ticks` gives x = x, which is Esterel's `present O then emit O`, whose
+least fixpoint is ⊥ (berry-… pp. 31, 41). SC's check, Keating's direct
+dependency and DBSP's strictness all refuse it. It needs `steps`, and the
+book's ten core primitives "give you no way to convert a cell into a
+stream" (blackheath-functional-reactive-programming, ch. 8, §8.4; ch. 2,
+Table 2.1). So "every loop passes through a hold" may be the right rule
+for the core, and the operational primitives are what break it. That
+ties open questions 3 and 10.
+
+**A static check exists in two sizes.** Cuoq and Pouzet type each stream
+with a row marking which recursion variables it depends on in the same
+instant; `pre` gets an unconstrained row and `rec` demands its own
+variable absent (cuoq-modular-causality-in-a-synchronous-stream-language
+pp. 4–6). It has principal types and handles higher-order code, but
+unification wrongly rejects some programs, the authors' "biggest
+drawback" (p. 8), and there's no switching at all. Sculthorpe and
+Nilsson's is one bit: each signal function is decoupled or not, composite
+flags are computed, and `loop` demands a decoupled feedback path
+(sculthorpe-safe-functional-reactive-programming-through-dependent-types
+pp. 5–6). Keating and Gale point at the same bit
+(keating-this-is-driving-me-loopy pp. 12–13). Both say one bit per
+function is coarse and a per-input-output matrix more precise
+(sculthorpe-… p. 11; jeffrey-ltl-types-frp p. 7). Bough's run-time
+graph check is that matrix at node granularity. Keeping Calm names the
+higher-order problem: a property survives a switch only if every
+possible residual has it, and the residual comes from a host-language
+function (sculthorpe-keeping-calm-in-the-face-of-change pp. 33–34).
+
+**The rule doesn't bound a transaction.** A guarded fixed point makes
+"may happen" and "must happen" coincide, so it can't promise termination
+(bahr-diamonds-are-not-forever p. 3; cave-fair-reactive-programming
+p. 3). Esterel forbids a loop body that finishes in the same instant
+(berry-… pp. 23–24), and clock refinement warns that the outer step ends
+only if the inner loop ends
+(gemunde-clock-refinement-in-imperative-synchronous-languages p. 9).
+Delayed actions in Quartz go to the next step
+(schneider-causality-analysis-of-synchronous-programs-with-delayed-actions
+pp. 5–6); Bough's child instants nest inside the transaction. So F22, a
+`defer` loop with no filter, is a liveness problem outside causality, and
+nothing in the batch bounds it.
+
+### The Rust prior art
+
+DFIR states Bough's rule for a static graph and checks it at compile
+time: "Cyclical dataflow within a tick is not supported. Use
+`defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks"
+(hydro@dfir_rs-v0.16.0 `dfir_lang/src/graph/flat_to_partitioned.rs`:352–366).
+Its docs still describe fixpoint iteration within a tick
+(`docs/docs/dfir/concepts/life_and_times.md`:17), so the rule changed
+and the docs lag. salsa panics on a cycle unless a query opts into
+fixed-point iteration (salsa@salsa-v0.28.5 `src/cycle.rs`:3–58).
+Sycamore panics when its DFS meets a node still on the stack
+(sycamore-reactive@0.9.3 `packages/sycamore-reactive/src/root.rs`:254–277).
+carboxyl's `Signal::cyclic` is a forward declaration that panics if
+sampled before it's defined (carboxyl@2a80080 `src/signal.rs`:209–218,
+501–512). None of them checks loops through switching, since none has
+Sodium's switches.
+
+### What the probes found
+
+**The census supports plain acyclicity** (`rfd-0002-ternary-loop-census`).
+A ternary evaluator over presence and then value ran 400,000 random
+programs that acyclicity refuses, of one to eight nodes over two inputs.
+
+- With any presence of inputs, the quiet instant included, 687 are
+  constructive (0.17%), and every one is class (a), exclusive gates. No
+  other class can exist there: a quiet instant leaves every open cycle
+  at ⊥.
+- If at least one input fires every instant, 1,798 are constructive:
+  687 (a), 894 with a dead `or_else` branch, 217 with a live cycle such
+  as mutual defaults, `s0 = i0.or_else(s1)`, `s1 = i1.or_else(s0)`, and
+  2 value-dependent. None looks like a program anyone means to write,
+  and every one outside (a) breaks when another input fires alone or an
+  instant is a child instant.
+- Letting gates read holds of the loop, so cells take only reachable
+  states, adds 10,491 more under any presence: 10,436 behind a gate
+  that's closed in every reachable state, which is dead code refusal
+  catches, and 55 from two complementary cells, which is one cell with
+  `gate(c)` and `gate(!c)` again. With at least one input firing, 17
+  more sit behind constant cells.
+- Every program of two to four nodes and every cell binding: of
+  3,147,279 refused over two inputs, 13 programs are constructive with a
+  cell that changes, in 13 minimal forms, all of four nodes, and all
+  break when a third input fires alone. Over three inputs, of 3,468,034,
+  none.
+
+**A one-bit marker checks `close`, and can't check switches**
+(`rfd-0002-decoupled-marker`). Each stream and cell type carries a mark,
+decoupled or not, and `close` requires decoupled.
+
+- It refuses F3 at compile time, with the error "this loop's definition
+  depends on a loop's forward reference in the same instant", and builds
+  F1's counter. On the first fixture set it refused all 6 illegal loops
+  and 3 of 10 legal ones: a helper returning `impl Source`, a helper
+  taking a plain `Cell<u32>`, and two loops where one resets the other.
+  Helpers generic over the mark fix the first two.
+- Extended to `gate`, `sample`, `split`, `defer` and `depends`, it still
+  refused every illegal fixture. It can't see sampling a loop cell
+  before close, which stays a run-time panic.
+- Compile time, on the idle machine: 1.02 to 1.06 of the baseline on the
+  hand-written fixtures, and 1.03 to 1.16 on a generated program of 512
+  depth-three chains. Cuoq-style rows cost 1.05 to 1.25 there.
+- **Every marker design accepts an illegal loop smuggled through a
+  switch.** A loop or a construct hands a switch its own consumer's
+  steps as a token, and it builds: under the plain marker, under a
+  `close` that re-marks its token decoupled, under rows, and inside a
+  construct at a child instant. A switch's reach grows after build, so
+  neither one bit nor rows can make a switch's moves a compile-time
+  check.
+- A mark on a switch's output, `Switched`, between decoupled and
+  instantaneous, refused all 3 smuggles and kept navigation, and refused
+  a switch inside a switch and an inner reading an open forward. A rule
+  that re-marks everything once the last loop closes built the switch
+  smuggle, and let two builds trade a loop to desynchronise its count.
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0002-ternary-loop-census at experiments@ef7bb53 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0002-ternary-loop-census
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0002-ternary-loop-census at experiments@1d2e0d0 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0002-ternary-loop-census
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0002-ternary-loop-census at experiments@5a6b1a1 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0002-ternary-loop-census -- --enumerate
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0002-decoupled-marker at experiments@81da0b0 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0002-decoupled-marker
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0002-decoupled-marker at experiments@4bc4cae - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0002-decoupled-marker
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0002-decoupled-marker at experiments@48bdda5 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0002-decoupled-marker
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0002-decoupled-marker at experiments@382380f - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0002-decoupled-marker
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0002-decoupled-marker at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0002-decoupled-marker -- --compile-time
+```
+
+### Settled decisions the evidence contradicts
+
+None found. Acyclicity with pre-instant reads and child instants as cuts
+is the field's standard rule, sound and knowingly incomplete, and the
+census finds nothing it refuses that a program would want and a switch
+couldn't express.
+
+### The options for Bough
+
+1. Keep run-time acyclicity alone, as RFD 2 has it.
+2. Add the one-bit marker at `close`, which makes F3 and its relatives a
+   compile error for a few percent of compile time, and keep the
+   run-time check at a switch's first link and moves.
+3. Also mark switch outputs `Switched`, which makes the smuggle a compile
+   error at the price of refusing a switch inside a switch and an inner
+   that reads an open forward.
+4. Go constructive: accept cycles through exclusive gates.
+
+For F22: accept it as the user's bug, bound child-instant depth at run
+time, or require every `defer` loop to pass a filter or a bound.
+
+### Claude's leaning
+
+Option 1, and say in RFD 2 that the rule is Lustre's and Esterel v4's,
+sound and knowingly incomplete, with Keating and Gale's theorem as its
+justification for opaque functions. Name the refused class, exclusive
+gates, and point to switching as how Bough writes it. Option 2 is cheap
+and catches a real mistake at compile time, but it covers `close` only,
+costs a mark parameter on every helper signature, and the run-time check
+stays whatever happens. I'd hold it until F3-shaped mistakes show up in
+real code. Treat F22 as liveness, bounded at run time in the embedded
+tier and left to the user elsewhere.
+
+### Questions to grill
+
+- Do you want the loop rule to be exactly the class the semantics gives
+  meaning to, or a sound subset that's easy to state? Berry's users and
+  Lustre's chose differently.
+- Have you wanted a Bough program whose only same-instant cycle runs
+  through two exclusive gates that a `switch_stream` couldn't write
+  acyclically?
+- Is F3 a `steps` problem, so that "every loop passes through a hold"
+  holds for the core, and does that go into the case for fencing
+  `steps`?
+- Would a marker that catches F3 at compile time be worth a mark
+  parameter on every helper, given that it can't cover switches?
+- Is F22 something to refuse statically, bound at run time, or leave as
+  the user's bug?
+
+### Experiments this proposes for Bough
+
+- Put the marker on Oort's fighter and on bough-gtk, and count how many
+  helper signatures need the mark parameter and how many false refusals
+  real code hits.
+- Search Oort's and the Sodium book's example programs for any
+  same-instant cycle through exclusive gates, the one class a
+  constructive rule would add.
+
+### Reading path
+
+- berry-the-constructive-semantics-of-pure-esterel chapters 1–4, which
+  are informal and enough for the causality argument. Chapter 10 needs
+  Scott domains and least fixpoints.
+- keating-this-is-driving-me-loopy after its §2.1 summary of causal
+  commutative arrows. §4's proof is readable.
+- halbwachs-the-synchronous-data-flow-programming-language-lustre p. 14
+  for the rule in one page.
+- cuoq-modular-causality-in-a-synchronous-stream-language for rows.
+  Needs Hindley–Milner inference and Rémy-style row types; skip §5's
+  proof.
+- vonhanxleden-sequentially-constructive-concurrency-a-conservative-extension-of-the
+  §§1, 4 and 5. Self-contained and operational.
+- shiple-constructive-analysis-of-cyclic-circuits after Berry's
+  chapter 4. Needs BDDs and symbolic reachability.

@@ -2703,7 +2703,7 @@ same observations.** Property-based testing of asynchronous FRP checks
 LTL over several clocked signals on a flattened trace, since
 propositional predicates can't say how signals evolve
 (nielsen-property-based-testing-for-asynchronous-functional-reactive-programming
-pp. 3, 7, 10–13). It has no executable reference to compare against. For what the oracle covers, equal traces satisfy the same
+pp. 3, 7, 10–13). For what the oracle covers, equal traces satisfy the same
 temporal properties. Its lessons matter where the oracle is silent:
 liveness can't be tested on a finite trace, so `until` must be weak
 (pp. 8, 11), generation must be fair so every input fires (pp. 2–3), and

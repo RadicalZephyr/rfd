@@ -106,19 +106,20 @@ stays. Leaning: keep plain acyclicity; hold the mark.
 **RFD 4.** Streams are affine, "at most one consumer", not linear.
 Erasing a fused chain at its materializer builds F36's shapes in about
 two-fifths of the time for 2% an event. For cells of collections, a
-patch-carrying cell wins from small sizes, its data structure matters most, and Z-set
-composition fails when two sources upsert one key. Leaning: erase by
-default; a patch cell over Cai's change structure in core, with counted
-B-trees and fused upserts in a library. The erasure leaning rests on a
-generated program.
+patch-carrying cell wins from small sizes, its data structure matters
+most, and Z-set composition fails when two sources upsert one key.
+Leaning: erase by default; a patch cell over Cai's change structure in
+core, with counted B-trees and fused upserts in a library. The erasure
+leaning rests on a generated program.
 
 **RFD 6.** *No source supports "threading costs overhead".* An
 uncontended `Mutex` costs 1% to 5% a unit; RFD 6's queue, 11% to
 15%. Contended, the lock loses more. Drechsler et al.'s 20% to 25% for
 concurrent propagation is not reproduced, and their negligible
 uncontended lock is asserted, not measured. The Sodium book argues *for*
-threads. What the sources do support: no listeners under a lock, one order of units the host can
-see. Leaning: keep the single thread, change the reasons.
+threads. What the sources do support: no listeners under a lock, one
+order of units the host can see. Leaning: keep the single thread, change
+the reasons.
 
 **RFD 7.** Every bounded system compiles a static graph; the embedded
 line moved from merging simultaneous events to ordering them; nobody
@@ -157,10 +158,11 @@ a thing built at `t` sees nothing from before `t`.
 - *Start times.* If a switched-in signal that depends on the triggering
   event started at system start, the implementation would have to
   remember all past input and catch up, which is a space leak and a time
-  leak. So most first-class-signal FRP variants start it at the moment of switching (sculthorpe-keeping-calm-in-the-face-of-change
-  p. 7). CFRP's `runningInEB` keeps an event running across a switch and
-  drops its occurrences from before switch-in: "only events that occur
-  after it is switched in should be observable" (p. 12).
+  leak. So most first-class-signal FRP variants start it at the moment
+  of switching (sculthorpe-keeping-calm-in-the-face-of-change p. 7).
+  CFRP's `runningInEB` keeps an event running across a switch and drops
+  its occurrences from before switch-in: "only events that occur after
+  it is switched in should be observable" (p. 12).
 - *Local time.* A switched-in residual starts at local time zero and
   observes only input after the switch
   (sculthorpe-safe-functional-reactive-programming-through-dependent-types
@@ -211,10 +213,11 @@ Differential dataflow's theory uses product partial orders and says the
 lexicographic order is outside it, since it isn't locally finite, and
 that the original construction "appears incorrect for T ≠ N"
 (abadi-foundations-of-differential-dataflow p. 14). The closest match
-for the order itself is Aguado et al.'s process identifiers: sequences that
-alternate naturals with the fork labels l and r, partially ordered by
-proper prefix first, then lexicographically, with l and r incomparable.
-Within one thread's numbers that is Bough's order. A forked child runs after its fork and before the parent's next step
+for the order itself is Aguado et al.'s process identifiers: sequences
+that alternate naturals with the fork labels l and r, partially ordered
+by proper prefix first, then lexicographically, with l and r
+incomparable. Within one thread's numbers that is Bough's order. A
+forked child runs after its fork and before the parent's next step
 (aguado-denotational-fixed-point-semantics-for-constructive-scheduling-of
 pp. 8–11). Their children are micro-steps inside one tick, though, and
 Bough's are whole transactions.
@@ -311,9 +314,10 @@ carboxyl reads cells before the instant, as Sodium does. Its `merge`
 takes no combining function: simultaneous firings pass through
 separately, and an opt-in `coalesce` combines them in no defined order
 (carboxyl@2a80080 `src/signal.rs`:731–746, `src/stream/mod.rs`:307–334).
-salsa iterates a cycle from an initial value to a fixed point, capped at 200 rounds, and refuses to combine that
-with its equality cut-off, with a comment that the combination's safety
-hasn't been proved (salsa@salsa-v0.28.5 `src/cycle.rs`:9–58,
+salsa iterates a cycle from an initial value to a fixed point, capped at
+200 rounds, and refuses to combine that with its equality cut-off, with
+a comment that the combination's safety hasn't been proved
+(salsa@salsa-v0.28.5 `src/cycle.rs`:9–58,
 `src/function/backdate.rs`:33–38). That is the oracle's iteration as a
 production pattern, with its known hazard.
 
@@ -581,20 +585,22 @@ twice (leptos@v0.8.21 `reactive_graph/src/effect/immediate.rs`:352–354).
 Leptos, Sycamore, salsa and Incremental all tie a node's life to the run
 that created it: an owner's re-run disposes what the last run made
 (leptos@v0.8.21 `reactive_graph/src/owner.rs`:34–46;
-sycamore-reactive@0.9.3 `packages/sycamore-reactive/src/signals.rs`:139–143,
-`packages/sycamore-reactive/src/root.rs`:160;
-salsa@salsa-v0.28.5 `src/tracked_struct.rs`:186–191). carboxyl's stream
-`switch` re-registers on each new inner and kills the old callback
-through a dropped token (carboxyl@2a80080 `src/stream/mod.rs`:445–475).
+sycamore-reactive@0.9.3
+`packages/sycamore-reactive/src/signals.rs`:139–143,
+`packages/sycamore-reactive/src/root.rs`:160; salsa@salsa-v0.28.5
+`src/tracked_struct.rs`:186–191). carboxyl's stream `switch`
+re-registers on each new inner and kills the old callback through a
+dropped token (carboxyl@2a80080 `src/stream/mod.rs`:445–475).
 `incremental-topo` packages Pearce and Kelly's order over a generational
 arena (docs.rs/incremental-topo/0.3.1).
 
 ### What the probes found
 
-Three probes and their extensions built RFD 5's relink check against the alternatives, on a
-10,147-node UI-shaped graph with 750 `construct`-style subgraphs. Four
-workloads build 0%, 20%, 50% and 100% of their new inners during the
-instant: `settled`, `mixed`, `churn` and `lazy`.
+Three probes and their extensions built RFD 5's relink check against the
+alternatives, on a 10,147-node UI-shaped graph with 750
+`construct`-style subgraphs. Four workloads build 0%, 20%, 50% and 100%
+of their new inners during the instant: `settled`, `mixed`, `churn` and
+`lazy`.
 
 - **The grey mark can't replace the walk** (`rfd-0005-cycle-in-mark`).
   A DFS mark with a grey state finds a cycle only at the first later
@@ -635,9 +641,9 @@ instant: `settled`, `mixed`, `churn` and `lazy`.
 - **Where the list pays.** On a mixed adversary, a new inner reading
   some old nodes before the switch and some new ones after it, the
   no-sort backward search beats the walk once the old upstream is
-  somewhat larger than the new side: at 1,000 new nodes it costs 1.24 of the walk
-  with 1,000 old ones and 0.23 with 10,000 (wall-clock). The instruction
-  counts put that line near twice.
+  somewhat larger than the new side: at 1,000 new nodes it costs 1.24 of
+  the walk with 1,000 old ones and 0.23 with 10,000 (wall-clock). The
+  instruction counts put that line near twice.
 
 > rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-small-side-order-counts at experiments@1e7b257 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
 
@@ -838,11 +844,11 @@ over unbounded values and a run-time graph
 acceptance depend on how each primitive treats unknown inputs
 (schneider-causality-analysis-of-synchronous-programs-with-delayed-actions
 pp. 10–11), and it changes Bough's error from "this graph has a cycle"
-to "in some reachable state, this is undetermined". By analogy, Scade's users
-accept the extra constraints that modular compilation puts on feedback
-loops, since their applications tolerate an inserted delay
-(pouzet-modular-static-scheduling-of-synchronous-data-flow-networks
-p. 18, fn. 9).
+to "in some reachable state, this is undetermined". By analogy, Scade's
+users accept the extra constraints that modular compilation puts on
+feedback loops, since their applications tolerate an inserted delay
+(pouzet-modular-static-scheduling-of-synchronous-data-flow-networks p.
+18, fn. 9).
 
 Sequential constructiveness accepts more still, but only through program
 order between statements (vonhanxleden-sequentially-constructive-concurrency-a-conservative-extension-of-the
@@ -864,9 +870,9 @@ least fixpoint is ⊥ (berry-… pp. 31, 41). SC's check, Keating's direct
 dependency and DBSP's strictness all refuse it. It needs `steps`, and the
 book's ten core primitives "give you no way to convert a cell into a
 stream" (blackheath-functional-reactive-programming, ch. 8, §8.4; ch. 2,
-§2.14, Table 2.2). So "every loop passes through a hold" may be the right rule
-for the core, and the operational primitives are what break it. That
-ties open questions 3 and 10.
+§2.14, Table 2.2). So "every loop passes through a hold" may be the
+right rule for the core, and the operational primitives are what break
+it. That ties open questions 3 and 10.
 
 **A static check exists in two sizes.** Cuoq and Pouzet type each stream
 with a row marking which recursion variables it depends on in the same
@@ -931,9 +937,9 @@ programs that acyclicity refuses, of one to eight nodes over two inputs.
 - If at least one input fires every instant, 1,798 are constructive:
   687 (a), 894 with a dead `or_else` branch, 217 with a live cycle such
   as mutual defaults, `s0 = i0.or_else(s1)`, `s1 = i1.or_else(s0)`; 2
-  of the 1,111 outside (a) are value-dependent. None looks like a program anyone means to write,
-  and every one outside (a) breaks when another input fires alone or an
-  instant is a child instant.
+  of the 1,111 outside (a) are value-dependent. None looks like a
+  program anyone means to write, and every one outside (a) breaks when
+  another input fires alone or an instant is a child instant.
 - Letting gates read holds of the loop, so cells take only reachable
   states, adds 10,491 more under any presence: 10,436 behind a gate
   that's closed in every reachable state, which is dead code refusal
@@ -964,12 +970,12 @@ decoupled or not, and `close` requires decoupled.
   hand-written fixtures, and 1.03 to 1.16 on a generated program of 512
   depth-three chains. Cuoq-style rows cost 1.05 to 1.25 there.
 - **The one-bit marker and rows accept an illegal loop smuggled
-  through a switch.** A loop or a construct hands a switch its own consumer's
-  steps as a token, and it builds: under the plain marker, under a
-  `close` that re-marks its token decoupled, under rows, and inside a
-  construct at a child instant. A switch's reach grows after build, so
-  neither one bit nor rows can make a switch's moves a compile-time
-  check.
+  through a switch.** A loop or a construct hands a switch its own
+  consumer's steps as a token, and it builds: under the plain marker,
+  under a `close` that re-marks its token decoupled, under rows, and
+  inside a construct at a child instant. A switch's reach grows after
+  build, so neither one bit nor rows can make a switch's moves a
+  compile-time check.
 - A mark on a switch's output, `Switched`, between decoupled and
   instantaneous, refused all 3 smuggles and kept navigation, and refused
   a switch inside a switch and an inner reading an open forward. A rule
@@ -1184,15 +1190,16 @@ a dirty node read during the loop
 cut-off (leptos@v0.8.21 `reactive_graph/src/lib.rs`:67–69,
 `reactive_graph/src/computed/inner.rs`:69–177,
 `reactive_graph/src/computed/memo.rs`:173–191). sodium-rust runs changed
-nodes at the end of a transaction in DFS order with a visited flag and no ranks
-(github.com/SodiumFRP/sodium-rust @3e93021
+nodes at the end of a transaction in DFS order with a visited flag and
+no ranks (github.com/SodiumFRP/sodium-rust @3e93021
 `src/impl_/sodium_ctx.rs`:233–262, 298–355). incremental-rs keeps
 Incremental's design, a queue per height up to a maximum
 (github.com/cormacrelf/incremental-rs @5ba8209 `src/recompute_heap.rs`).
 DFIR's whole scheduler is a topological order fixed at compile time, one
-closure per tick (hydro@dfir_rs-v0.16.0 `dfir_lang/src/graph/meta_graph.rs`:813–816).
-salsa is pull only: it validates a memo's inputs in the order they ran
-(salsa@salsa-v0.28.5 `src/function/maybe_changed_after.rs`:591–597).
+closure per tick (hydro@dfir_rs-v0.16.0
+`dfir_lang/src/graph/meta_graph.rs`:813–816). salsa is pull only: it
+validates a memo's inputs in the order they ran (salsa@salsa-v0.28.5
+`src/function/maybe_changed_after.rs`:591–597).
 
 ### What the probes found
 
@@ -1231,9 +1238,9 @@ and height crossovers lower; wall-clock is what counts here.
 - **The re-ranking RFD 5 names is small.** Over 300 transactions and
   about 1,250 moves per workload, 46 to 145 links needed a raise. In the
   instant, raises mid-evaluation came to 0.13 to 0.37 a transaction,
-  touching one node a transaction or fewer on average, and never below the cursor, since a switch
-  sits after its selector. But one raise touched up to 7,421 nodes, so a
-  single link can cost a large pause.
+  touching one node a transaction or fewer on average, and never below
+  the cursor, since a switch sits after its selector. But one raise
+  touched up to 7,421 nodes, so a single link can cost a large pause.
 - **The raise finds cycles.** It refused exactly the walk's set of
   moves, at 4 to 7 nodes a refused cycle (10 to 28 over each
   workload's 2 to 6 refusals).
@@ -1247,8 +1254,8 @@ and height crossovers lower; wall-clock is what counts here.
   (`rfd-0005-maintained-rank-queue`). Ranks from the switching section's
   order-maintenance list, in a binary heap, cost 2.35 to 2.43 of the
   mark when everything fires and break even between 56% and 75% quiet. A
-  radix heap does little better, 2.18 to 2.27 when everything fires. Keeping the labels is cheap: 0.02 to 0.61
-  of the walk's upkeep.
+  radix heap does little better, 2.18 to 2.27 when everything fires.
+  Keeping the labels is cheap: 0.02 to 0.61 of the walk's upkeep.
 - **Flat adjacency is faster in time, not in instructions.** Rerun over
   flat edge arrays, the mark takes about 13% less time than over nested
   vectors, though it runs more instructions, and the conclusions above
@@ -1472,7 +1479,8 @@ p. 12), which is RFD 3's rejected "closure-taking twins". Acar's library
 has Bough's `depends` problem outright: every free variable of a memoized
 expression is declared by hand, the library checks little of its own
 discipline, none of it statically, and the author's conclusion is to
-leave the library for a compiler (acar-self-adjusting-computation pp. 131, 138, 233, 278).
+leave the library for a compiler (acar-self-adjusting-computation pp.
+131, 138, 233, 278).
 
 **Tracing and counting are duals, and the hybrids see cycles.** Tracing
 computes the least fixpoint of the reference-count equation and counting
@@ -1486,12 +1494,12 @@ kept by the API rather than found by scanning, the shape he calls
 atomic counts plus Bacon–Rajan cycle collection after each outermost
 transaction, with closure captures declared as its trace
 (github.com/SodiumFRP/sodium-rust @3e93021 `src/impl_/gc_node.rs`:21–120,
-`src/impl_/sodium_ctx.rs`:288–294, `src/impl_/lambda.rs`:5–8, 196). It needs the same declarations and adds
-counting on top. Deferred counting still counts writes into the heap
-(bacon-… p. 5), which for Bough means every token stored in a value, and
-a `Copy` token gives no hook there. So RFD 3's second reason, that
-tracing needs no counts and tokens can be `Copy`, is the one that
-carries.
+`src/impl_/sodium_ctx.rs`:288–294, `src/impl_/lambda.rs`:5–8, 196). It
+needs the same declarations and adds counting on top. Deferred counting
+still counts writes into the heap (bacon-… p. 5), which for Bough means
+every token stored in a value, and a `Copy` token gives no hook there.
+So RFD 3's second reason, that tracing needs no counts and tokens can be
+`Copy`, is the one that carries.
 
 **`Trace` is safe for generation-checked indices, and nothing disagrees.**
 Every source that makes its trace trait `unsafe` does so because a missed
@@ -1539,24 +1547,25 @@ bitten again, fixed by logic that switches itself out or by `once()`
 ### The Rust prior art
 
 gc-arena is the nearest design and in production. Its "mutation xor
-collection" (kyren-gc-arena p. 2) is Bough's "collection between units, never inside one", and
-it is `no_std` over `alloc` (gc-arena@v0.7.0 `src/lib.rs`:1–6,
-`src/arena.rs`:209–223). To hold a pointer outside a mutation you stash it
-in a `DynamicRootSet` and get a handle whose drop unroots it
-(`src/dynamic_roots.rs`:14–53, 134–140), which is Bough's `Anchored`. Leptos and
-Sycamore hold `Copy` handles in a generational slot map, free a node when
-the owner scope that made it re-runs or drops, and panic when a
-disposed handle is used, naming where it was defined in debug builds
-(leptos@v0.8.21 `reactive_graph/src/owner.rs`:34–46,
+collection" (kyren-gc-arena p. 2) is Bough's "collection between units,
+never inside one", and it is `no_std` over `alloc` (gc-arena@v0.7.0
+`src/lib.rs`:1–6, `src/arena.rs`:209–223). To hold a pointer outside a
+mutation you stash it in a `DynamicRootSet` and get a handle whose drop
+unroots it (`src/dynamic_roots.rs`:14–53, 134–140), which is Bough's
+`Anchored`. Leptos and Sycamore hold `Copy` handles in a generational
+slot map, free a node when the owner scope that made it re-runs or
+drops, and panic when a disposed handle is used, naming where it was
+defined in debug builds (leptos@v0.8.21
+`reactive_graph/src/owner.rs`:34–46,
 `reactive_graph/src/traits.rs`:66–90; sycamore-reactive@0.9.3
-`packages/sycamore-reactive/src/node.rs`:72–121, `packages/sycamore-reactive/src/signals.rs`:148–149,
-190–201). That makes `depends`'s missing inverse
-automatic, at the price Bough refused: a node lives exactly as long as
-the scope that made it. carboxyl's derived streams hold their parents
-strongly and are held weakly back, so downstream owns upstream, which is
-the weak-reference scheme RFD 3 rejects (carboxyl@2a80080
-`src/stream/mod.rs`:191–246). sodium-rust has `depends` under the name
-`lambda1(f, deps)`.
+`packages/sycamore-reactive/src/node.rs`:72–121,
+`packages/sycamore-reactive/src/signals.rs`:148–149, 190–201). That
+makes `depends`'s missing inverse automatic, at the price Bough refused:
+a node lives exactly as long as the scope that made it. carboxyl's
+derived streams hold their parents strongly and are held weakly back, so
+downstream owns upstream, which is the weak-reference scheme RFD 3
+rejects (carboxyl@2a80080 `src/stream/mod.rs`:191–246). sodium-rust has
+`depends` under the name `lambda1(f, deps)`.
 
 ### What the probes found
 
@@ -1607,8 +1616,8 @@ collections included.
   once every 270 quiet units, and not at all with short quiet stretches.
 - Garbage on a slow input lags: `excess` misses 500 to 600 units, up
   to 300 in a row, peaking at about twice the survivors. A reference
-  counting only region nodes born before the last collection (`marked`) misses none,
-  for 0.3% more instructions.
+  counting only region nodes born before the last collection (`marked`)
+  misses none, for 0.3% more instructions.
 - **No region term sees garbage a dropped guard releases.** A release
   never shrinks a region before the next collection, since released
   nodes stay in dependents lists until pruned. With guards dropped
@@ -1645,11 +1654,11 @@ fresh `'g` per `Runtime::mutate`, and captures go through `.with(env)`.
 
 - A forgotten capture, one through a helper, one through a switch and
   one through an inner all fail with E0521, "borrowed data escapes
-  outside of closure" (outside of function, for the helper), and every legal fixture builds, including a hold
-  of a struct of tokens, a construct capturing three, anchoring, the
-  RFD 4 screens example and a switch among captured tokens. `map_to` of a
-  token still builds, which is safe since F94 made `map_to` trace its
-  value.
+  outside of closure" (outside of function, for the helper), and every
+  legal fixture builds, including a hold of a struct of tokens, a
+  construct capturing three, anchoring, the RFD 4 screens example and a
+  switch among captured tokens. `map_to` of a token still builds, which
+  is safe since F94 made `map_to` trace its value.
 - A brand on construct-minted tokens only, an era, catches one of the
   four. A nightly auto trait catches all four with a clear message, and
   refuses a capture of `dyn Fn` and of a generic `T`, so it spreads like
@@ -2001,7 +2010,8 @@ Odersky's abstract names the same problem
   pp. 6, 8, 11–15). They create one dependent per segment, not per
   element, to keep the graph small (pp. 16–17). On the JVM `foldUndo`
   won from about n = 15, and `map` from about 30 for a cheap function
-  and from 3 for an expensive one (pp. 20–21; not reproduced). Pulses form a monoid and values a module over it
+  and from 3 for an expensive one (pp. 20–21; not reproduced). Pulses
+  form a monoid and values a module over it
   (maier-reactive-programming-abstractions-for-complex-event-logic-and
   pp. 78–79).
 - A derivative is cheap only if it needs the change and not the base
@@ -2046,7 +2056,8 @@ construction by generating each tick as one function from a macro
 (hydro@dfir_rs-v0.16.0 `dfir_lang/src/graph/meta_graph.rs`:813–816).
 Sycamore allocates a slot with four `Vec`s, a `SmallVec`, a boxed
 callback and a boxed value per node (sycamore-reactive@0.9.3
-`packages/sycamore-reactive/src/node.rs`:14–43); no crate publishes a per-node construction cost to set beside Oort's.
+`packages/sycamore-reactive/src/node.rs`:14–43); no crate publishes a
+per-node construction cost to set beside Oort's.
 
 ### What the probes found
 
@@ -2170,15 +2181,15 @@ On open question 9:
 ### Claude's leaning
 
 Say "move-only, at most one consumer", and keep the word "linear" out of
-the docs. For F36, option 2: about two-fifths of the build time for about 2% an
-event, in safe code, and full monomorphization stays available for
-programs that don't build chains from data. That leaning rests on a
-generated program, not a real one. For question 9, option 2. The contract
-should be Cai's change structure, not an abelian group, so ordered deltas
-fit and same-key conflicts get a function; the library's structures
-should be counted B-trees and content-keyed partitions, since the probe
-found the data structure worth more than the patches, and the eager
-fused upsert is the map operator to start from.
+the docs. For F36, option 2: about two-fifths of the build time for
+about 2% an event, in safe code, and full monomorphization stays
+available for programs that don't build chains from data. That leaning
+rests on a generated program, not a real one. For question 9, option 2.
+The contract should be Cai's change structure, not an abelian group, so
+ordered deltas fit and same-key conflicts get a function; the library's
+structures should be counted B-trees and content-keyed partitions, since
+the probe found the data structure worth more than the patches, and the
+eager fused upsert is the map operator to start from.
 
 ### Questions to grill
 
@@ -2219,8 +2230,8 @@ fused upsert is the map operator to start from.
 - maier-higher-order-reactive-programming-with-incremental-lists, after
   maier-deprecating-the-observer-pattern-with-scala-react for levels.
   Needs balanced binary trees and monoids.
-- acar-self-adjusting-computation Parts II and III for trace stability. Needs
-  randomized analysis, skip lists and treaps.
+- acar-self-adjusting-computation Parts II and III for trace stability.
+  Needs randomized analysis, skip lists and treaps.
 
 ## Concurrency and the I/O edge (RFD 6)
 
@@ -2308,7 +2319,8 @@ observable (ch. 14, §14.3.1).
 too.** The half is "a transaction is a pure
 function of its inputs", which RFD 2 gives for the synchronous
 re-entrancy check, not for the single thread. RFD 6 states no
-determinism or overhead reason, only that the host owns the schedule. MV-RP's histories are equivalent to a serial run of the same
+determinism or overhead reason, only that the host owns the schedule.
+MV-RP's histories are equivalent to a serial run of the same
 transactions (drechsler-thread-safe-reactive-programming pp. 10–11, 15),
 so each still computes what it would alone. What concurrency gives up is
 that the order of units is fixed in one place before they run. In Bough
@@ -2371,7 +2383,8 @@ or by sharding, never by propagating one transaction on several threads.
   sets a cancellation flag and blocks until the readers finish, which
   "could deadlock if there is a single worker with two handles"
   (salsa@salsa-v0.28.5 `src/storage.rs`:152–165).
-- DFIR spawns its tasks local to the thread running the instance (hydro@dfir_rs-v0.16.0 `dfir_rs/src/scheduled/context.rs`:407–415).
+- DFIR spawns its tasks local to the thread running the instance
+  (hydro@dfir_rs-v0.16.0 `dfir_rs/src/scheduled/context.rs`:407–415).
 - timely and DBSP shard data across workers, each running the whole
   circuit (docs.rs/timely/0.31.0; github.com/feldera/feldera @2ad179e
   `crates/dbsp/src/circuit/runtime.rs`:1–2).
@@ -2403,9 +2416,9 @@ In instructions, the uncontended lock adds 39 and 18 a unit to about
 
 - The lock's latency is worse than its throughput. At 2 threads the p99
   wait to acquire is 19.9 µs and the p99.9 58 µs; at 8, 39.5 µs and 61
-  µs. The longest wait, 165 µs, was at 2 threads. With 2 threads one of them ran
-  11,087 units in a row, since std's mutex is unfair (F78). The queue's
-  p99 send is 1.5 µs at 2 producers and 16.7 µs at 8.
+  µs. The longest wait, 165 µs, was at 2 threads. With 2 threads one of
+  them ran 11,087 units in a row, since std's mutex is unfair (F78). The
+  queue's p99 send is 1.5 µs at 2 producers and 16.7 µs at 8.
 - **The contended lock's extra cost is mostly a futex wake per unlock,
   not the graph's state moving between cores.** Grown to 256 KiB of state
   per unit, the lock changes threads in under 1% of units, yet a copy of
@@ -2569,9 +2582,10 @@ p. 7). That sentence about tracing is asserted, not measured.
    (wan-real-time-frp pp. 5, 9).
 2. Céu's: a lexically scoped pool that spawns name, with an optional
    declared size, `pool Unit[10]`, statically preallocated when sized,
-   where "further spawn invocations fail" when it's full. It gets away without a collector because every lifetime is
-   lexical (santanna-structured-synchronous-reactive-programming-with-ceu
-   pp. 5, 10–11).
+   where "further spawn invocations fail" when it's full. It gets away
+   without a collector because every lifetime is lexical
+   (santanna-structured-synchronous-reactive-programming-with-ceu pp. 5,
+   10–11).
 3. Oeyen et al.'s: allow creation from a finite, known set of reactors
    and bound it by flow analysis (oeyen-reactive-programming-without-functions
    p. 14). By their scale, with *strongly*, *eventually* and *weakly*
@@ -2634,9 +2648,9 @@ warns that the outer step ends only if the substep loop ends
 (gemunde-clock-refinement-in-imperative-synchronous-languages p. 9).
 EvEmfrp/S runs micro-iterations until none remain, and its compiler
 checks that dependencies between timings are acyclic (yokoyama-… p. 6),
-which is presumably what makes the chain end, and which Bough can't check statically for `split` and
-`defer`. Esterel and Aguado et al. guarantee finite macro-steps by
-clock-guarding every recursion
+which is presumably what makes the chain end, and which Bough can't
+check statically for `split` and `defer`. Esterel and Aguado et al.
+guarantee finite macro-steps by clock-guarding every recursion
 (aguado-denotational-fixed-point-semantics-for-constructive-scheduling-of
 p. 7); Bough's child instants nest inside the transaction instead.
 
@@ -2701,8 +2715,8 @@ FRP line collapses bursts anyway, less explicitly.
 
 - RFD 7 says exhaustion never gives a different answer. Would you accept
   Céu's rule, a declared, sized pool that `construct` sites name, with
-  creation failing when full, as an opt-in, or is that a different semantics you won't
-  ship?
+  creation failing when full, as an opt-in, or is that a different
+  semantics you won't ship?
 - Does the bounded tier need handle queues at all, or only input slots,
   given every embedded system here keeps one pending occurrence per
   source?
@@ -2760,10 +2774,10 @@ same observations.** Property-based testing of asynchronous FRP checks
 LTL over several clocked signals on a flattened trace, since
 propositional predicates can't say how signals evolve
 (nielsen-property-based-testing-for-asynchronous-functional-reactive-programming
-pp. 3, 7, 10–13). For what the oracle covers, equal traces satisfy the same
-temporal properties. Its lessons matter where the oracle is silent:
-liveness can't be tested on a finite trace, so `until` must be weak
-(pp. 8, 11), generation must be fair so every input fires (pp. 2–3), and
+pp. 3, 7, 10–13). For what the oracle covers, equal traces satisfy the
+same temporal properties. Its lessons matter where the oracle is silent:
+liveness can't be tested on a finite trace, so `until` must be weak (pp.
+8, 11), generation must be fair so every input fires (pp. 2–3), and
 shrinking a signal keeps its clocks (p. 15).
 
 **Trace length finds bugs short traces miss.** Pérez and Nilsson's
@@ -2810,9 +2824,10 @@ child-index-aware comparison would need.
 None of the crates in the table tests against a reference semantics.
 carboxyl checks algebraic laws with QuickCheck (carboxyl@2a80080
 `src/stream/mod.rs`:690–722), and hydro_lang fuzzes in a simulator
-(hydro@dfir_rs-v0.16.0 `hydro_lang/src/sim/flow.rs`:41). salsa is the one with a fixed-point mechanism of its own, and
-it refuses to combine cut-off with cycles without proof
-(salsa@salsa-v0.28.5 `src/function/backdate.rs`:33–38).
+(hydro@dfir_rs-v0.16.0 `hydro_lang/src/sim/flow.rs`:41). salsa is the
+one with a fixed-point mechanism of its own, and it refuses to combine
+cut-off with cycles without proof (salsa@salsa-v0.28.5
+`src/function/backdate.rs`:33–38).
 
 ### What the probe found
 
@@ -2924,8 +2939,9 @@ mechanised, do it to prove the creation cuts, not as an oracle.
 
 Where Bough's ideas come from, by branch, oldest first. An arrow is "led
 to", "was answered by" or "was followed, in the same line of work, by";
-it doesn't always mean the later source cites the earlier. A dagger marks a source on the map only, not
-read. Continuous time is here and nowhere else: Bough is discrete.
+it doesn't always mean the later source cites the earlier. A dagger
+marks a source on the map only, not read. Continuous time is here and
+nowhere else: Bough is discrete.
 
 - **Classic FRP, continuous time.** Fran, Elliott and Hudak 1997† →
   first principles, Wan and Hudak 2000† → RT-FRP 2001 → E-FRP 2002 →
@@ -2939,8 +2955,9 @@ read. Continuous time is here and nowhere else: Bough is discrete.
   verification 2020† → loopy 2023.
 - **First-class and higher-order FRP.** Elerea, Patai 2011 →
   reactive-banana 2011 and 2015; monadic FRP 2013 → FRPNow 2015, which
-  answers Elerea and reactive-banana. Reflex (Hackage) sits beside them. Sodium and reactive-banana are "equivalent apart from
-  naming" (blackheath-functional-reactive-programming, ch. 1, §1.9).
+  answers Elerea and reactive-banana. Reflex (Hackage) sits beside them.
+  Sodium and reactive-banana are "equivalent apart from naming"
+  (blackheath-functional-reactive-programming, ch. 1, §1.9).
 - **Dynamic dataflow in a host language.** Frappé 2001† → FrTime 2006,
   thesis 2008 → Flapjax 2009 → Scala.React 2012, incremental lists 2013,
   thesis 2013 → REScala 2014† → distributed REScala 2014 → thread-safe
@@ -2959,12 +2976,12 @@ read. Continuous time is here and nowhere else: Bough is discrete.
   1987† → synchronous Kahn networks 1996 → modular causality 2001.
   Esterel's foundations 2000† → constructive semantics 2002, with cyclic
   circuits 1996 before it and timed ternary simulation 2012† after. The
-  survey twelve years later 2003† → delayed actions 2004 → clock-directed code
-  2008 → modular static scheduling 2009 → modular memory 2012 → clock
-  refinement 2013 → sequential constructiveness 2014 → SCCharts 2014 →
-  fixed-point semantics for constructive scheduling 2015 → Vélus 2017.
-  Copilot 2010 → its verifier 2023, extended 2026. Céu 2015. Superdense
-  time, Lee and Zheng 2005.
+  survey twelve years later 2003† → delayed actions 2004 →
+  clock-directed code 2008 → modular static scheduling 2009 → modular
+  memory 2012 → clock refinement 2013 → sequential constructiveness 2014
+  → SCCharts 2014 → fixed-point semantics for constructive scheduling
+  2015 → Vélus 2017. Copilot 2010 → its verifier 2023, extended 2026.
+  Céu 2015. Superdense time, Lee and Zheng 2005.
 - **Incremental computation.** Attribute grammars 1981† → computational
   circuits 1990† → the categorized bibliography 1993†. Order in a list,
   Dietz and Sleator 1987† → self-adjusting computation 2005 → adaptive
@@ -3026,11 +3043,11 @@ stated" means the source read was silent.
 | discro | 0.35.0 | One shared latest value, publisher and subscribers | Not stated | Not stated | On `tokio::sync::watch` | docs.rs |
 | reactive_stores | 0.4.4 | Field-level tracking of nested state; keyed `Patch` | A field update notifies parents and children, not siblings | On `reactive_graph` | As `reactive_graph` | docs.rs |
 
-Two crates considered for the table aren't reactive and have no row. Bevy's
-change detection records ticks on components for systems to check when
-they run, and pushes nothing to dependents (docs.rs/bevy_ecs/0.19.1).
-Xilem rebuilds a lightweight view tree, Elm-style, with no dependency
-graph (linebender/xilem README).
+Two crates considered for the table aren't reactive and have no row.
+Bevy's change detection records ticks on components for systems to check
+when they run, and pushes nothing to dependents
+(docs.rs/bevy_ecs/0.19.1). Xilem rebuilds a lightweight view tree,
+Elm-style, with no dependency graph (linebender/xilem README).
 
 ## Annotated bibliography
 

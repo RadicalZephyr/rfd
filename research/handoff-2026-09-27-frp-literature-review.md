@@ -2218,7 +2218,7 @@ The wall-clock re-runs:
 ➡️ **(a)** The map rows are the only ones known to vary with the seed,
 and three runs of one bench add about twenty minutes.
 
-### 2026-09-29 08:50 -07:00, phase 8 stopped again: the wall-clock rule
+### 2026-09-29 08:37 -07:00, phase 8 stopped again: the wall-clock rule
 
 Zefira answered (a) to all three questions at 06:30, and said the
 machine was idle. Done since:

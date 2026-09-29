@@ -2304,9 +2304,10 @@ thread makes a transition non-atomic, so an intermediate state is
 observable (ch. 14, §14.3.1).
 
 **Half of the single thread's determinism argument is kept by
-serializable concurrency too.** The half is RFD 2's "a transaction is a
-pure function of its inputs"; RFD 6 itself states no reason for the
-single thread. MV-RP's histories are equivalent to a serial run of the same
+serializable concurrency too.** The half is "a transaction is a pure
+function of its inputs", which RFD 2 gives for the synchronous
+re-entrancy check, not for the single thread. RFD 6 states no
+determinism or overhead reason, only that the host owns the schedule. MV-RP's histories are equivalent to a serial run of the same
 transactions (drechsler-thread-safe-reactive-programming pp. 10–11, 15),
 so each still computes what it would alone. What concurrency gives up is
 that the order of units is fixed in one place before they run. In Bough

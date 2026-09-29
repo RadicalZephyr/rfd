@@ -465,7 +465,8 @@ recommends.** Reflex's default `switchHold` uses only the old event at
 the switch instant, because that "avoid[s] many potential cyclic
 dependency / metastability failures" and is faster. The prompt variants
 exist and are discouraged (reflex-reflex-class p. 15). Its `hold` makes a
-sample at the switch instant see the old value (p. 7). Yampa offers both
+sample at the instant the hold updates, a switch instant included, see
+the old value (p. 7). Yampa offers both
 timings for every switcher, because the delayed one "is sometimes needed
 to break cyclic dependencies" (nilsson-functional-reactive-programming-continued
 p. 4). FrTime builds a new branch mid-cycle and forwards its value in the
@@ -490,8 +491,10 @@ differently.**
   before the start is an error, new streams have no past, and `join`
   becomes the diagonal of a skewed stream of streams
   (patai-efficient-and-compositional-higher-order-streams pp. 3–5, 8–9).
-  reactive-banana 1.0 shipped that as its `Moment` monad
-  (apfelmus-frp-release-of-reactive-banana-version-1-0 p. 1).
+  reactive-banana 1.0 moved every history-dependent operation, such as
+  `accumE` and `stepper`, into its `Moment` monad
+  (apfelmus-frp-release-of-reactive-banana-version-1-0 p. 1), which is
+  the same idea.
 - Jeltsch's *era* parameter quantifies an inner's era like `ST`, so outer
   behaviours enter only through `switcher`'s arguments, which strip their
   history (apfelmus-frp-dynamic-event-switching pp. 4–5). It's the most
@@ -528,7 +531,7 @@ finds a cycle when that walk meets the child (the Incremental source,
 `adjust_heights_heap.mli`, read at v0.17.0 in the crate table below).
 
 **Incremental cycle detection is a solved problem with an unhelpful
-bound.** Every efficient cycle detector keeps a topological order
+bound.** Every known efficient cycle detector keeps a topological order
 (haeupler-incremental-cycle-detection-topological-ordering-and-strong-component
 p. 3). Pearce and Kelly keep one integer per node. An edge that already
 agrees with the order costs a comparison, and one that doesn't searches
@@ -536,7 +539,7 @@ only the affected region between its ends
 (pearce-a-dynamic-topological-sort-algorithm-for-directed-acyclic
 pp. 3, 5, 8). On random 2,000-node graphs the simple array beats the
 asymptotically better algorithms, because ordered lists are expensive
-(pp. 15–16, 20; not reproduced). HKMST's limited search is Bough's
+(pp. 15–17, 20; not reproduced). HKMST's limited search is Bough's
 upstream walk with one change: it never visits a node on the wrong side
 of the order (haeupler-… p. 4). The amortized bounds assume insertions
 only. With deletions the algorithms stay correct and the order stays
@@ -577,7 +580,7 @@ twice (reactive_graph@v0.8.21 `reactive_graph/src/effect/immediate.rs`:352–354
 Leptos, Sycamore, salsa and Incremental all tie a node's life to the run
 that created it: an owner's re-run disposes what the last run made
 (reactive_graph@v0.8.21 `reactive_graph/src/owner.rs`:34–46;
-sycamore-reactive@0.9.3 `src/signals.rs`:123–143;
+sycamore-reactive@0.9.3 `src/signals.rs`:139–143, `src/root.rs`:160;
 salsa@salsa-v0.28.5 `src/tracked_struct.rs`:186–191). carboxyl's stream
 `switch` re-registers on each new inner and kills the old callback
 through a dropped token (carboxyl@2a80080 `src/stream/mod.rs`:445–475).
@@ -586,7 +589,7 @@ arena (docs.rs/incremental-topo/0.3.1).
 
 ### What the probes found
 
-Six probes built RFD 5's relink check against the alternatives, on a
+Three probes and their extensions built RFD 5's relink check against the alternatives, on a
 10,147-node UI-shaped graph with 750 `construct`-style subgraphs. Four
 workloads build 0%, 20%, 50% and 100% of their new inners during the
 instant: `settled`, `mixed`, `churn` and `lazy`.
@@ -613,12 +616,14 @@ instant: `settled`, `mixed`, `churn` and `lazy`.
 - **An order-maintenance list that places new nodes on the small side
   bounds it on this shape** (`rfd-0005-small-side-order`). Placing the
   new side just before the switch, with a backward search or HKMST's
-  two-way search, costs 0.017, 0.10, 0.29 and 0.62 of the walk's time on
-  the four workloads, and a node built costs about 14% more than without
+  two-way search, costs 0.020, 0.11, 0.30 and 0.64 of the walk's time on
+  the four workloads with the first, and 0.017, 0.10, 0.29 and 0.62 with
+  the second, and a node built costs about 14% more than without
   an order (wall-clock).
-- **It isn't bounded in general.** On an adversarial shape both searches
-  cost 1.7 to 8.8 times the walk unless the switch's downstream is much
-  smaller than the new inner's upstream. On a cycle none beats the walk
+- **It isn't bounded in general.** On an adversarial shape the backward
+  search costs 2.3 to 8.8 times the walk, and the two-way search 3.2 to
+  11 times unless the switch's downstream is much smaller than the new
+  inner's upstream. On a cycle none beats the walk
   by much. The backward search's cost is its search, sort and move, not
   relabelling: with fresh spacing it relabels nothing and still costs
   2.6 to 7.1 times the walk's instructions on the adversary. Dropping
@@ -627,10 +632,22 @@ instant: `settled`, `mixed`, `churn` and `lazy`.
   cycles.
 - **Where the list pays.** On a mixed adversary, a new inner reading
   some old nodes before the switch and some new ones after it, the
-  no-sort backward search beats the walk once the old upstream is about
-  as large as the new side: at 1,000 new nodes it costs 1.24 of the walk
+  no-sort backward search beats the walk once the old upstream is
+  somewhat larger than the new side: at 1,000 new nodes it costs 1.24 of the walk
   with 1,000 old ones and 0.23 with 10,000 (wall-clock). The instruction
   counts put that line near twice.
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-small-side-order-counts at experiments@1e7b257 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0005_small_side_order::tests::mixed_spacing_counts -- --nocapture
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-small-side-order-instructions at experiments@d64e616 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-small-side-order-instructions -- '*::nosort::*'
+```
 
 > rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-cycle-in-mark at experiments@f16d00b - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
 
@@ -819,10 +836,11 @@ over unbounded values and a run-time graph
 acceptance depend on how each primitive treats unknown inputs
 (schneider-causality-analysis-of-synchronous-programs-with-delayed-actions
 pp. 10–11), and it changes Bough's error from "this graph has a cycle"
-to "in some reachable state, this is undetermined". Scade's users accept
-the extra restriction
+to "in some reachable state, this is undetermined". By analogy, Scade's users
+accept the extra constraints that modular compilation puts on feedback
+loops, since their applications tolerate an inserted delay
 (pouzet-modular-static-scheduling-of-synchronous-data-flow-networks
-p. 18).
+p. 18, fn. 9).
 
 Sequential constructiveness accepts more still, but only through program
 order between statements (vonhanxleden-sequentially-constructive-concurrency-a-conservative-extension-of-the
@@ -844,7 +862,7 @@ least fixpoint is ⊥ (berry-… pp. 31, 41). SC's check, Keating's direct
 dependency and DBSP's strictness all refuse it. It needs `steps`, and the
 book's ten core primitives "give you no way to convert a cell into a
 stream" (blackheath-functional-reactive-programming, ch. 8, §8.4; ch. 2,
-Table 2.1). So "every loop passes through a hold" may be the right rule
+§2.14, Table 2.2). So "every loop passes through a hold" may be the right rule
 for the core, and the operational primitives are what break it. That
 ties open questions 3 and 10.
 
@@ -894,8 +912,9 @@ Sycamore panics when its DFS meets a node still on the stack
 (sycamore-reactive@0.9.3 `packages/sycamore-reactive/src/root.rs`:254–277).
 carboxyl's `Signal::cyclic` is a forward declaration that panics if
 sampled before it's defined (carboxyl@2a80080 `src/signal.rs`:209–218,
-501–512). None of them checks loops through switching, since none has
-Sodium's switches.
+501–512). None of them checks loops through switching: carboxyl has
+Sodium's two switches but no cycle check at all, and the others have no
+switch of Sodium's kind.
 
 ### What the probes found
 
@@ -909,8 +928,8 @@ programs that acyclicity refuses, of one to eight nodes over two inputs.
   at ⊥.
 - If at least one input fires every instant, 1,798 are constructive:
   687 (a), 894 with a dead `or_else` branch, 217 with a live cycle such
-  as mutual defaults, `s0 = i0.or_else(s1)`, `s1 = i1.or_else(s0)`, and
-  2 value-dependent. None looks like a program anyone means to write,
+  as mutual defaults, `s0 = i0.or_else(s1)`, `s1 = i1.or_else(s0)`; 2
+  of the 1,111 outside (a) are value-dependent. None looks like a program anyone means to write,
   and every one outside (a) breaks when another input fires alone or an
   instant is a child instant.
 - Letting gates read holds of the loop, so cells take only reachable
@@ -921,7 +940,8 @@ programs that acyclicity refuses, of one to eight nodes over two inputs.
   more sit behind constant cells.
 - Every program of two to four nodes and every cell binding: of
   3,147,279 refused over two inputs, 13 programs are constructive with a
-  cell that changes, in 13 minimal forms, all of four nodes, and all
+  cell that changes when some input fires every instant (none when the
+  quiet instant counts), in 13 minimal forms, all of four nodes, and all
   break when a third input fires alone. Over three inputs, of 3,468,034,
   none.
 
@@ -937,7 +957,7 @@ decoupled or not, and `close` requires decoupled.
   Helpers generic over the mark fix the first two.
 - Extended to `gate`, `sample`, `split`, `defer` and `depends`, it still
   refused every illegal fixture. It can't see sampling a loop cell
-  before close, which stays a run-time panic.
+  before close, which stays a panic when the graph is built.
 - Compile time, on the idle machine: 1.02 to 1.06 of the baseline on the
   hand-written fixtures, and 1.03 to 1.16 on a generated program of 512
   depth-three chains. Cuoq-style rows cost 1.05 to 1.25 there.

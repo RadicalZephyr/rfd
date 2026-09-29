@@ -41,3 +41,4 @@
 - [A core that doesn't know its mode](./notes/2026-09-27-mode-generic-core.md)
 - [Incremental Collection Propagation](./notes/2026-09-29-incremental-collection-propagation.md)
 - [What a thousand rows cost](./notes/2026-09-29-row-cost-probe.md)
+- [Where Bough fits](./notes/2026-09-29-where-bough-fits.md)

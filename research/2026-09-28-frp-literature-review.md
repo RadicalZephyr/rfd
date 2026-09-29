@@ -337,3 +337,311 @@ Never run here; each is for the real build to decide on.
 - aguado-denotational-fixed-point-semantics-for-constructive-scheduling-of
   §2 for the identifier order. Needs lattices at Davey and Priestley's
   level.
+
+## Switching and dynamic graphs (RFDs 2, 5)
+
+### What the literature says
+
+**Sodium's switch-instant semantics is the combination Reflex
+recommends.** Reflex's default `switchHold` uses only the old event at
+the switch instant, because that "avoid[s] many potential cyclic
+dependency / metastability failures" and is faster. The prompt variants
+exist and are discouraged (reflex-reflex-class p. 15). Its `hold` makes a
+sample at the switch instant see the old value (p. 7). Yampa offers both
+timings for every switcher, because the delayed one "is sometimes needed
+to break cyclic dependencies" (nilsson-functional-reactive-programming-continued
+p. 4). FrTime builds a new branch mid-cycle and forwards its value in the
+same cycle (cooper-integrating-dataflow-evaluation-into-a-practical-higher-order
+pp. 40–41). The Sodium book gives no reason for `switch_stream` taking
+the old stream: it exists only as `t <= t1` in SwitchS's definition
+(blackheath-functional-reactive-programming, App. E, §E.5.6).
+
+**Switching is where history leaks, and every line fenced it
+differently.**
+
+- Elm banned signals of signals. A fold built late must either keep all
+  history or give two identically defined signals different values
+  (czaplicki-asynchronous-functional-reactive-programming-for-guis p. 4).
+  It later dropped signals entirely, for learnability, not for semantics
+  or speed (czaplicki-a-farewell-to-frp p. 5).
+- Yampa made signals second class to avoid time and space leaks, and
+  `pSwitch` hands running signal functions over as frozen continuations
+  with their state (nilsson-functional-reactive-programming-continued
+  pp. 2, 5). That's a clean model of "deselected but still stateful".
+- Patai made stateful streams *generators* of their start time. Sampling
+  before the start is an error, new streams have no past, and `join`
+  becomes the diagonal of a skewed stream of streams
+  (patai-efficient-and-compositional-higher-order-streams pp. 3–5, 8–9).
+  reactive-banana 1.0 shipped that as its `Moment` monad
+  (apfelmus-frp-release-of-reactive-banana-version-1-0 p. 1).
+- Jeltsch's *era* parameter quantifies an inner's era like `ST`, so outer
+  behaviours enter only through `switcher`'s arguments, which strip their
+  history (apfelmus-frp-dynamic-event-switching pp. 4–5). It's the most
+  direct type-level answer in the batch.
+- FrTime deletes the signals created in a branch's "extended dynamic
+  extent" when the branch is switched out, before any of them can update,
+  and doesn't wait for a collector
+  (cooper-embedding-dynamic-dataflow-in-a-call-by-value p. 9). That gives
+  `depends` an inverse. It also changes the semantics: switched-out state
+  is destroyed, which Sodium's isn't.
+
+**A dynamic graph needs its order repaired, and the ranked systems pay
+for it.** FrTime runs a height-ordered priority queue. When a new branch
+is taller, heights are adjusted and the queue told before any more
+updates (cooper-embedding-dynamic-dataflow-in-a-call-by-value pp. 7–8),
+and cycles are found by the height reassignment
+(cooper-integrating-dataflow-evaluation-into-a-practical-higher-order
+p. 46). Scala.React keeps topological levels. When an opaque node reads
+a node at or above its own level it throws, is hoisted above that node
+with its dependents, and is re-run later in the same turn, which forces
+expression signals to be side-effect free
+(maier-deprecating-the-observer-pattern-with-scala-react pp. 12–13). The
+thesis proves the scheme keeps every edge going upward
+(maier-reactive-programming-abstractions-for-complex-event-logic-and
+p. 84, Lemma 5.2.5), and its `hoist` walks only dependents below the new
+level, with cycle detection a by-product "a debug version" could add
+(p. 81). The only claim that repairs are rare is unmeasured
+(maier-higher-order-reactive-programming-with-incremental-lists p. 19).
+Flapjax doesn't say how it repairs ranks when `switchE` rewires a
+taller inner (meyerovich-flapjax-a-programming-language-for-ajax-applications
+p. 10). Jane Street's Incremental raises a parent's height and its
+ancestors' in increasing order when an edge would point downhill, and
+finds a cycle when that walk meets the child (the Incremental source,
+`adjust_heights_heap.mli`, read at v0.17.0 in the crate table below).
+
+**Incremental cycle detection is a solved problem with an unhelpful
+bound.** Every efficient cycle detector keeps a topological order
+(haeupler-incremental-cycle-detection-topological-ordering-and-strong-component
+p. 3). Pearce and Kelly keep one integer per node. An edge that already
+agrees with the order costs a comparison, and one that doesn't searches
+only the affected region between its ends
+(pearce-a-dynamic-topological-sort-algorithm-for-directed-acyclic
+pp. 3, 5, 8). On random 2,000-node graphs the simple array beats the
+asymptotically better algorithms, because ordered lists are expensive
+(pp. 15–16, 20; not reproduced). HKMST's limited search is Bough's
+upstream walk with one change: it never visits a node on the wrong side
+of the order (haeupler-… p. 4). The amortized bounds assume insertions
+only. With deletions the algorithms stay correct and the order stays
+valid, but "our time bounds are no longer valid" (haeupler-… p. 2;
+bender-a-new-approach-to-incremental-cycle-detection-and p. 18). A
+switch move deletes as well as inserts, so for Bough only the
+per-insertion, affected-region cost means anything. Batching helps only
+for large batches (pearce-a-batch-algorithm-for-maintaining-a-topological-order
+pp. 7–8).
+
+Two more ideas bear on the relink check. Pouzet and Raymond summarize a
+subgraph by which inputs reach which outputs in the same instant, so a
+caller checks feedback against the summary, not the insides
+(pouzet-modular-static-scheduling-of-synchronous-data-flow-networks
+pp. 5, 9–12). A summary goes stale whenever a switch inside it moves.
+Async RaTT's Theorem 4.5 gives a static upper bound on the inputs an
+output can depend on, through switching (bahr-asynchronous-modal-frp
+p. 19). That's the formal form of RFD 2's untried "check every candidate
+at build", and it works only because candidates can't come from anywhere
+but the typing context. `construct` makes new ones.
+
+**F46 needs only an order of operations.** If every deletion of a
+transaction is applied before any insertion, each intermediate graph is
+a subgraph of the final one. If the final graph is acyclic, so is every
+intermediate one, and no legal reversal is refused. That is my reading of
+the theory above, not a source's claim. RFD 5 already checks after all
+moves, which is the same thing.
+
+### The Rust prior art
+
+Sycamore runs RFD 5's design and folds cycle detection into it: a DFS
+over dependents with `Temp` and `Permanent` marks, reverse post-order as
+the evaluation order, and a panic, "cyclic reactive dependency", when
+the DFS meets a `Temp` node (sycamore-reactive@0.9.3
+`packages/sycamore-reactive/src/root.rs`:193–277). Leptos has no cycle
+detection; `ImmediateEffect` only warns when a run recurses more than
+twice (reactive_graph@v0.8.21 `reactive_graph/src/effect/immediate.rs`:352–354).
+Leptos, Sycamore, salsa and Incremental all tie a node's life to the run
+that created it: an owner's re-run disposes what the last run made
+(reactive_graph@v0.8.21 `reactive_graph/src/owner.rs`:34–46;
+sycamore-reactive@0.9.3 `src/signals.rs`:123–143;
+salsa@salsa-v0.28.5 `src/tracked_struct.rs`:186–191). carboxyl's stream
+`switch` re-registers on each new inner and kills the old callback
+through a dropped token (carboxyl@2a80080 `src/stream/mod.rs`:445–475).
+`incremental-topo` packages Pearce and Kelly's order over a generational
+arena (docs.rs/incremental-topo/0.3.1).
+
+### What the probes found
+
+Six probes built RFD 5's relink check against the alternatives, on a
+10,147-node UI-shaped graph with 750 `construct`-style subgraphs. Four
+workloads build 0%, 20%, 50% and 100% of their new inners during the
+instant: `settled`, `mixed`, `churn` and `lazy`.
+
+- **The grey mark can't replace the walk** (`rfd-0005-cycle-in-mark`).
+  A DFS mark with a grey state finds a cycle only at the first later
+  transaction whose input reaches it. Over 2,000 random `switch_cell`
+  cycles it found 781 one transaction late, 882 two to five late, 327
+  six to twenty late and 10 not within twenty. Over 2,000
+  `switch_stream` cycles it never found 918, 912 of them because no
+  input reaches the cycle at all. Of 15 illegal hand-written cases, the
+  walk finds 9; Brent's guard finds 6 before either check runs, in both
+  designs, and without it they overflow the stack. The mark adds 6.1%
+  to a 10,101-node mark in instructions. It found no false positives.
+- **The upstream set is small on this shape.** A move to an existing
+  view walks about 535 nodes (median upstream 503, most 1,138), not
+  F50's ten thousand (`rfd-0005-bounded-relink-check`).
+- **A Pearce–Kelly array loses badly when inners are built during the
+  instant.** It is 0.018 of the walk's time on `settled`, and 20, 91
+  and 250 times worse on `mixed`, `churn` and `lazy`. A new node goes
+  at the end of the order, so the first link searches the switch's whole
+  downstream (wall-clock). Per-subgraph summaries never beat the walk:
+  1.28 to 1.40 of it (wall-clock).
+- **An order-maintenance list that places new nodes on the small side
+  bounds it on this shape** (`rfd-0005-small-side-order`). Placing the
+  new side just before the switch, with a backward search or HKMST's
+  two-way search, costs 0.017, 0.10, 0.29 and 0.62 of the walk's time on
+  the four workloads, and a node built costs about 14% more than without
+  an order (wall-clock).
+- **It isn't bounded in general.** On an adversarial shape both searches
+  cost 1.7 to 8.8 times the walk unless the switch's downstream is much
+  smaller than the new inner's upstream. On a cycle none beats the walk
+  by much. The backward search's cost is its search, sort and move, not
+  relabelling: with fresh spacing it relabels nothing and still costs
+  2.6 to 7.1 times the walk's instructions on the adversary. Dropping
+  the sort, moving the set in DFS post-order instead, brings it to 1.7
+  to 3.0 times the walk's time (wall-clock), and to 0.73 to 1.13 on
+  cycles.
+- **Where the list pays.** On a mixed adversary, a new inner reading
+  some old nodes before the switch and some new ones after it, the
+  no-sort backward search beats the walk once the old upstream is about
+  as large as the new side: at 1,000 new nodes it costs 1.24 of the walk
+  with 1,000 old ones and 0.23 with 10,000 (wall-clock). The instruction
+  counts put that line near twice.
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-cycle-in-mark at experiments@f16d00b - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0005-cycle-in-mark
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-cycle-in-mark-instructions at experiments@f16d00b - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-cycle-in-mark-instructions
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-bounded-relink-check-counts at experiments@39fd355 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0005_bounded_relink_check::tests::counts -- --nocapture
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-bounded-relink-check-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-bounded-relink-check-wallclock
+python3 scripts/ratios.py moves build
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-small-side-order-counts at experiments@65b0230 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0005_small_side_order::tests::counts -- --nocapture
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-small-side-order-instructions at experiments@1e7b257 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-small-side-order-instructions
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-small-side-order-counts-nosort at experiments@d64e616 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0005_small_side_order::tests::nosort_counts -- --nocapture --exact
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-small-side-order-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-small-side-order-wallclock
+python3 scripts/ratios.py
+```
+
+### Settled decisions the evidence contradicts
+
+None found. Every ranked system confirms that a dynamic graph costs a
+ranked scheduler repairs, and that is RFD 5's stated worry. What the
+scheduling section finds is that the repair is cheap; see there. RFD 5's
+per-move walk and Brent's guard on reads both stand: the probe found no
+design that makes either redundant.
+
+### The options for Bough
+
+For the relink check:
+
+1. Keep the upstream walk, with every deletion applied before any
+   insertion, as RFD 5 has it.
+2. Keep an order-maintenance list, place a new inner's new nodes just
+   before the switch, and check a move by a backward search in
+   post-order. It costs a label per node and about 14% per node built.
+3. Get the check from Incremental-style heights, which the scheduling
+   section weighs, since raising heights at a link finds cycles on the
+   way.
+4. Check every candidate at build, Async RaTT-style. It needs every
+   switch to declare its candidates, and `construct` defeats it.
+
+For what a switch does to what it deselects: keep Sodium's "deselected
+inners keep accumulating", or destroy what a branch built, as FrTime and
+the owner-scoped Rust libraries do.
+
+### Claude's leaning
+
+Option 1 now. On the UI shape the walk is about 535 nodes, a few
+microseconds, and the probe found nothing that retires it or Brent's
+guard. If Oort or bough-gtk shows moves with large upstream sets, option
+2 is the one to build, not a Pearce–Kelly array, and option 3 comes free
+if the scheduling question goes to heights. Keep "deselected inners keep
+accumulating", and write down that it's why Bough can't have the
+automatic inverse every owner-scoped library has. Keep Sodium's
+switch-instant asymmetry and cite Reflex's reason for it.
+
+### Questions to grill
+
+- Is the 121 µs of F50 a shape real programs hit, or is a real new
+  inner's upstream a few hundred nodes, as the UI-shaped graph has it?
+- Would you pay a label per node and 14% per node built so that most
+  moves cost a comparison, or only once a real program shows slow moves?
+- FrTime and every owner-scoped Rust library destroy what a switched-out
+  branch built. Is "a deselected inner keeps accumulating" worth losing
+  that automatic inverse for `depends`, and is it written down as the
+  reason?
+- Would you want Reflex's reason for the old stream at the switch instant
+  on record in RFD 1, since the book gives none?
+- Does anything besides the cycle check want a global order? If the
+  scheduling question goes to heights, the relink check should come from
+  them.
+
+### Experiments this proposes for Bough
+
+- Log every move's upstream size, and whether it links a node built in
+  the same instant, on Oort's fighter and on bough-gtk's list view, to
+  know which of the four workloads real programs look like.
+- Count, on those same programs, how often a transaction moves more than
+  one switch, and how often two of its moves touch the same region, to
+  see whether F46's order of operations ever matters in practice.
+
+### Reading path
+
+- reflex-reflex-class for the switch-instant semantics: the Primitives,
+  MonadHold and "Collapsing `Event . Event`" sections. Needs Haskell type
+  classes.
+- patai-efficient-and-compositional-higher-order-streams for generators.
+  Short; needs monads and `mfix`.
+- cooper-embedding-dynamic-dataflow-in-a-call-by-value §§1–3 for
+  FrTime's heights and deletion; §4 needs reduction semantics with
+  evaluation contexts.
+- maier-deprecating-the-observer-pattern-with-scala-react §§7.1–7.3 and
+  7.6 for hoisting. Needs basic Scala.
+- pearce-a-dynamic-topological-sort-algorithm-for-directed-acyclic, then
+  haeupler-incremental-cycle-detection-topological-ordering-and-strong-component
+  §2. Needs DFS, topological sort and amortized analysis; HKMST's §§4–6
+  are heavy theory Bough doesn't need.
+- The Incremental source's `incremental_intf.ml`, lines 90–260, is a
+  self-contained description of heights and `bind`.

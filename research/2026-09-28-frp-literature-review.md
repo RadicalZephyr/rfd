@@ -42,7 +42,7 @@ are still to do._
 ## The must-read
 
 Ninety-nine sources were read from stored copies, six crates at
-source. Thirteen probes and their follow-ups ran on the idle
+source. Thirteen probes and their follow-ups ran, timed on the idle
 machine. Nothing rests on an abstract alone; a leaning resting on a
 paper's unreproduced number says so.
 
@@ -133,8 +133,8 @@ Contended, the lock loses more. Drechsler et al.'s 20% to 25% for
 concurrent propagation is not reproduced, and their negligible
 uncontended lock is asserted, not measured. The Sodium book argues *for*
 threads. What the sources support: no listeners under a lock, one order
-of units the host can see. Leaning: keep the single thread, and write
-its reasons down.
+of units the host can see. Leaning: keep the single thread; write its
+reasons down.
 
 **RFD 7.** Every bounded system compiles a static graph or bounds
 creation up front; the embedded line moved from merging simultaneous

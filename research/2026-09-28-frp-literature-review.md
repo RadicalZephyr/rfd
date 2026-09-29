@@ -1121,7 +1121,8 @@ tier and left to the user elsewhere.
   (hammer-adapton-composable-demand-driven-incremental-computation
   pp. 2, 9; not reproduced).
 - Build systems get it from a topological order, which needs static
-  dependencies, or by suspending, which is memoized pull
+  dependencies, by restarting, which aborts a task that reads a stale
+  key, or by suspending, which is memoized pull
   (mokhov-build-systems-a-la-carte pp. 13–14). Bough is a topological
   scheduler recomputed each transaction for the part of the graph
   that's static within an instant, plus suspending for the two dynamic
@@ -1141,7 +1142,8 @@ tier and left to the user elsewhere.
   impossible" in constant time (p. 62).
 
 Of all these, RFD 5's DFS reverse post-order over the affected region is
-the only one that is glitch-free without lossiness or a per-read stamp.
+the only one that is glitch-free without lossiness, a per-read stamp, a
+per-node count or a maintained rank.
 The cost is linear in the region.
 
 **The literature's case against ranks is the repair, and the repair
@@ -1178,7 +1180,7 @@ a dirty node read during the loop
 121–130). It reuses its sort buffer between propagations (lines 26,
 198–207). Leptos is Reactively's colour-then-pull with a `PartialEq`
 cut-off (reactive_graph@v0.8.21 `reactive_graph/src/lib.rs`:67–69,
-`src/computed/inner.rs`:69–124). sodium-rust runs changed nodes at the
+`src/computed/inner.rs`:69–177, `src/computed/memo.rs`:173–191). sodium-rust runs changed nodes at the
 end of a transaction in DFS order with a visited flag and no ranks
 (github.com/SodiumFRP/sodium-rust @3e93021
 `src/impl_/sodium_ctx.rs`:233–262, 298–355). incremental-rs keeps
@@ -1191,23 +1193,22 @@ salsa is pull only: it validates a memo's inputs in the order they ran
 
 ### What the probes found
 
-Four probes set schedulers against RFD 5's mark and flat loop. Two
+Three probes set schedulers against RFD 5's mark and flat loop. Two
 shapes: RFD 1's UI and frame shapes with static heights, and the
 switching section's 10,147-node graph under its four workloads, with
 filters whose pass rate sets the quiet share of each marked region. The
 wall-clock ratios below are each scheduler's time over the mark's, from
-the idle machine. The instruction counts, taken first, put every
-crossover lower; wall-clock is what counts here.
+the idle machine. The instruction counts, taken first, put the bucket
+and height crossovers lower; wall-clock is what counts here.
 
 - **Static heights with a bucket queue** (`rfd-0005-heap-vs-mark-on-quiet-regions`).
   On the 9,997-node UI shape the bucket queue costs 1.25 of the mark
   when every marked node fires, 1.15 at 10% quiet, 1.02 at 26% quiet,
   0.79 at 50% and 0.21 at 89%. A binary heap costs 2.58 when everything
-  fires and breaks even between 45% and 75% quiet. On the frame shape,
+  fires and breaks even between 50% and 74% quiet. On the frame shape,
   where everything fires, the bucket queue costs 1.09 at a width of 64
-  entities and 0.94 at 1,024, and the heap 1.50 at both. So the log factor is real for a binary heap and small for a
-  bucket queue. In instructions the mark was about 100 of every 130
-  instructions a marked node costs.
+  entities and 0.94 at 1,024, and the heap 1.50 at both. So the log
+  factor is real for a binary heap and small for a bucket queue.
 - **Heights raised at link time, Incremental's way, under switching**
   (`rfd-0005-height-queue`). Against RFD 5's mark with an unforced
   construct point:
@@ -1227,21 +1228,23 @@ crossover lower; wall-clock is what counts here.
 - **The re-ranking RFD 5 names is small.** Over 300 transactions and
   about 1,250 moves per workload, 46 to 145 links needed a raise. In the
   instant, raises mid-evaluation came to 0.13 to 0.37 a transaction,
-  touching at most one node, and never below the cursor, since a switch
+  touching one node a transaction or fewer on average, and never below the cursor, since a switch
   sits after its selector. But one raise touched up to 7,421 nodes, so a
   single link can cost a large pause.
 - **The raise finds cycles.** It refused exactly the walk's set of
-  moves, at 10 to 28 nodes a refused cycle.
-- **Heights grow only when cycles are refused.** Over 3,000 transactions
-  the largest height grew from 72 to between 242 and 367, all of it from
-  interrupted raises at refused cycles; without them it plateaus at 78.
+  moves, at 4 to 7 nodes a refused cycle (10 to 28 over each
+  workload's 2 to 6 refusals).
+- **Heights grow far only when cycles are refused.** Over 3,000
+  transactions the largest height grew from 72 to between 242 and 367,
+  all but a few levels of it from interrupted raises at refused cycles;
+  without them it rises from 72 to 74–78 and plateaus there.
   Under RFD 5's rule a refused cycle poisons the runtime, so that growth
   never happens.
 - **Maintained sparse labels lose the bucket queue**
   (`rfd-0005-maintained-rank-queue`). Ranks from the switching section's
-  order-maintenance list, in a binary heap, cost 2.35 to 2.55 of the
+  order-maintenance list, in a binary heap, cost 2.35 to 2.43 of the
   mark when everything fires and break even between 56% and 75% quiet. A
-  radix heap does no better. Keeping the labels is cheap: 0.02 to 0.61
+  radix heap does little better, 2.18 to 2.27 when everything fires. Keeping the labels is cheap: 0.02 to 0.61
   of the walk's upkeep.
 - **Flat adjacency is faster in time, not in instructions.** Rerun over
   flat edge arrays, the mark takes about 13% less time than over nested
@@ -1359,9 +1362,10 @@ pure pull loses when all output is demanded
 
 Keep option 1 for the first build, with the rejection reworded, and
 treat option 2 as the first performance change to try once a real
-program's quiet share is known. The UI shape is where Bough is slow
-today, a UI's marked regions are plausibly mostly quiet, and heights
-would also give the relink check for free. But the flat loop is what
+program's quiet share is known. The UI shape is where the relink check
+would bite (F50), though it is still unmeasured. A UI's marked regions
+are plausibly mostly quiet, and heights would also give the relink check
+for free. But the flat loop is what
 RFD 5, the spike and the oracle work already assume, a height raise can
 touch thousands of nodes at one link, and a quarter lost when a region
 fires whole is not nothing. This is a leaning on a trade, not on a

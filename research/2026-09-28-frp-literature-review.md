@@ -19,9 +19,25 @@ section that quotes it. A paper's number is that paper's claim, marked
 "not reproduced". Bough's own numbers are cited to the research note that
 measured them._
 
-_Verification: not yet done. Phase 8 of the handoff checks every claim
-against its page in the stored copy, re-runs every probe, and records
-here what it checked, how, and the errors it found and fixed._
+_Verification, 2026-09-29, in part. Fresh verifiers, given the note,
+`literature`, `experiments` and none of the drafting, checked it in
+seven slices. They checked about 1,600 claims: each against its page in
+the stored PDF, the crate clone at its pinned commit, the Sodium book or
+Bough's own notes, and each number against its result file. They found
+99 errors: 27 overstated, 14 misread, 12 unsupported, 11 wrong pages, 11
+wrong numbers, 10 metadata (8 of them missing years), 9 internal, 3
+misattributed and 2 missing provenance lines. Each was fixed and
+re-checked by the verifier that found it; the fixes brought in 5 more,
+fixed the same way. Two fixes would change a must-read finding, and
+wait for Zefira: RFD 6 states no overhead reason, and not every bounded
+system compiles a static graph. The 66 result files that don't need
+wall-clock were re-run, each at the commit it cites. 62 reproduce, the
+instruction counts within 1%. The four `patch-cell-crossover`
+instruction files don't, in their `map_*` benchmarks only: the fixture
+seeds std's `HashMap` per process, so those counts move by up to 11%
+from run to run. The note quotes none of them. The two futex tables
+depend on scheduling and tell the same story. The wall-clock re-runs
+are still to do._
 
 ## The must-read
 
@@ -2422,8 +2438,10 @@ In instructions, the uncontended lock adds 39 and 18 a unit to about
 - **The contended lock's extra cost is mostly a futex wake per unlock,
   not the graph's state moving between cores.** Grown to 256 KiB of state
   per unit, the lock changes threads in under 1% of units, yet a copy of
-  std's mutex still makes 0.73 to 0.97 `futex_wake` calls a unit, and
-  std's workers sleep 0.78 to 0.94 times. The queue's extra time stays
+  std's mutex still makes about one `futex_wake` call a unit, and std's
+  workers sleep about as often. The counts depend on scheduling: 0.73 to
+  0.97 wakes and 0.78 to 0.94 sleeps in the recorded run, 0.85 to 0.95
+  and 0.70 to 0.97 when verification re-ran it. The queue's extra time stays
   at roughly 60 to 240 ns as the state grows, so its ratio falls to 1.01
   to 1.02 at 256 KiB.
 - **A wake across the chip's two core complexes costs more.** Pinned

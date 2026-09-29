@@ -129,7 +129,7 @@ child-instant depth cap, fixed queue capacities with a full-queue
 30% quiet is interpolated. The incremental mark's single-unit benches
 disagree with its whole-run bench, and the `owned` rebrand's wall-clock
 with its instruction counts. Neither changes a leaning. The lock's
-mechanism rests on one timed run.
+mechanism rests on one timed binary.
 
 **What to grill first.** RFD 3's brand, since it must be decided before
 signatures set, and its trigger. Then RFD 5's ranks, after a real
@@ -1920,10 +1920,10 @@ lead with `Copy` tokens.
 **"Linear" is the wrong word for Bough's streams.** Linear means consumed
 exactly once, affine at most once
 (bernardy-linear-haskell-practical-linearity-in-a-higher-order p. 2).
-Rust is affine, and its ownership is a uniqueness system: it sits with
-Clean among the uniqueness languages, not the linear ones (p. 23;
+Rust's ownership is a uniqueness system: it sits with Clean among the
+uniqueness languages, not the linear ones (p. 23;
 marshall-linearity-and-uniqueness pp. 1, 6). The two coincide only when
-every value is substructural, and Bough has unrestricted values,
+every value is substructural (p. 4), and Bough has unrestricted values,
 `Shared<A>`. Linearity restricts the future: an unrestricted value can
 become linear, never the reverse. Uniqueness guarantees the past: a
 unique value can become shared, never the reverse (marshall-… pp. 5–8).
@@ -1958,11 +1958,12 @@ none bounds the number of instantiations. Lustre's modular compilation
 keeps generated code "linear in the size of the source program" because a
 node compiles once whatever its context
 (biernacki-clock-directed-modular-code-generation-for-synchronous-data
-p. 9). FrTime's lowering, build the graph and then collapse nodes, gave
-up to 16,000 times on a microbenchmark and a slowdown on a program
-already written for it
+p. 9). FrTime's lowering, a source rewrite that collapses lifted
+subexpressions into plain calls, gave up to 16,000 times on a
+microbenchmark and a slowdown on a program already written for it
 (cooper-integrating-dataflow-evaluation-into-a-practical-higher-order
-pp. 78–81; not reproduced).
+pp. 78–79; not reproduced). Building the graph first and then collapsing
+nodes is its proposed extension (p. 81).
 
 **A cell of a collection is the `Replace` change structure.** Cai et al.
 give every value a change set, an update ⊕ and a difference ⊖, and allow
@@ -1981,9 +1982,10 @@ Odersky's abstract names the same problem
 
 - Over an abelian group, a delta stream integrated gives the collection,
   and the incremental version of any operator Q is D ∘ Q ∘ I, composed by
-  the chain rule (budiu-dbsp-… p. 4, Prop. 3.2). Linear operators such as
-  filter, projection, grouping, count and sum are their own incremental
-  versions and store nothing; join is bilinear and needs both
+  the chain rule (budiu-dbsp-… p. 4, Prop. 3.2). Filter, projection and
+  grouping are linear, their own incremental versions, and store
+  nothing; count and sum are linear only as scalar outputs, and keep a
+  per-key total when grouped; join is bilinear and needs both
   integrals; `distinct` needs one; min and max need the whole input
   (pp. 4, 6–7, 10; mcsherry-differential-dataflow pp. 7–8).
 - Z-sets, weighted elements with negative weights for removal, make
@@ -1997,8 +1999,8 @@ Odersky's abstract names the same problem
   (maier-higher-order-reactive-programming-with-incremental-lists
   pp. 6, 8, 11–15). They create one dependent per segment, not per
   element, to keep the graph small (pp. 16–17). On the JVM `foldUndo`
-  won from about n = 15 and `map` from about 30 (pp. 20–21; not
-  reproduced). Pulses form a monoid and values a module over it
+  won from about n = 15, and `map` from about 30 for a cheap function
+  and from 3 for an expensive one (pp. 20–21; not reproduced). Pulses form a monoid and values a module over it
   (maier-reactive-programming-abstractions-for-complex-event-logic-and
   pp. 78–79).
 - A derivative is cheap only if it needs the change and not the base
@@ -2020,7 +2022,7 @@ Odersky's abstract names the same problem
 
 The Sodium book sees the problem and has no incremental answer. A naive
 merge over N streams is a line of N − 1 nodes, and its fixes are
-balanced trees and "switches built into the tree"
+balanced trees and building "switches into the tree"
 (blackheath-functional-reactive-programming, ch. 7, §§7.6–7.7; ch. 8,
 §8.6).
 
@@ -2041,9 +2043,9 @@ github.com/feldera/feldera @2ad179e `crates/dbsp`). DFIR claims
 bet as RFD 4's fusion (hydro-dfir p. 1), and avoids per-node
 construction by generating each tick as one function from a macro
 (hydro@dfir_rs-v0.16.0 `dfir_lang/src/graph/meta_graph.rs`:813–816).
-Sycamore allocates a slot with five `Vec`s, a boxed callback and a boxed
-value per node (sycamore-reactive@0.9.3 `packages/sycamore-reactive/src/node.rs`:14–43); no crate
-publishes a per-node construction cost to set beside Oort's.
+Sycamore allocates a slot with four `Vec`s, a `SmallVec`, a boxed
+callback and a boxed value per node (sycamore-reactive@0.9.3
+`packages/sycamore-reactive/src/node.rs`:14–43); no crate publishes a per-node construction cost to set beside Oort's.
 
 ### What the probes found
 
@@ -2064,7 +2066,7 @@ functions where the baseline compiles 910 and 8,200, and the depth-three
 binary shrinks from 18.7 MiB to 11.5 boxed and 7.4 through `fn`
 pointers. The flat node removes nothing, since each closure is still its
 own type. Erasure doesn't stop growth with the number of chain types:
-the adapters are still compiled per chain, and erased builds grow about
+the adapters are still compiled per chain, and erased builds grow 8.3 to
 8.7 times from depth two to three against the baseline's 9.7. The `fn`
 pointer design uses a little `unsafe`, and Bough's core is
 `forbid(unsafe_code)`, so boxed is the usable one.
@@ -2083,7 +2085,8 @@ read-through derived cells. On the idle machine:
   1.03 at 3 elements and 1.6 to 2.3 from 10,000 up, so the large-`Vec`
   rows that looked like valgrind artefacts in the instruction counts are
   real. The shared B-tree wins from 1,000 elements (0.36). A chunked rope
-  wins from 1,000 too, and loses to the B-tree from 10,000.
+  wins from 1,000 too, but loses to the shared B-tree wherever it wins,
+  and to the plain B-tree from 10,000.
 - Appends at the end: the flat `Vec` delta is best at every size, and the
   shared B-tree close behind.
 - A `HashMap` with filter then count, upserts as Z-sets: an eager delta
@@ -2210,12 +2213,12 @@ fused upsert is the map operator to start from.
   multi-stage programming.
 - budiu-dbsp-automatic-incremental-view-maintenance-for-rich-query
   §§2–4. Self-contained given abelian groups.
-- cai-a-theory-of-changes-for-higher-order-languages §§2 and 5 for change
+- cai-a-theory-of-changes-for-higher-order-languages §§2 and 4 for change
   structures and self-maintainability.
 - maier-higher-order-reactive-programming-with-incremental-lists, after
   maier-deprecating-the-observer-pattern-with-scala-react for levels.
   Needs balanced binary trees and monoids.
-- acar-self-adjusting-computation Part III for trace stability. Needs
+- acar-self-adjusting-computation Parts II and III for trace stability. Needs
   randomized analysis, skip lists and treaps.
 
 ## Concurrency and the I/O edge (RFD 6)
@@ -2250,11 +2253,13 @@ conservative two-phase locking, multiversion reads and retrofitting of
 dynamic edges (drechsler-thread-safe-reactive-programming pp. 12–15,
 Thm. 1). Single-threaded it costs 20% to 25% against a global lock, and
 55% for an STM scheduler (pp. 21–23; not reproduced). Under extreme
-contention with updates of about 6.5 µs it never beats the global lock,
-and it pays off only with about 160 µs of user work per update or low
-contention (pp. 19, 21–23; not reproduced). Bough's units are far
-cheaper than 6.5 µs, so Bough sits further into the region where
-concurrent propagation loses. The same paper says an uncontended global
+contention with updates of about 6.5 µs it never beats the global lock.
+Under high contention, once the bottleneck is removed, it beats the lock
+from three threads even with cheap updates, and it scales further with
+about 160 µs of work per update or low contention (pp. 19, 21–23; not
+reproduced). Bough's units are far cheaper than 6.5 µs, so under extreme
+contention Bough sits further into the region where concurrent
+propagation loses. The same paper says an uncontended global
 lock is negligible single-threaded (p. 21), but that's asserted, not
 measured: its single-threaded global-lock run is its own baseline. It
 also names what goes wrong without care: two threads' changes absorbed
@@ -2298,8 +2303,10 @@ order", and a worker thread's result goes back as a new transaction
 thread makes a transition non-atomic, so an intermediate state is
 observable (ch. 14, §14.3.1).
 
-**Half of RFD 6's determinism reason is kept by serializable concurrency
-too.** MV-RP's histories are equivalent to a serial run of the same
+**Half of the single thread's determinism argument is kept by
+serializable concurrency too.** The half is RFD 2's "a transaction is a
+pure function of its inputs"; RFD 6 itself states no reason for the
+single thread. MV-RP's histories are equivalent to a serial run of the same
 transactions (drechsler-thread-safe-reactive-programming pp. 10–11, 15),
 so each still computes what it would alone. What concurrency gives up is
 that the order of units is fixed in one place before they run. In Bough
@@ -2362,8 +2369,7 @@ or by sharding, never by propagating one transaction on several threads.
   sets a cancellation flag and blocks until the readers finish, which
   "could deadlock if there is a single worker with two handles"
   (salsa@salsa-v0.28.5 `src/storage.rs`:152–165).
-- DFIR runs one single-threaded instance per process, with tasks spawned
-  local (hydro@dfir_rs-v0.16.0 `dfir_rs/src/scheduled/context.rs`:407–415).
+- DFIR spawns its tasks local to the thread running the instance (hydro@dfir_rs-v0.16.0 `dfir_rs/src/scheduled/context.rs`:407–415).
 - timely and DBSP shard data across workers, each running the whole
   circuit (docs.rs/timely/0.31.0; github.com/feldera/feldera @2ad179e
   `crates/dbsp/src/circuit/runtime.rs`:1–2).
@@ -2395,21 +2401,23 @@ In instructions, the uncontended lock adds 39 and 18 a unit to about
 
 - The lock's latency is worse than its throughput. At 2 threads the p99
   wait to acquire is 19.9 µs and the p99.9 58 µs; at 8, 39.5 µs and 61
-  µs, with a longest wait of 165 µs. With 2 threads one of them ran
+  µs. The longest wait, 165 µs, was at 2 threads. With 2 threads one of them ran
   11,087 units in a row, since std's mutex is unfair (F78). The queue's
   p99 send is 1.5 µs at 2 producers and 16.7 µs at 8.
 - **The contended lock's extra cost is mostly a futex wake per unlock,
   not the graph's state moving between cores.** Grown to 256 KiB of state
   per unit, the lock changes threads in under 1% of units, yet a copy of
   std's mutex still makes 0.73 to 0.97 `futex_wake` calls a unit, and
-  std's workers sleep 0.78 to 0.94 times. The queue's cost stays flat as
-  the state grows: 1.01 to 1.02 at 256 KiB.
+  std's workers sleep 0.78 to 0.94 times. The queue's extra time stays
+  at roughly 60 to 240 ns as the state grows, so its ratio falls to 1.01
+  to 1.02 at 256 KiB.
 - **A wake across the chip's two core complexes costs more.** Pinned
   within one complex, the lock costs 1.12 at 256 KiB with 2 threads;
   split across both, 1.38. The timed run puts a cross-complex wake at
   about 1.9 µs against 0.9 within one, which accounts for most of the
-  gap. Those per-call times come from the timed binary, one run each, on
-  the idle machine; its "INDICATIVE" label is fixed text from before the
+  gap. Those per-call times come from the timed binary, the best of three
+  runs each, on the idle machine; the bench's single run gives 1.65 µs
+  against 0.92; its "INDICATIVE" label is fixed text from before the
   idle run.
 
 > rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0006-lock-vs-queue-cost-instructions at experiments@d16fe99 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
@@ -2459,10 +2467,11 @@ that can't be undone (drechsler-thread-safe-reactive-programming pp. 2,
 
 ### The options for Bough
 
-1. Keep RFD 6 and restate its reasons: simple, one host-visible order of
+1. Keep RFD 6 and give it reasons: simple, one host-visible order of
    units, the host owns the schedule, listeners never under a lock. Drop
-   overhead, and drop "a transaction is a pure function of its inputs",
-   which is true but not bought by the single thread.
+   the no-std handoff's overhead reason, and don't lean on RFD 2's "a
+   transaction is a pure function of its inputs", which is true but not
+   bought by the single thread.
 2. Also allow a `Mutex`-wrapped runtime as a third way in, for callers
    who want to run a unit now from another thread and accept listeners
    running on that thread.
@@ -2481,11 +2490,12 @@ belongs to verification; see there.
 
 ### Questions to grill
 
-- Is RFD 6's determinism reason about the order of units being one
-  explicit sequence, rather than a transaction being a pure function of
-  its inputs, which serializable concurrency also keeps?
-- Should RFD 6 drop the overhead argument, given an uncontended lock
-  costs less than the queue it chose?
+- Is the single thread's determinism argument about the order of units
+  being one explicit sequence, rather than RFD 2's transaction being a
+  pure function of its inputs, which serializable concurrency also
+  keeps?
+- Should Bough drop the no-std handoff's overhead argument, given an
+  uncontended lock costs less than the queue RFD 6 chose?
 - Is losing Sodium's explicit multi-send transaction across several
   slots deliberate, and does RFD 7 say so?
 - If two runtimes are ever wired together through handles, do we promise
@@ -2513,7 +2523,7 @@ belongs to verification; see there.
 - margara-on-the-semantics-of-distributed-reactive-programming for the
   levels. Needs vector clocks and FIFO, causal and sequential
   consistency.
-- barenz-rhine-frp-with-type-level-clocks §§3–4 for clocks, schedules and
+- barenz-rhine-frp-with-type-level-clocks §§3–5 for clocks, schedules and
   resampling buffers. Needs Haskell type families.
 
 ## Embedded and bounded (RFD 7)

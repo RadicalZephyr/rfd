@@ -2355,3 +2355,388 @@ belongs to verification; see there.
   consistency.
 - barenz-rhine-frp-with-type-level-clocks §§3–4 for clocks, schedules and
   resampling buffers. Needs Haskell type families.
+
+## Embedded and bounded (RFD 7)
+
+### What the literature says
+
+**Every system with a proven or stated bound compiles a static graph.**
+E-FRP compiles each event to one interrupt handler of two assignment
+phases, with a fixed number of variables, no loops and no allocation, and
+gives up switching and higher order entirely, "a core, first-order
+subset" (wan-event-driven-frp pp. 2, 5, 9, 16). Emfrp fixes the graph at
+compile time, forbids recursive types and functions, has no closures,
+and allocates memory statically
+(sawada-emfrp-a-functional-reactive-programming-language-for-small
+pp. 2–3, 6–7). Copilot reaches constant space by forbidding anonymous
+streams, so each history array's length is computed statically
+(pike-copilot-a-hard-real-time-runtime-monitor pp. 6, 10). Lustre's
+modular compiler gives each node a state struct and `step` and `reset`
+methods, with memory "essentially a tree structure" and no dynamic
+allocation (biernacki-clock-directed-modular-code-generation-for-synchronous-data
+pp. 5, 7–8), and a static engine grows into an optimising compiler, with
+allocation by interference-graph colouring and in-place array updates
+checked by a type system
+(gerard-a-modular-memory-optimization-for-synchronous-data-flow
+pp. 3–6). RT-FRP is the one bounded FRP that keeps switching, and its
+bound works because `until` *replaces* the running term with a
+continuation already counted: the old mode is gone
+(wan-real-time-frp pp. 5, 8–9). That's the opposite of Bough's
+deselected inners. The one dynamic-graph language, Juniper, uses
+reference counts because "a tracing garbage collector has unacceptable
+overhead" on 2 KB, leaks cycles, and can't bound memory while it has
+references, closures and recursion
+(helbling-juniper-a-functional-reactive-programming-language-for-the
+p. 7). That sentence about tracing is asserted, not measured.
+
+**Bounding creation.** Four answers appear:
+
+1. RT-FRP's: switch only among templates fixed in the source and discard
+   the old mode, so the bound is the largest template
+   (wan-real-time-frp pp. 5, 9).
+2. Céu's: a pool per creation site with a declared size, `pool Unit[10]`,
+   statically preallocated, where "further spawn invocations fail" when
+   it's full. It gets away without a collector because every lifetime is
+   lexical (santanna-structured-synchronous-reactive-programming-with-ceu
+   pp. 5, 10–11).
+3. Oeyen et al.'s: allow creation from a finite, known set of reactors
+   and bound it by flow analysis (oeyen-reactive-programming-without-functions
+   p. 14). By their scale, with *strongly*, *eventually* and *weakly*
+   reactive, Bough with `construct` running user closures is weakly
+   reactive (p. 8).
+4. Krishnaswami, Benton and Hoffmann's: an affine permission pays for one
+   stream cell per tick, so the graph never holds more cells than the
+   permissions passed in
+   (krishnaswami-higher-order-functional-reactive-programming-in-bounded-space
+   pp. 3, 8, Thm. 4). Their successor paper calls it "too precise to be
+   useful in practice", since the graph's size shows up in every
+   signature (krishnaswami-higher-order-functional-reactive-programming-without-spacetime-leaks
+   p. 2), and it bounds nodes, not what closures hold (…-in-bounded-space
+   p. 4).
+
+Even the smallest FRP collects between units: Emfrp runs "a kind of
+mark-and-sweep GC that runs each time an iteration finishes" for
+non-primitive data (sawada-… p. 6).
+
+**Simultaneity: the embedded line moved from merging to ordering.** E-FRP's
+rule is Bough's: "no two events ever occur simultaneously"
+(wan-event-driven-frp p. 3). EvEmfrp combined two same-time update
+timings with a merge function; its successor runs them "sequentially
+according to the total order of the timings"
+(yokoyama-switching-mechanism-for-update-timing-of-time-varying pp. 4, 6).
+XFRP needed *source unification*, merging inputs into one linear order,
+because a node read through `@last` could otherwise have two "last"
+values (shibanai-distributed-functional-reactive-programming-on-actor-based-runtime
+p. 7). Bough's single pump gives that for free. E-FRP's reason is simpler
+handlers and a checkable compile; Bough's, that `merge` would give a
+different answer, is semantic and stronger.
+
+**Nobody folds a burst with a user's fold.** The batch has three cruder
+collapses: one bit per interrupt, copied and cleared with interrupts off,
+so a burst becomes "it happened" (yokoyama-… pp. 9–10); a pending event
+not queued twice at the head of a priority queue
+(kaiabachev-e-frp-with-priorities p. 5); and sampling once per
+iteration, which is keep-latest (sawada-… p. 9; pike-… p. 3). EvEmfrp/S
+also drops by declaration: `Interval[T]` masks an interrupt for T after
+it fires (yokoyama-… p. 5). Bough's `keep_latest` spelled out is the same
+move, and its associative fold is new.
+
+**Priorities.** P-FRP compiles pre-emption: a higher-priority interrupt
+aborts a lower handler's work on temporaries, runs, and the lower one
+restarts, and the theorem is that the result equals some sequential order
+of the two, so "the programmer reasons modulo permutations on the order of
+event arrivals" (kaiabachev-e-frp-with-priorities pp. 1, 5, 7, 9,
+Thm. 5.3). Pending events queue by priority, ties oldest first (p. 5).
+Under the non-pre-emptive model, Bough's, event k can wait for the sum of
+the other handlers' times, and no event is lost only if the same one
+doesn't recur before it's handled (pp. 9–10). Pre-emption cost the lowest
+priority 448 ticks of worst wait against 250 without it (p. 11; not
+reproduced). With Bough's drain, the top-priority slot waits at most one
+whole unit, children included. On an MCU the interrupt itself pre-empts
+and only writes the slot, so the capture is never late; only the reaction
+waits.
+
+**Child instants have no bound in the literature.** Clock refinement
+warns that the outer step ends only if the substep loop ends
+(gemunde-clock-refinement-in-imperative-synchronous-languages p. 9).
+EvEmfrp/S runs micro-iterations until none remain, and they end because
+its compiler checks that dependencies between timings are acyclic
+(yokoyama-… p. 6), which Bough can't check statically for `split` and
+`defer`. Esterel and Aguado et al. guarantee finite macro-steps by
+clock-guarding every recursion
+(aguado-denotational-fixed-point-semantics-for-constructive-scheduling-of
+p. 7); Bough's child instants nest inside the transaction instead.
+
+**Whole-program evaluation beat active-parts-only for small models.**
+SCCharts' data-flow route, evaluating everything each tick as
+straight-line code, beat the priority route on speed and jitter for small
+and medium models, and the priority route scales better only
+asymptotically
+(vonhanxleden-sccharts-sequentially-constructive-statecharts-for-safety-critical-applications
+pp. 9–11). That bears on a tier that wants WCET more than throughput.
+
+### The Rust prior art
+
+gc-arena is `no_std` over `alloc`, single-threaded, and collects only
+between mutations (gc-arena@v0.7.0 `src/lib.rs`:1–6,
+`src/arena.rs`:98–116), the nearest thing to Bough's allocator tier. DFIR
+generates each tick as one function from a macro, which is what a static
+tier looks like in Rust (hydro@dfir_rs-v0.16.0
+`dfir_lang/src/graph/meta_graph.rs`:813–816). No reactive crate in the
+table targets bare metal with a bounded graph.
+
+### Settled decisions the evidence contradicts
+
+None found. No static engine in core is supported: every bounded system
+here gives up `construct`-like creation or bounds it by changing the
+semantics, which is RFD 7's reading that a static engine means "a subset
+of the semantics without `construct`". Tracing between units is
+supported: Juniper's counts leak cycles, Emfrp collects between
+iterations, and Céu avoids a collector only through lexical lifetimes.
+Not aborting is compatible: P-FRP aborts to pre-empt, and Bough never
+pre-empts a unit, so it needs no rollback. P-FRP shows that aborting
+before commit is the known route if Bough ever wanted pre-emption.
+
+### The options for Bough
+
+For `construct` in the bounded tier:
+
+1. RFD 7's: one arena of N slots, and a full arena panics and poisons.
+2. Céu's pools as an opt-in, a declared size per `construct` site with
+   creation failing when full.
+3. A typed slot capability, an affine token consumed by `construct` and
+   freed when the node dies, as an opt-in proof.
+
+For child-instant depth: a fixed maximum set by the caller beside N, or
+none. For handle queues in the bounded tier: a fixed capacity per handle
+and a full-queue error, or input slots only.
+
+### Claude's leaning
+
+Keep option 1, and add what the literature shows users need: the bounded
+tier should report its slot high-water mark, so N comes from running the
+program's tests, as Céu's users size pools by hand. Take a maximum
+child-instant depth from the caller beside N, with exhaustion handled
+like a full arena. Give each handle's queue a fixed capacity and
+`IoError` a full-queue case in the bounded tier's major version. That
+answers one of RFD 7's open questions: yes, `IoError` needs one. Keep
+the associative fold, and cite Yokoyama as evidence that the embedded
+FRP line collapses bursts anyway, less explicitly.
+
+### Questions to grill
+
+- RFD 7 says exhaustion never gives a different answer. Would you accept
+  Céu's rule, a declared pool per `construct` site with creation failing
+  when full, as an opt-in, or is that a different semantics you won't
+  ship?
+- Does the bounded tier need handle queues at all, or only input slots,
+  given every embedded system here keeps one pending occurrence per
+  source?
+- Is a top-priority slot waiting up to one whole unit acceptable on the
+  F303, or does some milestone need P-FRP-style pre-emption?
+- Should the bounded tier take a maximum child-instant depth from the
+  caller?
+- Is Juniper's "tracing is unacceptable overhead on 2 KB" worth testing
+  on the Due before the tier is designed around a tracing collector?
+
+### Experiments this proposes for Bough
+
+- Run the button-to-LED milestone on the F303 with a slot high-water mark
+  reported, and time the collection between units on the board.
+- Measure a unit's worst-case time on the Due with a small graph, whole
+  graph evaluated against the marked region only, to see whether
+  SCCharts' result about jitter holds for Bough's engine.
+
+### Reading path
+
+- wan-real-time-frp, then wan-event-driven-frp, then
+  kaiabachev-e-frp-with-priorities. Needs structural operational
+  semantics and typing judgments; the E-FRP text extraction loses
+  ligatures, so read the PDF's figures.
+- sawada-emfrp-a-functional-reactive-programming-language-for-small and
+  yokoyama-switching-mechanism-for-update-timing-of-time-varying.
+  Self-contained.
+- santanna-structured-synchronous-reactive-programming-with-ceu. Needs
+  the synchronous hypothesis, Esterel's `await` and `par`.
+- biernacki-clock-directed-modular-code-generation-for-synchronous-data,
+  then gerard-a-modular-memory-optimization-for-synchronous-data-flow.
+  Needs Lustre's `fby`, `when` and `merge`, and clocks as types.
+- pike-copilot-a-hard-real-time-runtime-monitor. Self-contained.
+
+## Verification and testing (RFD 1's policy)
+
+### What the literature says
+
+**RFD 1's policy is QuickCheck's method, with the text as the
+specification.** QuickCheck names the oracle problem and lists an
+executable specification as one answer (claessen-quickcheck-a-lightweight-tool-for-random-testing-of
+p. 9), and its case studies test a fast implementation against a simpler
+reference (p. 8). Three of its lessons carry over. Distribution is the
+tester's job: the "most serious pitfall" is passing many trivial cases,
+fixed by labelling cases and by generators instead of preconditions
+(pp. 3, 7). Size grows during a run so small counterexamples come first,
+and shrinking arrived as a user's extension (pp. 5, 8). And errors split
+about evenly between generators, specification and program (p. 11), which
+matches running the text finding four defects in it. QuickCheck has no
+coverage criterion and names that as its main limitation (pp. 9, 11).
+
+**Whole-trace equality is stronger than any temporal property over the
+same observations.** Property-based testing of asynchronous FRP checks
+LTL over several clocked signals on a flattened trace, because its
+library has no executable reference
+(nielsen-property-based-testing-for-asynchronous-functional-reactive-programming
+pp. 7, 10–13). For what the oracle covers, equal traces satisfy the same
+temporal properties. Its lessons matter where the oracle is silent:
+liveness can't be tested on a finite trace, so `until` must be weak
+(pp. 8, 11), generation must be fair so every input fires (pp. 2–3), and
+shrinking a signal keeps its clocks (p. 15).
+
+**Trace length finds bugs short traces miss.** Pérez and Nilsson's bugs
+appeared only after 897 tests at larger sizes and 3,443 tests at 100,000
+cases, where short traces never reached the state that broke
+(perez-testing-and-debugging-functional-reactive-programming pp. 14, 22).
+Their record and replay works because pure arrowized FRP separates
+effects and sampling from processing; the trace is the inputs and their
+times, and replay is exact "provided that the bug was not in the
+Input/Output layer" (pp. 2, 6, 18). QuickCheck can continue a recorded
+prefix at random (pp. 14, 19).
+
+**Proof costs years, and a re-encoding is trusted code.** Vélus proves in
+Coq that generated assembly is bisimilar to Lustre's dataflow semantics,
+for a static graph without switching or dynamic creation. Its semantics
+is relational, a specification to prove against rather than an
+interpreter to run, and the proof needed an extra semantics that exists
+only for the proof (bourke-a-formally-verified-compiler-for-lustre
+pp. 2–8, 13). It validates an untrusted scheduler's result rather than
+proving the scheduler (p. 4). Copilot's verifier builds a per-program
+bisimulation by SMT in "just under one year" and 1,854 lines, and works
+only because the generated C is nearly isomorphic to the stream program:
+ring buffers, one `step` per tick, no loops, `-O0` only
+(scott-trustworthy-runtime-verification-via-bisimulation-experience-report
+pp. 3, 5–6, 9, 19, 23). Its most useful admission for Bough: the verifier's
+encoding of Copilot's semantics is trusted, and "we do not have a robust
+way to test these semantics beyond careful engineering and manual
+comparison with the Copilot interpreter" (p. 19). A Rust port of the
+text would have been that. Mechanising a small switching-free arrow
+language with effects took 2 kLOC of specification and 3 kLOC of proof,
+and found proofs that "could not follow the proof sketches given in the
+original paper" (ischard-a-mechanized-formalization-of-an-frp-language-with
+pp. 3, 8–12).
+
+**Hierarchical time has no testing literature.** Nothing in the batch
+tests or mechanises child instants. Vélus keeps absence explicit at every
+clock level so a delay slides past gaps (bourke-… p. 6), which is what a
+child-index-aware comparison would need.
+
+### The Rust prior art
+
+The crates in the table test by example, not against a reference
+semantics. salsa is the one with a fixed-point mechanism of its own, and
+it refuses to combine cut-off with cycles without proof
+(salsa@salsa-v0.28.5 `src/function/backdate.rs`:33–38).
+
+### What the probe found
+
+`rfd-0001-child-index-mutants` asks whether the oracle's comparison, which
+checks per-node values per transaction, listener order and cell samples
+but not which child instant an event fell in, catches a mutant that puts
+an event in the wrong sibling child instant. Over 4,000 random programs
+of 8 to 18 nodes with 70,553 mutants, in a toy interpreter of
+`T = [Int]` with `hold`, `snapshot`, `split` and `defer`, and no loops or
+switches:
+
+- The comparison as it stands caught 17.0%; with every event's full time
+  compared, 61.9%. Listener order alone caught 8.9 of the 17.0 points.
+- Of the survivors, 20.0% of all mutants are caught once every node is
+  observed. 46.4% change nothing any node shows, only which events are
+  simultaneous, which a merge or a snapshot added over them would see.
+  16.7% are order-isomorphic, and only a new split or defer at the same
+  parent could collide with them. With every node observed, the
+  comparison with full times missed none.
+- Engine-wide bugs are another matter. Every defer at index 1 is caught
+  by 15.5% of the programs it affects, indices not shared by 40.3%, and
+  every split collapsed, F2, by 33.4%. A suite of a thousand programs
+  catches all three with near certainty.
+
+So the comparison without child indices catches every misplacement a
+listener or sample of the program can see once observed. What it misses
+is harmless per program, and the risk is a generator that rarely builds
+merges or snapshots across sibling child instants.
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0001-child-index-mutants at experiments@f08c179 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo run --release --bin rfd-0001-child-index-mutants
+```
+
+### Settled decisions the evidence contradicts
+
+None found. GHC as the oracle gains a second reason: a re-encoding of a
+semantics becomes trusted code that can be checked only by hand against
+the original (scott-… p. 19), which is what a Rust port would have been.
+The per-instant comparison misses no bug class the batch names, except
+by trace length, which is the generator's limit, not the comparison's.
+
+### The options for Bough
+
+- Shrinking: already built, twice, in the spike's harness, and not in
+  RFD 1's policy.
+- Adequacy: have the generator report labelled proportions of the shapes
+  the policy promises (loops, diamonds through loops, switches that move,
+  constructs at child instants, merges and snapshots across sibling child
+  instants), so a later change that starves a shape shows.
+- Trace length: accept ten transactions; add long traces for loop-free
+  programs against GHC; or add long traces with engine-only properties,
+  the live-node count and no stale-token error, without GHC.
+- Replay: record handle calls per pump for exact replay, and continue a
+  recorded prefix at random.
+- A middle path to proof: a debug-mode check that the order the engine
+  evaluated was topological for the graph at that moment, validating
+  rather than proving, as Vélus does for scheduling.
+
+### Claude's leaning
+
+Put shrinking and labelled proportions into RFD 1's policy, since the
+harness already has both and the policy doesn't promise them. Add long
+traces with engine-only properties to the scheduled job, since what fails
+at length is the engine's bookkeeping, not the semantics. No seventh test
+affordance for child indices: label the generator's cross-sibling merges
+and snapshots instead, and check the share isn't small. Replay is worth
+building as a feature of the handle API, not as a test affordance, and
+isn't urgent. Keep GHC running the text; if the semantics is ever
+mechanised, do it to prove the creation cuts, not as an oracle.
+
+### Questions to grill
+
+- Is a wrong child index that no program can read a bug, or an
+  unobservable detail the comparison is right to ignore?
+- Should RFD 1 require the generator to report labelled proportions, and
+  keep the spike's seventy deliberate breaks as a suite?
+- Which long-run failure worries you most, generation wrap, garbage
+  growth or queue growth, and is ten transactions a program a choice or
+  an accident?
+- Is replay of recorded pump calls a user feature you want, and does it
+  count against "six affordances and nothing beyond"?
+- Would you ever mechanise the semantics, and if so, is the creation cut
+  the reason?
+
+### Experiments this proposes for Bough
+
+- Run the oracle's generator with labelled proportions for a day of
+  seeds and see which promised shapes are rare.
+- Run the engine alone on loop-free programs for a million transactions
+  each, asserting the live-node count and no stale token, to find what
+  fails at length.
+
+### Reading path
+
+- claessen-quickcheck-a-lightweight-tool-for-random-testing-of. Needs
+  basic Haskell.
+- perez-testing-and-debugging-functional-reactive-programming. Needs
+  Yampa's arrows, summarised in its §2, and LTL.
+- nielsen-property-based-testing-for-asynchronous-functional-reactive-programming
+  §§3–5. Needs LTL and QuickCheck.
+- scott-trustworthy-runtime-verification-via-bisimulation-experience-report.
+  Needs labelled transition systems and bisimulation.
+- bourke-a-formally-verified-compiler-for-lustre. Needs Lustre's clocks,
+  big-step semantics and simulation proofs.

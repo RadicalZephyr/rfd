@@ -958,3 +958,308 @@ tier and left to the user elsewhere.
   §§1, 4 and 5. Self-contained and operational.
 - shiple-constructive-analysis-of-cyclic-circuits after Berry's
   chapter 4. Needs BDDs and symbolic reachability.
+
+## Scheduling and glitch freedom (RFD 5)
+
+### What the literature says
+
+**Everyone gets glitch freedom from an order, a count or a pull.**
+
+- MobX counts pending parents in a first pass and updates a node when
+  its count reaches zero in a second
+  (milomg-super-charging-fine-grained-reactive-performance pp. 3–4).
+  Preact versions its nodes and edges (p. 5).
+- Reactively, the TC39 signals proposal and most fine-grained signal
+  libraries colour down and then pull: a write marks immediate sinks
+  dirty and deeper ones "check", and a read finds the deepest dirty
+  source and recomputes from there (milomg-… p. 6;
+  tc39-javascript-signals-standard-proposal pp. 11, 13–15). That is
+  glitch-free because computeds run only on read and a signal is
+  *lossy*: two writes without a read lose the first, "a feature rather
+  than a bug" (tc39-… p. 17). FRP streams can't be lossy.
+- Adapton dirties eagerly and repairs in demand order. Laziness wins big
+  when little output is demanded, and loses 1.5 to 3.5 times to eager
+  incremental computation when all of it is
+  (hammer-adapton-composable-demand-driven-incremental-computation
+  pp. 2, 9; not reproduced).
+- Build systems get it from a topological order, which needs static
+  dependencies, or by suspending, which is memoized pull
+  (mokhov-build-systems-a-la-carte pp. 13–14). Bough is a topological
+  scheduler recomputed each transaction for the part of the graph
+  that's static within an instant, plus suspending for the two dynamic
+  cases. The taxonomy supports that split.
+- FrTime, Flapjax and Scala.React rank nodes and run a priority queue
+  (cooper-embedding-dynamic-dataflow-in-a-call-by-value p. 7;
+  meyerovich-flapjax-a-programming-language-for-ajax-applications p. 12;
+  maier-deprecating-the-observer-pattern-with-scala-react p. 9). Jane
+  Street's Incremental keeps heights, an over-approximation of the
+  longest path to a node, in an array of buckets
+  (incremental@v0.17.0 `src/incremental_intf.ml`:111–139).
+- Self-adjusting computation runs a priority queue keyed by
+  order-maintenance time stamps, O(1) to insert, delete and compare
+  (acar-self-adjusting-computation pp. 48, 51, 63). Its order never
+  needs repair, because it is the order of one sequential run, and where
+  it would need a swap the thesis stops: "likely difficult, if not
+  impossible" in constant time (p. 62).
+
+Of all these, RFD 5's DFS reverse post-order over the affected region is
+the only one that is glitch-free without lossiness or a per-read stamp.
+The cost is linear in the region.
+
+**The literature's case against ranks is the repair, and the repair
+turns out to be cheap.** RFD 5 rejects rank-ordered push because ranks
+"must exceed all dynamically reachable inners", which "forces Sodium to
+re-rank and rebuild its queue mid-transaction", and because "a heap
+would have added a log factor" for a frame. Every ranked system in the
+batch confirms that switching costs a ranked scheduler repairs: FrTime
+re-heights and patches the queue (cooper-embedding-dynamic-dataflow-in-a-call-by-value
+p. 8), and Scala.React aborts, hoists and re-runs
+(maier-deprecating-the-observer-pattern-with-scala-react pp. 12–13). But
+Incremental re-heights incrementally, bounded by the ancestors whose
+height must rise, and finds cycles on the way
+(incremental@v0.17.0 `src/adjust_heights_heap.mli`:3–8, 39–69). And a
+bucket queue indexed by small-integer heights has no log factor. Neither
+the Incremental blog post nor any paper measures what that costs under
+switching (minsky-introducing-incremental pp. 1–9 says nothing about
+heights), so the probes did.
+
+**Order maintenance is cheap, and solves a problem Bough doesn't have.**
+Order maintenance exists to insert stamps in the middle of a timeline
+(acar-self-adjusting-computation p. 137; acar-adaptive-functional-programming
+p. 13). Bough's new nodes go at the end, and a relink permutes the
+positions an affected region already holds, so a plain array or small
+integers suffice. The switching section found one place a list helps:
+putting a new inner's nodes just before its switch.
+
+### The Rust prior art
+
+Sycamore ships RFD 5's scheduler: a DFS over dependents, reverse
+post-order, a flat loop that runs each node still dirty, and a pull for
+a dirty node read during the loop
+(sycamore-reactive@0.9.3 `packages/sycamore-reactive/src/root.rs`:193–235,
+121–130). It reuses its sort buffer between propagations (lines 26,
+198–207). Leptos is Reactively's colour-then-pull with a `PartialEq`
+cut-off (reactive_graph@v0.8.21 `reactive_graph/src/lib.rs`:67–69,
+`src/computed/inner.rs`:69–124). sodium-rust runs changed nodes at the
+end of a transaction in DFS order with a visited flag and no ranks
+(github.com/SodiumFRP/sodium-rust @3e93021
+`src/impl_/sodium_ctx.rs`:233–262, 298–355). incremental-rs keeps
+Incremental's design, a queue per height up to a maximum
+(github.com/cormacrelf/incremental-rs @5ba8209 `src/recompute_heap.rs`).
+DFIR's whole scheduler is a topological order fixed at compile time, one
+closure per tick (hydro@dfir_rs-v0.16.0 `dfir_lang/src/graph/meta_graph.rs`:813–816).
+salsa is pull only: it validates a memo's inputs in the order they ran
+(salsa@salsa-v0.28.5 `src/function/maybe_changed_after.rs`:591–597).
+
+### What the probes found
+
+Four probes set schedulers against RFD 5's mark and flat loop. Two
+shapes: RFD 1's UI and frame shapes with static heights, and the
+switching section's 10,147-node graph under its four workloads, with
+filters whose pass rate sets the quiet share of each marked region. The
+wall-clock ratios below are each scheduler's time over the mark's, from
+the idle machine. The instruction counts, taken first, put every
+crossover lower; wall-clock is what counts here.
+
+- **Static heights with a bucket queue** (`rfd-0005-heap-vs-mark-on-quiet-regions`).
+  On the 9,997-node UI shape the bucket queue costs 1.25 of the mark
+  when every marked node fires, 1.15 at 10% quiet, 1.02 at 26% quiet,
+  0.79 at 50% and 0.21 at 89%. A binary heap costs 2.58 when everything
+  fires and breaks even near 50% quiet. On the frame shape the bucket
+  queue costs 1.09 at 64 inputs and 0.94 at 1,024, and the heap 1.50 at
+  both. So the log factor is real for a binary heap and small for a
+  bucket queue. In instructions the mark was about 100 of every 130
+  instructions a marked node costs.
+- **Heights raised at link time, Incremental's way, under switching**
+  (`rfd-0005-height-queue`). Against RFD 5's mark with an unforced
+  construct point:
+
+  | quiet share of the marked region | heights ÷ mark |
+  |---|---|
+  | about 1% | 1.25 to 1.31 |
+  | 30% to 54% | 0.69 to 1.00 |
+  | 56% to 75% | 0.41 to 0.68 |
+  | 72% to 86% | 0.26 to 0.48 |
+  | 95% to 98% | 0.06 to 0.10 |
+
+  Heights lose about a quarter when everything fires, break even near
+  30% quiet, and win ten to sixteen times when most of the region stays
+  quiet. The instruction counts put break-even near 5% quiet; the
+  wall-clock doesn't agree, and nothing was measured between 1% and 30%.
+- **The re-ranking RFD 5 names is small.** Over 300 transactions and
+  about 1,250 moves per workload, 46 to 145 links needed a raise. In the
+  instant, raises mid-evaluation came to 0.13 to 0.37 a transaction,
+  touching at most one node, and never below the cursor, since a switch
+  sits after its selector. But one raise touched up to 7,421 nodes, so a
+  single link can cost a large pause.
+- **The raise finds cycles.** It refused exactly the walk's set of
+  moves, at 10 to 28 nodes a refused cycle.
+- **Heights grow only when cycles are refused.** Over 3,000 transactions
+  the largest height grew from 72 to between 242 and 367, all of it from
+  interrupted raises at refused cycles; without them it plateaus at 78.
+  Under RFD 5's rule a refused cycle poisons the runtime, so that growth
+  never happens.
+- **Maintained sparse labels lose the bucket queue**
+  (`rfd-0005-maintained-rank-queue`). Ranks from the switching section's
+  order-maintenance list, in a binary heap, cost 2.35 to 2.55 of the
+  mark when everything fires and break even between 30% and 54% quiet. A
+  radix heap does no better. Keeping the labels is cheap: 0.02 to 0.61
+  of the walk's upkeep.
+- **Flat adjacency is faster in time, not in instructions.** Rerun over
+  flat edge arrays, the mark costs about 15% less time than over nested
+  vectors, though it runs more instructions, and the conclusions above
+  hold.
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-heap-vs-mark-on-quiet-regions-counts at experiments@8006fcf - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0005_heap_vs_mark_on_quiet_regions::tests::counts -- --nocapture
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-heap-vs-mark-on-quiet-regions-instructions at experiments@8006fcf - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-heap-vs-mark-on-quiet-regions-instructions
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-heap-vs-mark-on-quiet-regions-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-heap-vs-mark-on-quiet-regions-wallclock
+python3 scripts/ratios.py ui-small ui-large frame
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-height-queue-counts at experiments@9c8acb5 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0005_height_queue::tests::counts -- --nocapture --exact
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-height-queue-counts-growth at experiments@9c8acb5 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0005_height_queue::tests::growth -- --nocapture --exact
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-height-queue-counts-pull at experiments@401293c - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0005_height_queue::tests::counts_instant -- --nocapture --exact
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-height-queue-counts-unforced at experiments@dd225eb - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0005_height_queue::tests::counts_unforced -- --nocapture --exact
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-height-queue-instructions at experiments@dd225eb - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-height-queue-instructions -- 'rfd_0005_height_queue_instructions::instant::*'
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-height-queue-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-height-queue-wallclock
+python3 scripts/ratios.py
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-maintained-rank-queue-counts at experiments@11c30b1 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo test --release --lib rfd_0005_maintained_rank_queue::tests::counts -- --nocapture
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-maintained-rank-queue-instructions at experiments@b0701be - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-maintained-rank-queue-instructions
+```
+
+> rustc 1.98.1 (released 2026-09-01) - measured 2026-09-28 - rfd-0005-maintained-rank-queue-wallclock at experiments@daa6419 - Ryzen 7 2700X, Fedora 44 container on Bazzite 44
+
+```
+cargo bench --bench rfd-0005-maintained-rank-queue-wallclock
+python3 scripts/ratios.py settled mixed churn lazy upkeep flat-settled flat-mixed flat-churn flat-lazy
+```
+
+### Settled decisions the evidence contradicts
+
+**RFD 5's stated reasons for rejecting rank-ordered push don't hold on
+their own.** Both reasons it gives are about cost. Re-ranking under
+switching comes to a fraction of a raise a transaction, and Incremental
+does it routinely. The log factor belongs to a binary heap; a bucket
+queue over small-integer heights doesn't have one. What the wall-clock
+leaves is a real trade, not a rejection: heights lose about a quarter
+when every marked node fires, and win from about 30% quiet, by up to
+sixteen times on mostly quiet regions. Whether Bough should rank depends
+on how quiet its marked regions are, which no one has measured on a real
+program.
+
+The decision's other parts stand. The DFS mark and flat loop are sound
+and ship in Sycamore, memoized pull is still the right fallback for
+dynamic dependencies (mokhov-build-systems-a-la-carte pp. 13–14), and
+pure pull loses when all output is demanded
+(hammer-adapton-composable-demand-driven-incremental-computation p. 2).
+
+### The options for Bough
+
+1. Keep RFD 5 as it is, and restate the reason: the flat loop is simpler
+   and wins when most of a marked region fires.
+2. Heights raised at link time with a bucket queue, the relink check
+   folded into the raise, and memoized pull kept for the two dynamic
+   cases or replaced by a raise mid-evaluation.
+3. Both, chosen per runtime or per shape. Probably not: two schedulers
+   to hold to the oracle.
+4. Keep the mark and skip quiet regions some other way, such as a
+   pre-filter that stops the mark at a gate or filter known closed.
+   Untried.
+
+### Claude's leaning
+
+Keep option 1 for the first build, with the rejection reworded, and
+treat option 2 as the first performance change to try once a real
+program's quiet share is known. The UI shape is where Bough is slow
+today, a UI's marked regions are plausibly mostly quiet, and heights
+would also give the relink check for free. But the flat loop is what
+RFD 5, the spike and the oracle work already assume, a height raise can
+touch thousands of nodes at one link, and a quarter lost on the frame
+shape is not nothing. This is a leaning on a trade, not on a
+contradiction, and it rests on the probes' synthetic graphs.
+
+### Questions to grill
+
+- What share of a marked region stays quiet on Oort's fighter and on
+  bough-gtk's list view? Above about 30%, heights win.
+- Would you take a quarter on the frame shape to win up to sixteen times
+  on a mostly quiet UI?
+- If heights come in, does the relink check come from the raise, and
+  does the upstream walk go?
+- Is a single link that raises 7,000 nodes an acceptable pause, or does
+  the raise need slicing?
+- Should RFD 5's rejection name the real trade, or keep the rejection and
+  drop the two reasons the probes don't support?
+
+### Experiments this proposes for Bough
+
+- Instrument the real engine's mark to report, per transaction, the
+  marked region's size and how much of it fires, on Oort and bough-gtk.
+  That one number decides option 1 against option 2.
+- If heights come in, time the largest raise on those programs, and the
+  frame benchmark from RFD 1 against the flat loop.
+
+### Reading path
+
+- milomg-super-charging-fine-grained-reactive-performance first, then
+  tc39-javascript-signals-standard-proposal. Self-contained.
+- mokhov-build-systems-a-la-carte §§2 and 4 for the taxonomy. Needs
+  Haskell with Applicative and Monad for the code; the prose reads
+  without it.
+- The Incremental source's `incremental_intf.ml`, lines 90–260, and
+  `adjust_heights_heap.mli`. Some OCaml.
+- acar-self-adjusting-computation chapters 4–6 and §8.2, for order
+  maintenance and queue overhead. Needs amortized analysis.
+- hammer-adapton-composable-demand-driven-incremental-computation §§2,
+  5 and 6; call-by-push-value helps for §§3–4.

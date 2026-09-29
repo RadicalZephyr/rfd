@@ -1957,3 +1957,98 @@ Next: phase 7, drafting, in a fresh session. The wall-clock ratios are
 in the result files beside the instruction counts. Drafting checks them
 against phase 5's findings, the ones marked "wall-clock pending" above
 all, starting with probe 7's erasure and probe 8's large-`Vec` rows.
+
+### 2026-09-28 17:54 -07:00, phase 7 done: the note is drafted
+
+The note is `research/2026-09-28-frp-literature-review.md`, "What the FRP
+literature says to Bough", committed section by section in `95e85c4` to
+`16e32d9`: the header, the must-read at 998 words, the nine dimension
+sections, the lineage map, the crate table and the annotated
+bibliography of the 99 kept sources. It isn't in the book yet; that's
+phase 9. Its header says it is unverified.
+
+The wall-clock run moved some of phase 5's findings. Drafting quotes
+wall-clock where the two disagree, and says so where it matters:
+
+- **RFD 5's heights.** Phase 5's counts had Incremental-style heights
+  2% to 3% dearer than RFD 5's mark when everything fires and winning
+  from about 5% quiet. On the idle machine they cost 25% to 31% more when
+  everything fires and break even near 30% quiet, still winning up to
+  eighteen times on mostly quiet regions. The contradiction of RFD 5's
+  stated reasons stands; what's left is a trade. The static-height bucket
+  queue's break-even moved from about 16% to about 26% quiet.
+- **RFD 3's work term** costs about a tenth on the `nav` shape, not 2%
+  to 7%, and is still worth about ten times on `app`. The incremental
+  mark at k = 1,000 costs 16% more time, not 9.5%.
+- **Probe 8's large-`Vec` rows are real.** The flat delta loses on rare
+  reads at every size from 10,000 up in wall-clock too, so they weren't
+  valgrind artefacts. The leaning moves to counted B-trees.
+- **Two results disagree with themselves**, reported as unclear in the
+  note: the incremental mark's single-unit benches put the barriers'
+  fast path at 18% to 30% of a unit while a whole run with barriers costs
+  0.7%; and the `owned` rebrand, constant-time in instructions, costs 62
+  times a cast per update of a 1,000-element `Vec` in wall-clock.
+- The work-paced probe's `total` policy costs 2.2 times on a clean click
+  because that bench times its spurious collections, as the bench says.
+  That one is explained, not unclear.
+
+Choices made inside the plan:
+
+- **Where provenance goes.** Each dimension section has a "What the
+  probes found" subsection, which the handoff's list doesn't name, and
+  every result file it quotes follows it: the file's provenance line and
+  the command that made it, plus the `ratios.py` call for wall-clock. The
+  must-read quotes a few numbers and relies on the sections for their
+  provenance.
+- **The bibliography's citation lines are generated** from the records'
+  frontmatter by a script in the scratchpad, so they can't drift from
+  `literature`; the annotations are written by hand from the reading.
+- **The Z-set composition failure** is cited to a test in the probe's
+  module, `rfd_0004_patch_cell_crossover::tests::same_key_conflict`, run
+  at `experiments@daa6419`, since no result file records it.
+- **"Transaction" means Bough's** in the concurrency section, which says
+  so, since Lee's and Drechsler's are the database sense.
+
+For the verifier:
+
+- `rfd-0001-forgetful-cut`'s verdict line says 5,012 leaking nodes, and
+  its table 4,632. The verdict counts the whole-rerun check's nodes too.
+  The note quotes the table.
+- Phase 5's reports log summarized some probes from earlier runs; every
+  number in the note was taken from a committed result file, not from the
+  log, except where the section says it comes from instruction counts.
+- The Incremental (OCaml) rows cite tag v0.17.0 with no commit, as batch
+  14 read it; `PINS.md` doesn't list it.
+- Two corrections were made during drafting and are commits of their
+  own: three ratios in the scheduling section read from the wrong pass
+  rate or the wrong side, and the lagging input's misses.
+
+Next: phase 8, verification, by a fresh sub-agent in a fresh session. It
+gets the note, `literature` and `experiments`, and none of this session's
+reasoning. Nothing is open.
+
+#### Context
+
+Phase 7 of the FRP literature review is done. The note is drafted and
+committed, unverified. Phase 8 hands it to a fresh sub-agent that checks
+every claim against its page in the stored copy and re-runs every probe,
+instruction counts within 1% and wall-clock ratios by overlapping
+intervals, with the drafting session fixing what it finds. It stops if a
+fix would change a must-read finding, or if a number fails to reproduce
+twice. The wall-clock re-runs need the idle machine again: boost off, the
+governor at `performance`, nothing else running.
+
+### ❓ **Starting phase 8**
+
+Verification re-runs every probe, wall-clock included. When does it
+start?
+
+Starting phase 8:
+
+- **(a)** In a fresh session, when the machine can sit idle for the
+  wall-clock re-runs, about two hours on the last run's evidence. The
+  claim checks and instruction counts don't need it and can go first.
+
+➡️ **(a)** Checking claims against pages needs no idle machine, so the
+session can start with those and ask for the machine only when it reaches
+the wall-clock benches.

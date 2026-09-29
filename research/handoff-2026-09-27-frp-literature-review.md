@@ -2052,3 +2052,10 @@ Starting phase 8:
 ➡️ **(a)** Checking claims against pages needs no idle machine, so the
 session can start with those and ask for the machine only when it reaches
 the wall-clock benches.
+
+### 2026-09-28 18:15 -07:00, phase 8 waits for a fresh session
+
+Zefira chose (a). She starts phase 8 in a fresh session once her weekly
+usage resets, in a few hours. It checks claims against pages and re-runs
+the instruction counts first, and asks for the idle machine only when it
+reaches the wall-clock benches. Nothing else is open.

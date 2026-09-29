@@ -2531,7 +2531,8 @@ belongs to verification; see there.
 
 ### What the literature says
 
-**Every system with a proven or stated bound compiles a static graph.**
+**Every system with a proven or stated bound either compiles a static
+graph or bounds creation up front.**
 E-FRP compiles each event to one interrupt handler of two assignment
 phases, with a fixed number of variables, no loops and no allocation, and
 gives up switching and higher order entirely, "a core, first-order
@@ -2565,9 +2566,9 @@ p. 7). That sentence about tracing is asserted, not measured.
 1. RT-FRP's: switch only among templates fixed in the source and discard
    the old mode, so the bound is the largest template
    (wan-real-time-frp pp. 5, 9).
-2. Céu's: a pool per creation site with a declared size, `pool Unit[10]`,
-   statically preallocated, where "further spawn invocations fail" when
-   it's full. It gets away without a collector because every lifetime is
+2. Céu's: a lexically scoped pool that spawns name, with an optional
+   declared size, `pool Unit[10]`, statically preallocated when sized,
+   where "further spawn invocations fail" when it's full. It gets away without a collector because every lifetime is
    lexical (santanna-structured-synchronous-reactive-programming-with-ceu
    pp. 5, 10–11).
 3. Oeyen et al.'s: allow creation from a finite, known set of reactors
@@ -2617,7 +2618,7 @@ aborts a lower handler's work on temporaries, runs, and the lower one
 restarts, and the theorem is that the result equals some sequential order
 of the two, so "the programmer reasons modulo permutations on the order of
 event arrivals" (kaiabachev-e-frp-with-priorities pp. 1, 5, 7, 9,
-Thm. 5.3). Pending events queue by priority, ties oldest first (p. 5).
+Thm. 5.3). Pending events queue by priority, ties oldest first (pp. 4–5).
 Under the non-pre-emptive model, Bough's, event k can wait for the sum of
 the other handlers' times, and no event is lost only if the same one
 doesn't recur before it's handled (pp. 9–10). Pre-emption cost the lowest
@@ -2630,9 +2631,9 @@ waits.
 **Child instants have no bound in the literature.** Clock refinement
 warns that the outer step ends only if the substep loop ends
 (gemunde-clock-refinement-in-imperative-synchronous-languages p. 9).
-EvEmfrp/S runs micro-iterations until none remain, and they end because
-its compiler checks that dependencies between timings are acyclic
-(yokoyama-… p. 6), which Bough can't check statically for `split` and
+EvEmfrp/S runs micro-iterations until none remain, and its compiler
+checks that dependencies between timings are acyclic (yokoyama-… p. 6),
+which is presumably what makes the chain end, and which Bough can't check statically for `split` and
 `defer`. Esterel and Aguado et al. guarantee finite macro-steps by
 clock-guarding every recursion
 (aguado-denotational-fixed-point-semantics-for-constructive-scheduling-of
@@ -2660,8 +2661,9 @@ table targets bare metal with a bounded graph.
 
 None found. No static engine in core is supported: every bounded system
 here gives up `construct`-like creation or bounds it by changing the
-semantics, which is RFD 7's reading that a static engine means "a subset
-of the semantics without `construct`". Tracing between units is
+semantics, which is RFD 7's reading that a static engine means "either a
+subset of the semantics without `construct` or pooled `construct` that
+brings a collector back per pool". Tracing between units is
 supported: Juniper's counts leak cycles, Emfrp collects between
 iterations, and Céu avoids a collector only through lexical lifetimes.
 Not aborting is compatible: P-FRP aborts to pre-empt, and Bough never
@@ -2697,8 +2699,8 @@ FRP line collapses bursts anyway, less explicitly.
 ### Questions to grill
 
 - RFD 7 says exhaustion never gives a different answer. Would you accept
-  Céu's rule, a declared pool per `construct` site with creation failing
-  when full, as an opt-in, or is that a different semantics you won't
+  Céu's rule, a declared, sized pool that `construct` sites name, with
+  creation failing when full, as an opt-in, or is that a different semantics you won't
   ship?
 - Does the bounded tier need handle queues at all, or only input slots,
   given every embedded system here keeps one pending occurrence per
@@ -2707,7 +2709,8 @@ FRP line collapses bursts anyway, less explicitly.
   F303, or does some milestone need P-FRP-style pre-emption?
 - Should the bounded tier take a maximum child-instant depth from the
   caller?
-- Is Juniper's "tracing is unacceptable overhead on 2 KB" worth testing
+- Is Juniper's claim that a tracing collector "has unacceptable overhead"
+  on 2 KB of RAM worth testing
   on the Due before the tier is designed around a tracing collector?
 
 ### Experiments this proposes for Bough
@@ -2919,7 +2922,8 @@ mechanised, do it to prove the creation cuts, not as an oracle.
 ## The lineage map
 
 Where Bough's ideas come from, by branch, oldest first. An arrow is "led
-to" or "was answered by". A dagger marks a source on the map only, not
+to", "was answered by" or "was followed, in the same line of work, by";
+it doesn't always mean the later source cites the earlier. A dagger marks a source on the map only, not
 read. Continuous time is here and nowhere else: Bough is discrete.
 
 - **Classic FRP, continuous time.** Fran, Elliott and Hudak 1997† →
@@ -2932,9 +2936,9 @@ read. Continuous time is here and nowhere else: Bough is discrete.
   keeping calm 2010 → wormholes 2012† → FRP refactored 2016† → testing
   and debugging 2017 → Rhine 2018 → FRP restated 2019† → runtime
   verification 2020† → loopy 2023.
-- **First-class and higher-order FRP.** Elerea, Patai 2010 →
-  reactive-banana 2011 and 2015 → Reflex (Hackage) → monadic FRP 2013 →
-  FRPNow 2015. Sodium and reactive-banana are "equivalent apart from
+- **First-class and higher-order FRP.** Elerea, Patai 2011 →
+  reactive-banana 2011 and 2015; monadic FRP 2013 → FRPNow 2015, which
+  answers Elerea and reactive-banana. Reflex (Hackage) sits beside them. Sodium and reactive-banana are "equivalent apart from
   naming" (blackheath-functional-reactive-programming, ch. 1, §1.9).
 - **Dynamic dataflow in a host language.** Frappé 2001† → FrTime 2006,
   thesis 2008 → Flapjax 2009 → Scala.React 2012, incremental lists 2013,
@@ -2951,17 +2955,17 @@ read. Continuous time is here and nowhere else: Bough is discrete.
   to temporal logic.
 - **Synchronous languages.** Kahn networks 1974† → Lucid 1985† → Lustre
   1987†, 1991; Esterel 1992†; SIGNAL 1991†; Statecharts 1987†; SDF
-  1987† → synchronous Kahn networks 1996 → modular causality 2001 →
-  Esterel's foundations 2000† and constructive semantics 2002, with
-  cyclic circuits 1996 and timed ternary simulation 2012† → the survey
-  twelve years later 2003† → delayed actions 2004 → clock-directed code
+  1987† → synchronous Kahn networks 1996 → modular causality 2001.
+  Esterel's foundations 2000† → constructive semantics 2002, with cyclic
+  circuits 1996 before it and timed ternary simulation 2012† after. The
+  survey twelve years later 2003† → delayed actions 2004 → clock-directed code
   2008 → modular static scheduling 2009 → modular memory 2012 → clock
   refinement 2013 → sequential constructiveness 2014 → SCCharts 2014 →
   fixed-point semantics for constructive scheduling 2015 → Vélus 2017.
   Copilot 2010 → its verifier 2023, extended 2026. Céu 2015. Superdense
   time, Lee and Zheng 2005.
 - **Incremental computation.** Attribute grammars 1981† → computational
-  circuits 1990† → the categorized bibliography 1993† → order in a list,
+  circuits 1990† → the categorized bibliography 1993†. Order in a list,
   Dietz and Sleator 1987† → self-adjusting computation 2005 → adaptive
   functional programming 2006 → its memory management 2008 → traceable
   data types 2010† → Adapton 2014 → a theory of changes 2014 → build
@@ -3021,7 +3025,8 @@ stated" means the source read was silent.
 | discro | 0.35.0 | One shared latest value, publisher and subscribers | Not stated | Not stated | On `tokio::sync::watch` | docs.rs |
 | reactive_stores | 0.4.4 | Field-level tracking of nested state; keyed `Patch` | A field update notifies parents and children, not siblings | On `reactive_graph` | As `reactive_graph` | docs.rs |
 
-Two crates the handoff named aren't reactive and have no row. Bevy's
+Two crates that come up in Bough's planning aren't reactive and have no
+row. Bevy's
 change detection records ticks on components for systems to check when
 they run, and pushes nothing to dependents (docs.rs/bevy_ecs/0.19.1).
 Xilem rebuilds a lightweight view tree, Elm-style, with no dependency

@@ -2081,8 +2081,9 @@ throughout, and the claims verifiers one at a time.
   bibliography, with the must-read checked against the corrected
   sections. About 1,600 claims, 99 errors: 27 overstated, 14 misread, 12
   unsupported, 11 wrong pages, 11 wrong numbers, 10 metadata (8 missing
-  years), 9 internal, 3 misattributed, 2 missing provenance lines. None
-  of the numbers the must-read quotes was wrong. I fixed each slice's
+  years), 9 internal, 3 misattributed, 2 missing provenance lines. Two
+  of the must-read's numbers were wrong, both listed below. I fixed each
+  slice's
   errors, and the verifier that found them re-checked what changed until
   it was clean. The fixes brought in five more errors, all caught that
   way. Commits `3c0be00` to `a89bb57` on this branch.

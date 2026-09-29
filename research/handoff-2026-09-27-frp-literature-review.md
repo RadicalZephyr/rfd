@@ -2338,3 +2338,23 @@ phase 8's wall-clock run, as for phase 6. Read from the container with
 reports "Current active profile: latency-performance". So both days ran
 with the same settings, and nothing is unconfirmed. Later runs can log
 the profile this way.
+
+### 2026-09-29 09:08 -07:00, phase 9 done: the review is done
+
+The note is in the book (`ad15eaf`). Its stub is
+`src/research/2026-09-28-frp-literature-review.md`, an include of the
+note like this handoff's, and `src/SUMMARY.md` lists it under Research,
+after this handoff, as "What the FRP literature says to Bough". The note
+itself is unchanged.
+
+The book builds with mdbook 0.5.4, the version the deploy workflow pins,
+and `mdbook-linkcheck2` 0.13.0 finds no broken link. mdbook wasn't
+installed in the container; the release binary was downloaded into the
+session's scratchpad for the build, and nothing was installed on the
+path. The build's warnings are the ones other notes already had, plus
+one linkcheck warning in the note, a quotation's "avoid[s]" read as a
+possible link. It isn't one.
+
+The review is done. The must-read is the note's "## The must-read":
+`research/2026-09-28-frp-literature-review.md`. What to grill first, it
+says, is RFD 3 and RFD 5, since they gate the build. Nothing is open.

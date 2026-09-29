@@ -144,18 +144,19 @@ Bough's side of it.** FRP has argued about when a thing starts since the
 first higher-order systems. Three lines give the same answer Bough gives:
 a thing built at `t` sees nothing from before `t`.
 
-- *Forgetfulness.* FRPNow proves that a combinator which takes its start
-  time from an argument that may lie in the past is "inherently leaky",
-  and that one which takes it from the monad's "now" is forgetful
-  (vanderploeg-practical-principled-frp p. 5, Lemmas 1 and 2). The tool
+- *Forgetfulness.* FRPNow proves that `whenJust†`, which takes its start
+  time from an event argument that may lie in the past, is "inherently
+  leaky", and that `whenJust`, which takes it from the behaviour monad's
+  "now", is forgetful (vanderploeg-practical-principled-frp p. 5, Lemmas 1
+  and 2; the reason is on p. 4). The tool
   is equality up to time observation, a Kripke logical relation over a
   totally ordered time with a least element (pp. 3–5). It names
   Elliott's event join, `accumE` and `accumR` as not forgetful (p. 12,
   fn. 7).
-- *Start times.* If a switched-in signal started at system start, the
-  implementation would have to remember all past input and catch up,
-  which is a space leak and a time leak. So first-class-signal FRP
-  starts it at the moment of switching (sculthorpe-keeping-calm-in-the-face-of-change
+- *Start times.* If a switched-in signal that depends on the triggering
+  event started at system start, the implementation would have to
+  remember all past input and catch up, which is a space leak and a time
+  leak. So most first-class-signal FRP variants start it at the moment of switching (sculthorpe-keeping-calm-in-the-face-of-change
   p. 7). CFRP's `runningInEB` keeps an event running across a switch and
   drops its occurrences from before switch-in: "only events that occur
   after it is switched in should be observable" (p. 12).
@@ -209,9 +210,10 @@ Differential dataflow's theory uses product partial orders and says the
 lexicographic order is outside it, since it isn't locally finite, and
 that the original construction "appears incorrect for T ≠ N"
 (abadi-foundations-of-differential-dataflow p. 14). The closest match
-for the order itself is Aguado et al.'s process identifiers: sequences of
-naturals ordered by proper prefix first, then lexicographically, where a
-forked child runs after its fork and before the parent's next step
+for the order itself is Aguado et al.'s process identifiers: sequences that
+alternate naturals with the fork labels l and r, partially ordered by
+proper prefix first, then lexicographically, with l and r incomparable.
+Within one thread's numbers that is Bough's order. A forked child runs after its fork and before the parent's next step
 (aguado-denotational-fixed-point-semantics-for-constructive-scheduling-of
 pp. 8–11). Their children are micro-steps inside one tick, though, and
 Bough's are whole transactions.
@@ -299,13 +301,16 @@ the batch argues Sodium's choice is wrong.
 
 ### The Rust prior art
 
-No Rust crate has hierarchical time. DFIR's tick is a batch, and its
-`defer_tick` defers to the next top-level tick
-(hydro@dfir_rs-v0.16.0 `dfir_lang/src/graph/ops/defer_tick.rs`:6–11).
-carboxyl reads cells before the instant, as Sodium does, and has no
-simultaneity combine (carboxyl@2a80080 `src/signal.rs`:731–746,
-`src/stream/mod.rs`:307–323). salsa iterates a cycle from an initial
-value to a fixed point, capped at 200 rounds, and refuses to combine that
+No Rust crate has Bough's child instants. DFIR's tick is a batch, with
+an unfinished loop-iteration counter inside it
+(hydro@dfir_rs-v0.16.0 `dfir_lang/src/graph/ops/next_iteration.rs`:9–40),
+and its `defer_tick` defers to the next top-level tick
+(`dfir_lang/src/graph/ops/defer_tick.rs`:6–11).
+carboxyl reads cells before the instant, as Sodium does. Its `merge`
+takes no combining function: simultaneous firings pass through
+separately, and an opt-in `coalesce` combines them in no defined order
+(carboxyl@2a80080 `src/signal.rs`:731–746, `src/stream/mod.rs`:307–334).
+salsa iterates a cycle from an initial value to a fixed point, capped at 200 rounds, and refuses to combine that
 with its equality cut-off, with a comment that the combination's safety
 hasn't been proved (salsa@salsa-v0.28.5 `src/cycle.rs`:9–58,
 `src/function/backdate.rs`:33–38). That is the oracle's iteration as a
@@ -365,7 +370,8 @@ oracle and Sodium's merge all hold against the batch.
    creation time on every state-holder and every time-mover.
 3. Do 2 and prove the cut, as FRPNow did for one function, for Bough's
    primitives over `T = [Int]`. FRPNow's relation needs only a total
-   order with a least element, which `T = [Int]` has.
+   order with a least element. `T = [Int]` has one only by App. E's
+   posit that `[0]` is the smallest value of `T` (§E.4).
 4. Type the cut: an era, a start-time parameter on signals
    (jeffrey-ltl-types-frp p. 5), which in Rust might be a lifetime per
    `construct` scope. That overlaps the memory section's brand.
@@ -2694,19 +2700,21 @@ coverage criterion and names that as its main limitation (pp. 9, 11).
 
 **Whole-trace equality is stronger than any temporal property over the
 same observations.** Property-based testing of asynchronous FRP checks
-LTL over several clocked signals on a flattened trace, because its
-library has no executable reference
+LTL over several clocked signals on a flattened trace, since
+propositional predicates can't say how signals evolve
 (nielsen-property-based-testing-for-asynchronous-functional-reactive-programming
-pp. 7, 10–13). For what the oracle covers, equal traces satisfy the same
+pp. 3, 7, 10–13). It has no executable reference to compare against. For what the oracle covers, equal traces satisfy the same
 temporal properties. Its lessons matter where the oracle is silent:
 liveness can't be tested on a finite trace, so `until` must be weak
 (pp. 8, 11), generation must be fair so every input fires (pp. 2–3), and
 shrinking a signal keeps its clocks (p. 15).
 
-**Trace length finds bugs short traces miss.** Pérez and Nilsson's bugs
-appeared only after 897 tests at larger sizes and 3,443 tests at 100,000
-cases, where short traces never reached the state that broke
-(perez-testing-and-debugging-functional-reactive-programming pp. 14, 22).
+**Trace length finds bugs short traces miss.** Pérez and Nilsson's
+bouncing-ball bug appeared only with larger input streams, after 897
+tests, where short traces never reached the floor
+(perez-testing-and-debugging-functional-reactive-programming p. 14). A
+second passed 100 tests and needed 3,443 of a 100,000-test run: more
+tests, not longer traces (p. 22).
 Their record and replay works because pure arrowized FRP separates
 effects and sampling from processing; the trace is the inputs and their
 times, and replay is exact "provided that the bug was not in the
@@ -2742,8 +2750,10 @@ child-index-aware comparison would need.
 
 ### The Rust prior art
 
-The crates in the table test by example, not against a reference
-semantics. salsa is the one with a fixed-point mechanism of its own, and
+None of the crates in the table tests against a reference semantics.
+carboxyl checks algebraic laws with QuickCheck (carboxyl@2a80080
+`src/stream/mod.rs`:690–722), and hydro_lang fuzzes in a simulator
+(hydro@dfir_rs-v0.16.0 `hydro_lang/src/sim/flow.rs`:41). salsa is the one with a fixed-point mechanism of its own, and
 it refuses to combine cut-off with cycles without proof
 (salsa@salsa-v0.28.5 `src/function/backdate.rs`:33–38).
 

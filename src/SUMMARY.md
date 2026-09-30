@@ -39,3 +39,4 @@
 - [What the RFD revision will do](./notes/2026-09-27-rfd-revision-grilling.md)
 - [Where the RFD revision landed](./notes/2026-09-27-rfd-revision-landed.md)
 - [A core that doesn't know its mode](./notes/2026-09-27-mode-generic-core.md)
+- [Incremental Collection Propagation](./notes/2026-09-29-incremental-collection-propagation.md)

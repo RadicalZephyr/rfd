@@ -16,7 +16,9 @@ _Avoid_: tick, time step, frame
 
 **Transaction**:
 One instant as the engine runs it, from the sends that open it to the
-listeners that close it. The initial build is transaction zero.
+listeners that close it. The initial build is transaction zero, and it can
+have children too. A transaction closure gets a `Transaction`; a queued
+unit runs with an `IoTransaction` or a `RemoteTransaction`.
 _Avoid_: batch, tick
 
 **Child transaction**:
@@ -53,7 +55,8 @@ _Avoid_: affine, single-use, unique
 
 **Fan-out**:
 Giving a stream more than one consumer, which is always explicit, through
-`share`.
+`share`. `unzip` isn't fan-out: it gives each half of a pair a stream of
+its own, with one consumer.
 _Avoid_: splitting (that is `split`), broadcasting
 
 **Cell**:
@@ -61,6 +64,12 @@ A value that exists at every instant. Cell values are read by reference;
 the engine clones one only for `steps` and `steps_with_current`, which
 need a value of their own.
 _Avoid_: behavior, signal, property, variable
+
+**State**:
+The cell an in-place accumulator makes, and any read-through cell computed
+from one. It's read like a cell, but it has no stream view, since its new
+value doesn't exist until commit.
+_Avoid_: mutable cell, state cell
 
 **Hold**:
 A cell that keeps the latest event of a stream, starting from an initial
@@ -70,15 +79,17 @@ _Avoid_: register, latch, state cell
 
 **Accumulator**:
 A cell whose value is folded from a stream's events, either by returning a
-new state or by mutating the state in place.
+new state or by mutating the state in place. The in-place form makes a
+`State`.
 _Avoid_: reducer, fold cell
 
 **Read-through cell**:
-A cell computed from other cells when it is read and memoized until one
-of them steps: `map_cell`, `lift`, `switch_cell`. It steps when an input
-steps, so marking reaches it, but its function runs only on read. The
-other kind of cell is stateful, a hold, an accumulator or a constant,
-and there is no third kind.
+A cell computed from other cells and memoized until one of them steps:
+`map_cell`, `lift`, `switch_cell`. Its function runs when it's read, or
+for a steps view during evaluation, at most once per step. Whether it
+stepped settles without running user code: it steps when a cell it's
+computed from steps. The other kind of cell is stateful, a hold, an
+accumulator or a constant, and there is no third kind.
 _Avoid_: derived cell, lazy cell, computed cell
 
 **Input**:
@@ -94,15 +105,10 @@ _Avoid_: producer, emitter
 ### Building
 
 **Token**:
-The name of a node that the four token types carry: `Stream`, `Shared`,
-`Cell`, `Input`. A token has no method that creates a node without a build
-context.
+The name of a node that the five token types carry: `Stream`, `Shared`,
+`Cell`, `State`, `Input`. A token has no method that creates a node
+without a build context.
 _Avoid_: handle, reference, id
-
-**Handle**:
-An RAII object whose drop has an effect: `Listener` and `Anchor`. A handle
-borrows nothing from the graph, and carries the graph's mode.
-_Avoid_: token, guard, subscription
 
 **Node**:
 Anything in the graph with an identity of its own, created by a
@@ -121,33 +127,37 @@ consumes it, and its adapters fuse into that node.
 _Avoid_: pipeline, builder, lazy stream
 
 **Materializer**:
-An operation that creates one node, from a chain or from a cell, and takes
-the build context to do it.
+An operation that takes the build context and creates nodes from a chain
+or from a cell. Most create one; `split` and `defer` create two, and
+`unzip` three, one for its pairs and one for each half.
 _Avoid_: terminal operation, consumer, sink
 
 **Dependency**:
 What a node is marked from: a stream node's inputs, and the cells a
 read-through cell is computed from, so that a step in one reaches the
 other. A cell read inside a stream function is not a dependency, because
-a cell is read as it was before the instant.
+a cell is read as it was before the instant; neither is a
+`switch_stream`'s selection, nor a `depends` declaration. A `split`'s or
+a `defer`'s output doesn't depend on its input: its events come in child
+instants.
 _Avoid_: edge, link, upstream (as a noun), reach (that is for collection)
 
 **Build context**:
 The context every node-creating operation requires. It exists inside the
 build closure and inside construct closures, and nowhere else, and it
-carries the graph's mode.
+carries the runtime's mode.
 _Avoid_: builder, transaction (Sodium's word for it)
 
 **Graph code**:
 Code that runs with a build context or as a node function: the build
-closure, construct closures, and the functions given to adapters and
-materializers.
+closure, construct closures, a split's iterator, and the functions given
+to adapters and materializers.
 _Avoid_: FRP code, logic, reactive code
 
 **Construct**:
 Creating nodes during a transaction, from a construct closure. The only way
 logic is added after build.
-_Avoid_: dynamic construction, runtime wiring, late binding
+_Avoid_: dynamic construction, wiring at run time, late binding
 
 **Scope**:
 The extent of one build context: the initial build, or one run of a
@@ -156,8 +166,12 @@ _Avoid_: session, phase
 
 **Loop**:
 A cycle in the graph, declared with a forward token and closed later with a
-definition. Every path around a loop passes through a hold, an accumulator,
-a `split` or a `defer`.
+definition. The dependency graph stays acyclic: every path around a loop
+crosses a read from before the instant, a `snapshot`, a `gate`, a `sample`
+or a `switch_stream`'s selection, or a `split`'s or a `defer`'s child
+instant. A hold's steps view doesn't delay. The check runs at close, at a
+switch's first link and at every move, and a move that closes a cycle
+poisons the runtime.
 _Avoid_: cycle (for the construct; a cycle is what a loop makes legal), recursion
 
 **Forward token**:
@@ -169,54 +183,111 @@ The value that defines a loop, consumed by `close`.
 
 ### Driving
 
+**Runtime**:
+The value that owns a graph: the only thing that reads it, and what a
+driver pumps. In prose, "runtime" means this and nothing else, and "graph"
+means its network of nodes.
+_Avoid_: engine (for the value), graph (for the value)
+
 **I/O code**:
-Code that holds a `Graph` or a `Remote`, listeners included.
+Code that holds the `Runtime` or a handle. Listeners and transaction
+closures are I/O code.
 _Avoid_: the I/O world (Sodium's phrase, kept only when quoting it), the outside, the shell
 
+**Handle**:
+An `Io` or a `RemoteIo`: how I/O code that can't hold the `Runtime` reaches
+it. Every call through one queues for the next pump and returns a `Result`
+at once, and nothing reads through one.
+_Avoid_: token, subscription, proxy
+
+**Io**:
+The handle for I/O code on the runtime's own thread, such as a GTK signal
+handler or a DOM closure. `Clone`, not `Send`, on every target, and only
+for a `Local` runtime; from `io()`.
+_Avoid_: context, session
+
+**RemoteIo**:
+The handle for I/O code on any thread: `Send + Sync + Clone`, from
+`remote_io()`. What it carries, and the listeners it registers, must be
+`Send`. It exists where the target has pointer atomics and a lock, under
+`std` or `critical-section`.
+_Avoid_: sender, proxy, channel, remote (alone)
+
+**Guard**:
+A `Listener` or an `Anchor`: an RAII value whose drop releases its root,
+without the runtime. There is one kind, with no mode parameter. A guard is
+`Send` where the target has pointer atomics, and not on the Cortex-M0.
+"Drop guard" and "mutex guard" keep their Rust senses.
+_Avoid_: handle (that is an `Io` or a `RemoteIo`), subscription
+
+**Graph code re-entrancy check**:
+The check that refuses a handle's call made from graph code, with
+`FromGraphCode`: that's I/O inside FRP logic. The `Io`'s runs on every
+target; a `RemoteIo`'s needs a thread id, so it runs under `std` only.
+_Avoid_: the guard (a guard is a `Listener` or an `Anchor`)
+
 **Edge**:
-The I/O boundary: the tokens I/O code holds, which are whatever the build
-closure returned and whatever flowed out as data since.
+The I/O boundary: the tokens I/O code holds. The build's return comes back
+`Anchored`, and whatever has flowed out since left as an `Anchored`: a
+token leaves a unit alive only if the graph holds it or it left anchored.
 _Avoid_: boundary, surface, ports; never a graph edge, which is a dependency
 
 **Driver**:
-Whoever owns a graph and runs its transactions: a thread, a future, a
-host's system, or a bare-metal main loop.
-_Avoid_: runtime, executor, owner
+Whoever owns the `Runtime` and pumps it: a thread, a future, a host's
+system, or a bare-metal main loop. Every app has one, since nothing else
+runs the queues.
+_Avoid_: runtime (that's what it owns), executor, owner
 
 **Listener**:
-An I/O callback attached to a node, run after commit with no graph access,
-and the handle that keeps it attached. `listen_cell` and `listen_steps` are
+An I/O callback attached to a node, run after commit with no runtime access,
+and the guard that keeps it attached. `listen_cell` and `listen_steps` are
 the I/O forms of `steps_with_current` and `steps`, Sodium's `value` and
-`updates`.
+`updates`. A once-listener, from `listen_once` or `listen_cell_once`,
+takes an `FnOnce` and is a root until it fires. A tied listener, from a
+transaction's `listen_once` or `listen_cell_once`, belongs to its unit and
+ends with it.
 _Avoid_: observer, subscriber, callback (for the attachment)
 
 **Anchor**:
-The handle that keeps a node alive from I/O code without listening to it,
-taken with `anchor`. One of the three kinds of root.
+The guard that keeps the tokens a value holds alive from I/O code, without
+listening to them. It rides in an `Anchored`; a plain `Anchor` comes only
+from `Anchored::into_parts`.
 _Avoid_: pin, root (that is the concept)
 
-**Remote**:
-A `Send + Clone` endpoint for sending into a graph from any thread. A
-remote send or a remote transaction is queued as one unit, and the driver
-runs each unit as one transaction when it pumps. Exists where the target
-has pointer atomics.
-_Avoid_: sender, proxy, channel, handle (its drop does nothing)
+**Anchored**:
+A value carried with the anchor that roots the tokens it holds: from
+`anchor` on the `Runtime`, a handle or the build context, and the build's
+return comes back as one. It derefs to its value. Its clones share one
+root, which ends with the last clone. `keep` keeps the root for good and
+returns the value, and `into_parts` splits it into the value and its
+`Anchor`. It isn't `Trace`.
+_Avoid_: owner, wrapper
 
 **Unit**:
-What the inbox queues: one remote send, or the several sends of one
-remote transaction, run by the driver as one transaction. A unit is the
-declaration of one external cause, never split and never merged.
+A transaction with its children and listeners, however it started: a send
+or a transaction on the `Runtime`, a slot's drain, or a queued call. A unit
+is the declaration of one external cause, never split and never merged,
+and collection runs after each whole one.
 _Avoid_: batch, message, job
 
+**IoTransaction** and **RemoteTransaction**:
+What a queued unit runs with: an `Io`'s and a `RemoteIo`'s. They differ in
+one bound: a listener tied to a remote's unit must be `Send`.
+_Avoid_: remote transaction (for an `Io`'s)
+
 **Pump**:
-Running every pending input slot, each as one transaction in connection
-order, then every queued unit, each as one transaction in arrival order.
+Running what's pending. Pending input slots drain first, by priority,
+higher first and equal priorities in connection order, each at most once
+per pump, and a slot that becomes pending pre-empts between whole units.
+Then both handles' calls run in the order they were made, only those made
+before the pump began.
 _Avoid_: poll, drain, flush
 
 **Input slot**:
 A static mailbox for one input, placed by the code that writes it, folded
 in place, and drained by the driver as one transaction per pending slot.
-Connected to an input at build; one slot per producer.
+Connected at build to one input of one runtime, with a `u8` priority; the
+connection isn't a root. One slot per producer.
 _Avoid_: mailbox, buffer, interrupt queue
 
 **Fold**:
@@ -226,28 +297,33 @@ two sends inside one transaction.
 _Avoid_: coalescer (that is the input's), reducer, accumulator (that is a cell)
 
 **Mode**:
-Whether a graph is `Local` or `Threaded`: whether what it stores must be
-`Send`, and whether the graph itself is. Handles carry it.
+Whether a runtime is `Local` or `Threaded`: whether what it stores must be
+`Send`, and whether the runtime itself is. Neither guards nor handles
+carry it, and only a `Local` runtime has an `Io`.
 _Avoid_: flavor, threading model
 
 **Tier**:
 One of the engine's feature levels: the `no_std` core over `alloc`, and
-`std`; a bounded storage backend is a later tier.
+`std`. A bounded storage backend is a later tier, not built.
 _Avoid_: profile, mode (that is `Local` or `Threaded`), edition
 
 ### Memory
 
 **Root**:
-Something that keeps a node alive: the value the build closure returned, a
-live listener, or a live anchor. A handle is live until it is dropped, and
-`keep` makes it live for the graph's lifetime.
+Something that keeps a node alive. There are two kinds: a live guard, which
+an `Anchored` holds, and a registration waiting in a handle's queue. A
+waiting send or transaction roots nothing. A guard is live until it's
+dropped, and `keep` makes it live for the runtime's life; a
+once-listener's root ends when it fires.
 _Avoid_: anchor (that is one kind), pin, owner
 
 **Reach**:
-What a node keeps alive: its dependencies, the tokens `Trace` finds in a
-stateful cell's committed value, and its `depends` declarations. Reach is
-wider than dependency: a `depends` declaration never orders evaluation
-and can never read as a cycle.
+What a node keeps alive: its dependencies, the tokens its chain holds, such
+as the cells `snapshot` and `gate` read and `map_to`'s value, a switch's
+current inner, the tokens `Trace` finds in a stateful cell's committed
+value, and its `depends` declarations. Reach is wider than dependency: a
+`depends` declaration never orders evaluation and can never read as a
+cycle.
 _Avoid_: reference (a Rust word), liveness edge, retention
 
 **Stale**:
@@ -259,13 +335,17 @@ Of a token: it belongs to another graph.
 _Avoid_: mismatched, alien
 
 **Poisoned**:
-Of a graph: a transaction never finished, because a panic escaped it; the
-transaction-in-progress flag stays set and every later call fails, remote
-sends included.
+Of a runtime: a panic escaped graph code, a listener, a transaction's
+closure, or a `Drop` a collection ran, so a transaction or a collection
+never finished. The transaction-in-progress flag stays set, and every
+later call fails, through both handles too. Where panics unwind, the
+handles know at once; where a panic is a trap, they know once an entry
+finds the poison.
 _Avoid_: broken, corrupted, tainted
 
 **Collection**:
-Reclaiming the nodes no root reaches. Never runs inside a transaction.
+Reclaiming the nodes no root reaches. It runs after each whole unit when
+it's due, transaction zero included, and never inside one.
 _Avoid_: GC in prose, sweeping, cleanup
 
 ### Testing and performance
@@ -276,13 +356,15 @@ the Sodium repository. What the engine is held to.
 _Avoid_: the spec, the reference implementation
 
 **Oracle**:
-The semantics ported to Rust as lists of time-stamped values, which the
-engine is property-tested against.
+The semantics' Haskell, vendored and run under GHC by `bough-oracle` over
+lists of time-stamped values, with loops computed by fixed point. The
+engine is property-tested against it. It's patched only where the text
+breaks its own rules.
 _Avoid_: reference model, golden model
 
 **Shape**:
-One of the three benchmark workloads, UI, frame and shallow, each with a
-hand-written imperative baseline.
+One of the benchmark workloads, each with a hand-written imperative
+baseline: shallow, frame and fan-out run in CI, and UI is not built yet.
 _Avoid_: scenario, benchmark case
 
 **Bar**:

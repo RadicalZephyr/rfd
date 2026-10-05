@@ -645,3 +645,87 @@ stale, and the error is what the function says about this input.
 Errors as values are also the only stance that laziness doesn't upset:
 an error a read finds later is a value like any other, where a refusal
 found later has no transaction left to refuse.
+
+## What it costs
+
+Callgrind instruction counts for the regression gate's four shapes, and
+for two of the probe's own, in `bough-bench/benches/probe.rs`:
+`watched`, a chain of three read-through cells with a listener on the
+last, sent to a thousand times; and `rebind`, the REPL's binding,
+redefined a thousand times with the binding watched. The gate's shapes
+have no listened read-through cell, no construct and no switch, so on
+their own they'd measure only what the mechanisms cost where they do
+nothing. Each mechanism is measured with rollback on, as a runtime that
+refuses would run, and `undo` and `stage` also with it compiled in and
+switched off. The unchanged spike is `2b72e30` with the probe's two
+shapes copied in. Every count is in `rollback-probe/instructions.tsv`,
+from `rollback-probe/measure.sh`. These are counts, not times: the
+machine is shared, and counts are what the gate uses.
+
+| Shape | Unchanged | No features | `force` | `undo`, off | `undo` | `stage`, off | `stage` | Both |
+|---|---|---|---|---|---|---|---|---|
+| shallow | 644,229 | 0.0% | +0.3% | +3.1% | +13.0% | +5.6% | +5.6% | +17.3% |
+| shallow, shared | 931,958 | 0.0% | +0.2% | +2.2% | +9.9% | +3.9% | +3.9% | +13.2% |
+| frame | 63,978,438 | −0.1% | −0.1% | 0.0% | +4.1% | +0.3% | +0.3% | +4.8% |
+| fan-out | 6,862,941 | 0.0% | +0.3% | +0.6% | +0.7% | +0.8% | +0.8% | +1.2% |
+| watched | 2,017,804 | 0.0% | +21.8% | +23.3% | +26.9% | +23.7% | +23.7% | +28.6% |
+| rebind | 3,481,898 | +0.1% | +20.6% | +19.1% | +22.8% | +23.0% | +28.1% | +29.9% |
+
+"No features" is this branch with nothing on: the probe's hooks compile
+away, and so do the refactors that came with them. Per-function counts
+from the same runs say where the rest goes:
+
+- **`force` costs nothing on the gate's shapes and about a fifth on the
+  two that use it.** The cost isn't computing early; it's the machinery.
+  Force reuses `prepare`, the path a steps view takes to read a value
+  after the instant, which was built for the rare switch case and keeps
+  re-entry stamps and an `ensure` for every node. For the chain of
+  three, that's about 440 instructions a send, where reading the chain
+  lazily in dispatch cost about 310: `prepare` and `ensure` together
+  307,000 over the run, and `post` 177,000, against `value_through` and
+  three `OnceCell` fills, 310,000. Evaluation already visits these cells
+  in dependency order, so a cell with a live listener could be computed
+  there, from inputs already settled, with no recursion. The probe
+  didn't try that.
+- **`undo` costs most where transactions are smallest**: 13% on
+  shallow, one hold a send, and 4% on frame, ten thousand nodes a
+  transaction. On shallow, that's about 81 instructions a send. About
+  half is parking: `park_cell` in place of `commit_cell`, and the pass
+  that drops the parked values. The rest is the catch around the unit
+  and the catch around each node, and the log's bookkeeping each
+  instant. Compiled in and switched off, it costs 2 to 3% on the small
+  shapes.
+- **`stage` costs `force`'s, plus about 34 instructions a unit**: 5.6%
+  on shallow and 0.3% on frame, the same on as off. Staging and the
+  early relink cost nothing where nothing is made or moved; the fixed
+  cost is the probe's plumbing, four hooks each instant and a refusal
+  channel carried through every send, which a real engine needn't pay.
+  On `rebind`, where links do wait and switches do move before commit,
+  it's 28% on against 23% off: about 180 instructions a redefinition
+  for staging and the early relink, over `force`'s.
+
+A difference of a percent or two between configurations, such as
+`rebind` with `undo` off coming in under `force` alone, is within what a
+change of inlining moves.
+
+### Where nothing can be caught
+
+Two experiments in `rollback-probe/`, run by `run.sh`, whose output is
+in `results.txt`:
+
+- **A binary built with `panic = "abort"`.** Under `undo`, the send that
+  fails aborts the process, exit status 134, though both the catch
+  around the unit and the catch around the node are on the stack: with
+  nothing to unwind, nothing reaches them. Under `stage`, the same
+  failure written as a construct closure's error comes back as
+  `Err(Refused(..))`, and the next send goes through.
+- **A module for `wasm32-unknown-unknown`, run under Node.** `undo`
+  builds there, since the target has `std`, but its panic is a trap:
+  `undo_probe` ends in `RuntimeError: unreachable`. `stage_probe` returns
+  the code for refused and recovered, before the trap and after it. That
+  it ran again after the trap says only that this trap left nothing it
+  needed in a bad state, not that a trapped instance is safe, which is
+  RFD 5's point about abort targets.
+
+So on the web target RFD 7 names, and on bare metal, A refuses nothing,
+and B is the only rollback there is.

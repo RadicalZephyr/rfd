@@ -552,10 +552,11 @@ on pumping. In `bough-repl/tests/rollback_data.rs`:
 - **The runtime survives the seventh tick, and the eighth runs
   normally**, from where the graph was, under all 32 seeds:
   `f4_a_failing_tick_is_dropped_reported_once_and_the_next_tick_runs`.
-  The tick prints one line and nothing else:
+  The tick prints one line and nothing else; with `t`, `c` and `b`
+  defined in that order, it reads:
 
   ```
-  error: refused a transaction: node 15 failed: boom on 7; dropped its events at node 6
+  error: refused a transaction: node 11 failed: boom on 7; dropped its events at node 3
   ```
 
 - **Each failing event is reported once, and nothing loops.** Ticks 7 and

@@ -26,6 +26,8 @@
 - [Three issues for Sodium's semantics text, drafted](./research/2026-09-25-sodium-issue-drafts.md)
 - [Oracle work for the real build: the handoff](./research/handoff-2026-09-25-oracle-work-for-the-real-build.md)
 - [Building the I/O edge: one rule, nine steps](./research/2026-09-27-io-edge-spike.md)
+- [An FRP literature review for Bough: the handoff](./research/handoff-2026-09-27-frp-literature-review.md)
+- [What the FRP literature says to Bough](./research/2026-09-28-frp-literature-review.md)
 
 # Notes
 
@@ -37,3 +39,4 @@
 - [What the RFD revision will do](./notes/2026-09-27-rfd-revision-grilling.md)
 - [Where the RFD revision landed](./notes/2026-09-27-rfd-revision-landed.md)
 - [A core that doesn't know its mode](./notes/2026-09-27-mode-generic-core.md)
+- [Incremental Collection Propagation](./notes/2026-09-29-incremental-collection-propagation.md)

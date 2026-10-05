@@ -44,3 +44,4 @@
 - [What a thousand rows cost](./notes/2026-09-29-row-cost-probe.md)
 - [Where Bough fits](./notes/2026-09-29-where-bough-fits.md)
 - [What a typed binding REPL found in construct](./notes/2026-10-04-typed-binding-repl.md)
+- [A terminal UI for the binding REPL, for later](./notes/2026-10-04-repl-tui.md)

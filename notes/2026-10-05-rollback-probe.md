@@ -539,3 +539,108 @@ Smaller findings:
   `wasm32-unknown-unknown`; `undo` needs `std` and doesn't build for the
   first. It does build for wasm32, where a panic is a trap, so its catch
   would never run; step 6 tries that.
+
+## Rolling back a data event
+
+The baseline stance, under A with rollback on: the failing event is
+dropped, its transaction rolled back, and the refusal reported once.
+No engine code beyond A's was needed. A pumped unit that's refused is
+dropped whole and the rest stay pending, as `try_pump` already does with
+a stale send, and the REPL prints each refusal the pump returns and goes
+on pumping. In `bough-repl/tests/rollback_data.rs`:
+
+- **The runtime survives the seventh tick, and the eighth runs
+  normally**, from where the graph was, under all 32 seeds:
+  `f4_a_failing_tick_is_dropped_reported_once_and_the_next_tick_runs`.
+  The tick prints one line and nothing else:
+
+  ```
+  error: refused a transaction: node 15 failed: boom on 7; dropped its events at node 6
+  ```
+
+- **Each failing event is reported once, and nothing loops.** Ticks 7 and
+  14 each print one refusal, and the timer goes on:
+  `f4_every_failing_tick_is_reported_once_and_nothing_loops`.
+- **The fix is an edit.** Redefine `b`, and the next multiple of 7 runs:
+  `f4_after_a_failing_tick_redefining_the_binding_lets_the_next_one_through`.
+
+What the stance costs, from the same tests:
+
+- **The event is gone.** The timer sent 7, and the graph never saw it:
+  `t` goes from 6 to 8, and the redefinition after the refusal prints
+  `b = 6`. The sender wasn't told: its `send` returned `Ok` when it
+  queued, and the only report is the line the driver printed.
+- **One failing cell takes the whole event down.** `c = add t 1` never
+  fails, and doesn't show 8 for the seventh tick either, since a
+  transaction is all or nothing. In Mema, one bad definition on a tick
+  would freeze every binding the tick reaches, for as long as it stays.
+- **It depends on who's watching.** Unwatched, `boom` never runs, so the
+  seventh tick commits, `c` shows it, and the failure waits for the first
+  read: `f4_unwatched_the_failing_cell_drops_nothing_until_it_is_read`.
+  So adding a `watch` decides whether ticks are dropped. Observing a cell
+  shouldn't change what the program does, and under refusal it does. The
+  unchanged spike has the same flaw with poisoning in place of dropping.
+
+Four alternatives, written up and not built. This is a fork for the
+grilling, not a choice the probe makes.
+
+**Quarantine the failing node.** Roll back, mark the node, and run the
+event again without it: the node and what depends on it stop stepping
+until an edit replaces it, and everything else takes the event. The
+probe already names the node. It would take a quarantine mark in the
+cold bookkeeping, since `Hot`'s flags are full, a skip in evaluation,
+and the event kept for the second run, which Bough doesn't do: an
+event moves into its input's slot and through linear consumers without
+`Clone`, and the roll back drops it. Keeping it means `Clone` on every
+input that can be refused, or a reference model in place of RFD 4's
+move. Against no-drop, it delivers the event everywhere but inside the
+quarantine, where events are dropped until the edit, and the cells there
+show their last values with nothing to say they're frozen.
+
+**Hold the last good value.** Catch the function's failure where it runs,
+treat the cell as not having stepped, and commit the rest. Nothing is
+dropped and nothing is rolled back; it needs A's catch around every
+function and none of its log. But `b` would show 6 while `t` shows 7: a
+cell that isn't a function of its inputs, which is the wrong answer an
+hour later that RFD 5 poisons to avoid, only visible. Against no-drop it
+holds, at the cost of a value that's quietly stale.
+
+**Hand the event back for a retry.** Roll back, and give the event, or
+the unit, back to the sender with the refusal, so the I/O side decides:
+retry after an edit, or drop. The engine can't give back what it moved,
+so the cheaper form is for the sender to keep its own copy until the
+unit's outcome comes back: a remote send would return a ticket, and the
+driver would report each refused ticket. Mema's input pipeline keeps a
+copy anyway, if it promises not to drop. Retrying the same event fails
+the same way until the definition changes, so the edit is in the loop,
+and while it waits the I/O side either lets later events past, out of
+order, or holds them behind it, so one bad definition stops the input.
+Against no-drop, it holds at the engine's edge and hands the decision to
+the I/O side.
+
+**Errors as values**, as a spreadsheet's `#ERR`: the failing cell's value
+is an error, which flows downstream, and clears when its inputs move on.
+In the user's types it needs nothing from Bough, as
+`a_failing_value_becomes_an_error_that_flows_and_clears` in
+`errors_as_values.rs` shows: the cell holds a `Result`, `doubled` shows
+`error: boom on 7` at the seventh step and 16 at the eighth, and the
+sibling steps through all three. The cost there is every type carrying
+an error and every function passing it on. The engine could carry it
+instead, as an error lane beside each node's value: a node whose input
+is in error doesn't run its function and takes the error, a listener
+hears it, and a read returns it, which changes `sample`'s type. Under
+panicking functions it needs A's catch around every function, without
+the log. Against no-drop, it holds: nothing is dropped, nothing is
+stale, and the error is what the function says about this input.
+
+| Stance | The event | The failing cell shows | Its siblings | What the engine needs | No-drop |
+|---|---|---|---|---|---|
+| Drop (built) | Dropped whole | Its last value | Miss the event too | A's roll back | Broken |
+| Quarantine | Run again without the cell | Its last value, frozen until an edit | Take the event | A roll back, a mark, a skip, and the event kept | Broken inside the quarantine |
+| Last good value | Delivered | Its last value, stale | Take the event | A catch at every function | Holds, with a stale value |
+| Back to the sender | Returned for a retry | Its last value | Miss the event too | A roll back, and each unit's outcome reported | Holds at the edge; I/O decides |
+| Errors as values | Delivered | An error | Take the event | Nothing, in the types; or an error lane | Holds |
+
+Errors as values are also the only stance that laziness doesn't upset:
+an error a read finds later is a value like any other, where a refusal
+found later has no transaction left to refuse.

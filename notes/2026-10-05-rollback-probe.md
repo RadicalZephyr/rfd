@@ -412,3 +412,130 @@ Smaller findings:
 - **The panic hook still prints.** A caught panic has already run the
   hook, so each refusal also puts a panic message on stderr. A host that
   refuses would install its own hook.
+
+## Mechanism B: staging
+
+`stage` is a cargo feature that implies `force` and needs no `std`,
+under the same `set_rollback` switch. Its idea is the reverse of A's:
+rather than undoing what commit did, it moves everything that can refuse
+an edit ahead of commit, and keeps what the instant makes from touching
+anything older until commit, so a refusal throws the instant's work away
+and has nothing committed to undo. It catches no panic. Three changes
+make it:
+
+- **`try_construct`**: a construct whose closure returns a `Result`. An
+  `Err` refuses the instant, naming the construct and carrying the
+  error's text; the closure's scope is dropped, open loops and all:
+
+  ```rust
+  match out {
+      Ok(v) => {
+          b.pop_scope();
+          b.put_event(me, v);
+      }
+      Err(e) => {
+          b.drop_scope();
+          b.refuse(me, e.to_string());
+      }
+  }
+  ```
+
+  With rollback off, an `Err` poisons, as a panic in the closure would:
+  `with_rollback_off_a_closure_s_error_poisons`. Under `stage` the REPL's
+  constructs are `try_construct`s, and its wiring returns a `Mismatch`
+  rather than reaching the `unreachable!` arm, which the panicking paths
+  still do, with the same message.
+- **Staged links.** A node made at the instant that depends on an older
+  one waits in a list to join that node's dependents until commit.
+  Evaluation, pull and the cycle checks follow dependencies, which link
+  at once, so nothing in the instant notices. A debug assertion checks
+  that a refused instant's nodes never joined an older node's dependents,
+  and with staging taken out it fires in four tests.
+- **The switches move before commit.** After the last new node, and
+  before force, every queued switch moves to the inner its outer holds
+  after the instant, and the cycle check runs without panicking:
+
+  ```rust
+  while k < self.s.relinks.len() {
+      let n = self.s.relinks[k];
+      if let Some(cycle) = self.check_moved_or_refuse(n) {
+          self.roll_back(None, cycle);
+          return true;
+      }
+      k += 1;
+  }
+  ```
+
+  Commit then doesn't relink. Taking the check out fails both F1 tests.
+
+What it did, in `bough-repl/tests/rollback_stage.rs`, against the same
+criteria as A:
+
+| Case | How B refuses it | Test |
+|---|---|---|
+| F1 | The early check, before commit | `f1_a_cycle_is_refused_before_commit` |
+| F1, watched | The same: the check runs before force, so the watch changes nothing | `f1_watched_a_cycle_is_refused_before_commit_the_same_way` |
+| F2 | The binding's closure returns the mismatch; its new node, over `a`, never joined `a`'s dependents | `f2_a_construct_closure_s_error_is_refused` |
+| F2, at the root | The wiring's mismatch is the root closure's error | `f2_the_root_construct_s_error_is_refused_and_it_makes_the_next_binding` |
+| F5 | The inner `try_construct`'s error takes the outer one's nodes with it | `f5_a_nested_construct_s_error_takes_the_outer_construct_s_nodes_with_it` |
+| F3 | Not refused: `boom` panics in a value, and still poisons | `f3_a_panic_in_a_value_still_poisons` |
+| F4 | Not refused, for the same reason | |
+
+So B covers every edit whose failure is a check or a closure that says
+so, and nothing that panics. F3 and F4 fail once values flow, as the
+handoff expected; the section on user functions below says what it
+would take for B to reach them.
+
+**Does B need most of A anyway?** It needs half. The roll back is
+shared: dropping pending values, forgetting values computed for after
+the instant, ending child levels, removing tied listeners, truncating
+anchors and scopes, freeing what the instant made, and moving switches
+back, since the early relink moves them before the check. What B never
+needs is the other half: parking committed values, undoing commit, and
+the catch around each node that keeps its program through an unwind.
+That half exists only because A lets checks run during commit and
+panics run anywhere. Moving the checks ahead of commit is what makes it
+unnecessary, and with both features on, A's parking has nothing left to
+protect: after B's reordering the only failures left in commit are an
+`accumulate_mut`'s function and a `Drop`, which neither can undo.
+
+**Rollback on by default.** The probe's tests turn rollback on; the
+suite's 660 don't, so they say nothing about B's reordering on a graph
+where nothing fails. To find out, the switch was made on by default and
+the whole suite run under each mechanism, without committing that. Under
+`stage`, four tests whose semantics have nothing to do with failure
+broke: a switch built at an instant at which its outer steps links its
+first inner, an older cell, so the link waits for commit, and the early
+relink then moved the switch and looked for it among the old inner's
+dependents, where it wasn't yet. A move now takes a waiting link from
+the staged list, and makes its new one by the same rule:
+`a_switch_built_and_moved_at_one_instant_finds_its_waiting_link`, in
+`bough/tests/staging.rs`. With the fix, every test that still fails with
+rollback on by default, 12 under `stage` and 41 under `undo`, asserts a
+poisoning, or a panic out of `send`, for a failure the mechanism now
+refuses. Two were read in full to be sure, and a third turned up a gap:
+
+- **A cycle found by a read still panics under B.** The early relink
+  reads each outer's value after the instant, and if that read goes
+  around a cycle, `prepare`'s re-entry check panics before the cycle
+  check can return it. B catches nothing, so that one poisons:
+  `a_read_in_relink_around_a_cycle_its_check_would_refuse_panics_and_poisons`
+  fails on the message, not on the poisoning. Refusing it would take a
+  read that returns the cycle instead of panicking.
+
+Smaller findings:
+
+- **Staging reorders a dependents list.** When a switch moves to an
+  older cell at the same instant that a construct links a new node to
+  that cell, the switch now joins the cell's dependents before the new
+  node does. Marking follows that order, so the plain evaluation order
+  can change; RFD 2 says not to rely on it, and the shuffle tests pass.
+- **`has_linear_switch` reads dependents**, so within an instant it
+  can't see a loop closed with an older definition while that link
+  waits. No test reaches it; it's a hole in the one-consumer check, not
+  in rollback.
+- **B builds where A can't.** `cargo check -p bough --no-default-features
+  --features stage` passes for `thumbv7m-none-eabi` and for
+  `wasm32-unknown-unknown`; `undo` needs `std` and doesn't build for the
+  first. It does build for wasm32, where a panic is a trap, so its catch
+  would never run; step 6 tries that.

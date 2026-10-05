@@ -680,10 +680,11 @@ from the same runs say where the rest goes:
   Force reuses `prepare`, the path a steps view takes to read a value
   after the instant, which was built for the rare switch case and keeps
   re-entry stamps and an `ensure` for every node. For the chain of
-  three, that's about 440 instructions a send, where reading the chain
-  lazily in dispatch cost about 310: `prepare` and `ensure` together
-  307,000 over the run, and `post` 177,000, against `value_through` and
-  three `OnceCell` fills, 310,000. Evaluation already visits these cells
+  three, that path costs about 780 instructions a send, where reading
+  the chain lazily in dispatch cost about 460: over the run, `prepare`
+  306,000, `post` 177,000, `post_read` 171,000 and `ensure` 124,000,
+  against `value_through` 156,000, three `OnceCell` fills 153,000 and
+  `value_read` 147,000. Evaluation already visits these cells
   in dependency order, so a cell with a live listener could be computed
   there, from inputs already settled, with no recursion. The probe
   didn't try that.

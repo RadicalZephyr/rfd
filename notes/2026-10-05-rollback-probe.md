@@ -143,10 +143,10 @@ it, after the last child, so a panic anywhere in between leaves it set.
 `collect` sets it while `Drop` code runs. Under `std`,
 `Runtime::mark_on_panic` wraps every entry that can poison in
 `catch_unwind`, marks the poison in both handles and resumes the panic;
-there is no drop guard, which is what the abort targets need. A panic outside a transaction
-leaves the runtime usable: a `sample` from I/O code, `listen_cell`'s
-call at registration, and a tied cell listener. That's where the third
-row of the table failed, harmlessly.
+there is no drop guard, which is what the abort targets need. A panic
+outside a transaction leaves the runtime usable: a `sample` from I/O
+code, `listen_cell`'s call at registration, and a tied cell listener.
+That's where the third row of the table failed, harmlessly.
 
 ### What each phase mutates
 
@@ -204,9 +204,9 @@ everything else.
 No `RefCell` is held across user code in the engine. Memos are
 `OnceCell`s, which stay empty when their initializer panics, and the
 edge's locks, the inbox's and each slot's, are never held while a
-transaction runs. With no
-`unsafe` in the engine, memory is safe after any panic; what isn't
-guaranteed is consistency, and the list above is where it breaks.
+transaction runs. With no `unsafe` in the engine, memory is safe after
+any panic; what isn't guaranteed is consistency, and the list above is
+where it breaks.
 
 ## Today, every case poisons
 
@@ -218,7 +218,8 @@ through the graph API, as `tests/unchecked.rs` already did. F5 is a
 graph of its own, because the REPL never builds a construct that runs at
 the instant it was built: an outer construct's closure builds an inner
 construct over the same stream, which runs at that instant once the
-outer closure has returned, and panics on 7. `boom` joins the registry
+outer closure has returned, and panics there on 7, so only one built at
+that instant fails. `boom` joins the registry
 for the probe: its argument, except that it panics on a multiple of 7
 other than 0, so that a tick, which starts at 0, can be watched through
 it.
@@ -452,6 +453,8 @@ Smaller findings:
 - **A can't refuse what never ran.** An unwatched F3 still installs a
   definition that fails, and the failure comes at the next read:
   `f3_unwatched_the_definition_still_installs_and_fails_at_the_next_watch`.
+  An edit that reads its own definition closes the hole, as the section
+  on user functions shows.
 - **The panic hook still prints.** A caught panic has already run the
   hook, so each refusal also puts a panic message on stderr. A host that
   refuses would install its own hook.
@@ -914,17 +917,18 @@ policy. Unlinking them can't wait, since a linked orphan runs at later
 events; freeing could, at the cost of the count. Freeing at once runs
 their `Drop` inside the roll back, where a panic poisons.
 
-**For data events, what stance would I bring to the grilling, and what
-does each alternative cost?** Errors as values, carried by the engine as
-an error lane beside each node's value, for data events; refusal for
-edits. It's the only stance that drops no event and shows nothing stale,
-it recovers by itself when the input moves on, it needs nothing handed
-back to the I/O side, and it doesn't care whether anyone is watching,
-where refusal does. Its costs are an error state for every node, a
-branch on every read, a `sample` that can return an error, and listeners
-that hear errors; with closures that panic, a catch around every
-function as well. The section on data events costs the other four.
-That's a recommendation; the choice is the grilling's.
+**For data events, what stance does the probe recommend for the
+grilling, and what does each alternative cost?** Errors as values,
+carried by the engine as an error lane beside each node's value, for
+data events; refusal for edits. It's the only stance that drops no
+event and shows nothing stale, it recovers by itself when the input
+moves on, it needs nothing handed back to the I/O side, and it doesn't
+care whether anyone is watching, where refusal does. Its costs are an
+error state for every node, a branch on every read, a `sample` that can
+return an error, and listeners that hear errors; with closures that
+panic, a catch around every function as well. The section on data
+events costs the other four. That's a recommendation; the choice is the
+grilling's.
 
 ## Questions for RFD 5 and the real engine
 

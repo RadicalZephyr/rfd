@@ -5,10 +5,11 @@ asked for: can the engine spike refuse a failing transaction and come
 back to where it was, instead of poisoning the runtime? The probe
 changes the spike on bough's
 [`claude/admiring-pasteur-3n8ryp`](https://github.com/RadicalZephyr/bough/tree/claude/admiring-pasteur-3n8ryp)
-branch, a new branch from `claude/probe-crate-implementation-m4utf9` at
-`2b72e30`, built and tested with rustc 1.97.0. The note is written as
-the probe runs, a section a step; the short answer comes last. The RFDs
-are untouched._
+branch, `2b72e30..ef595bc`, a new branch from
+`claude/probe-crate-implementation-m4utf9`, built and tested with rustc
+1.97.0 in debug and release, under each of its features. The sections
+after the short answer were written as the probe ran, a step each. The
+RFDs are untouched._
 
 RFD 5 chose this on purpose. "Transaction" there means atomicity of
 visibility, not abortability, because rollback "needs an undo log for a
@@ -16,6 +17,48 @@ case that is a bug by definition". In Mema the users write the edits
 and the functions, so a failure isn't a bug in the program; it's
 something a live environment does all day. That's the premise this
 probe reopens.
+
+## The short answer
+
+For edits, yes, and both mechanisms get there; what decides between
+them is what a user function is. For data events, rollback works, but
+it's the wrong stance.
+
+One thing had to change first. Graph code ran after listeners: a
+`map_cell` or a `lift` computes when it's read, and the first read
+after commit is a watcher's, so F3 and F4 failed in dispatch after other
+watchers had printed. Computing every watched value before commit fixed
+that, at no cost where nothing is watched and about a fifth where a
+watched chain recomputes, a cost of the machinery it reuses rather than
+of computing early. Laziness leaves one hole that no mechanism closes on
+its own: a bad definition nobody reads installs cleanly, and fails at
+the next read, unless the edit reads it first.
+
+With that, A, an undo log under a caught panic, refuses F1, F2, F3 and
+F5, and leaves the live count, every node's structure and every value as
+they were, with no collection between. B, which runs every check before
+commit and holds new links until it, refuses F1, F2 and F5 without
+catching anything or undoing commit, but not F3, since a panic in a
+value is out of its reach. B needs half of A, the half that throws away
+what the instant made; A's other half, undoing commit, exists only
+because checks run during commit. Running the whole suite with rollback
+on found a bug in B, now fixed, and nothing else.
+
+If Mema's user functions are Rust closures that panic, rollback needs A,
+which works only where panics unwind: under `panic = "abort"` A's send
+aborts the process, and on wasm32 it traps. If they return a `Result`,
+as an interpreter's would, B is enough, and it works on every target.
+Either way the probe points at a transaction with a point of no return:
+every check and every function that can fail before commit, and nothing
+in commit that can.
+
+For a data event, the baseline, dropping the failing tick, works: the
+program survives, the error is reported once, and the next tick runs.
+But the event is lost, one failing cell takes every other update of it
+down, and whether a tick is dropped depends on whether anything watches
+the cell that fails. The stance this probe would bring to the grilling
+is errors as values, carried by the engine; the alternatives and their
+costs are below.
 
 ## The transaction, mapped
 
@@ -730,3 +773,241 @@ in `results.txt`:
 
 So on the web target RFD 7 names, and on bare metal, A refuses nothing,
 and B is the only rollback there is.
+
+## Two kinds of user function
+
+A and B differ in how a failure reaches the engine, and that's decided
+by what Mema's user functions are. There are two possibilities, and the
+probe ran both: the REPL's registry as Rust closures that panic, which A
+answers, and, under `stage`, its constructs and wiring as code that
+returns a `Result`, which B answers.
+
+**If user functions are Rust closures that panic**, a failure arrives as
+an unwind through the engine's own frames, from wherever the closure was
+called: evaluation, force, a construct, a coalescing function, a split's
+iterator, an `accumulate_mut` at commit, or a `Drop` anywhere, the roll
+back included. The engine has to survive the unwind before it can undo
+anything, with a catch around each node, or the node loses its program,
+and one around each unit. That's A, and three limits come with it:
+
+- **It works only where panics unwind.** On the web, on bare metal and
+  under `panic = "abort"`, the first panic is the end, as the
+  experiments show and as RFD 5 already says of poisoning.
+- **A closure's own state is the closure's.** `AssertUnwindSafe` is a
+  promise the user's code makes, and nothing checks it.
+- **What fails during commit can only be undone, never refused**, and
+  some of it can't be undone at all: an `accumulate_mut`'s function and
+  a `Drop`.
+
+**If user functions return a `Result`**, as code in Mema's own language
+would, run by an interpreter that reports its errors as values, a
+failure arrives where the engine called the function, as a value, and
+nothing unwinds. No program is lost, no catch is needed, and it works on
+every target. What the engine must do instead is honour the error before
+anything commits, so everything that can fail has to run before commit.
+B does that for edits. For data it needs one of two things, and the
+probe built neither:
+
+- **Every cell that can fail computed when it steps**, watched or not,
+  so its error turns up inside the transaction it belongs to. Force
+  already makes watched cells eager; this would leave laziness only to
+  cells that can't fail. Without it, an unwatched cell's error turns up
+  at a later read, with no transaction left to refuse.
+- **Or the error kept as a value**, so there's nothing to refuse:
+  `errors_as_values.rs` shows it working with no engine change.
+
+An edit can also make its own definition run. A construct that reads
+the new definition's value computes it on the current values inside the
+edit's transaction, so an unwatched F3 fails there and is refused,
+where it would otherwise install:
+`f3_unwatched_is_refused_when_the_edit_evaluates_the_definition`, under
+A. With functions that return a `Result`, the same read would hand the
+construct the error to return.
+
+The engine's own failures need the same treatment in this world. The
+cycle check at a switch's move returns its cycle under B, but a cycle
+found by a read, a second linear consumer and a loop left open still
+panic.
+
+| | Closures that panic | Functions that return `Result` |
+|---|---|---|
+| How a failure arrives | An unwind through the engine | A value the engine checks |
+| Where rollback works | Where panics unwind: not the web, not bare metal | Every target |
+| Mechanism | A's catch, and A's log for what commit has done | B: checks before commit, links held until it |
+| F1, F2, F5 | Refused | Refused |
+| F3, watched | Refused, with force | Refused, if the edit evaluates its definition or cells that can fail are eager |
+| F3, unwatched | Installs, unless the edit evaluates its definition | The same |
+| F4 | Refused, and its event dropped | Refused, with eager cells; or an error value, with nothing dropped |
+| What can't be undone | `accumulate_mut`, `Drop`, a closure's own state | `accumulate_mut`, if its function can fail, and `Drop` |
+| Happy-path cost | 4% to 13% on the gate's shapes, beyond force's | Force's, plus a few dozen instructions a unit |
+
+The combination is where the probe points. Run every check before
+commit, as B does; make commit a point of no return, with no user code
+in it that can fail; and treat a panic, where one can be caught, as one
+more failure before commit, which needs A's catch and A's discard but
+never A's commit undo. That last part only matters for closures that
+panic. With functions that return a `Result`, the catch is a host's
+safety net for engine bugs, and RFD 5's case for poisoning those still
+stands.
+
+## The handoff's questions
+
+**Do listeners only ever see committed state? If not, what would it
+take?** They do: each instant's listeners run after its commit. But
+graph code ran after some of them, in dispatch, because read-through
+cells compute when read, so a failed transaction's side effects escaped,
+in up to 21 of 32 listener orders. It took computing every listened
+value before commit, `force`, after which no graph code runs in dispatch
+(`bough/tests/dispatch.rs`) and no watcher prints for a failed
+transaction under any seed. Two things stay outside it: a `State`,
+whose value exists only from commit, and a child instant, which runs
+after its parent's listeners.
+
+**Which mechanism covers which failure cases, and at what happy-path
+cost?**
+
+| Case | A, the undo log | B, staging |
+|---|---|---|
+| F1 | Refused, at the move, after commit | Refused, before commit |
+| F1, watched | Refused, in force, before commit | Refused, before commit |
+| F2 | Refused; the construct keeps its program | Refused, as the closure's error |
+| F3 | Refused, watched; installs unwatched unless the edit evaluates it | Poisons: a panic |
+| F4 | Refused, and its event dropped | Poisons: a panic |
+| F5 | Refused, the outer construct's nodes with it | Refused, as the inner closure's error |
+
+Over the unchanged spike, with rollback on: `force` costs nothing on the
+regression gate's shapes and about a fifth on shapes with a watched
+chain; A costs 4% to 13% on the gate, most on the smallest transactions;
+B costs `force`'s plus about 34 instructions a unit, 0.3% to 5.6% on the
+gate. The section on cost has the table and where each goes.
+
+**What state can a panic leave half-mutated, and is `catch_unwind` sound
+or merely lucky?** No `RefCell` is held across user code in the engine:
+memos are `OnceCell`s, which stay empty when their initializer panics,
+and the edge's locks are never held while a transaction runs. What's
+left half-done is the engine's own bookkeeping, and the map lists it: a
+node's program, dropped in the unwind; a dispatching node's listener
+list; scopes, open loops, child levels and capture stacks; pending
+values and values computed for after the instant; linked orphans; and,
+once commit has started, overwritten holds, settled memos and moved
+switches. Memory is sound after any panic, since the engine has no
+`unsafe`. Consistency isn't luck under A: each item has an explicit
+undo, and taking each out fails a test, all but clearing scopes, which
+nothing can observe. What A assumes, rather than shows, is that a
+closure's own state is fine after its panic, and that no `Drop` panics
+during the roll back, which poisons if one does.
+
+**What happens under `panic = "abort"`, and what would Bough need
+instead?** Nothing can be caught. A's send aborts the process, and on
+wasm32 it traps, though the catches are on the stack. B's refusals are
+values and work there, on bare metal and on the web. Bough would need
+user functions that return a `Result`: `try_construct` is the probe's
+for edits, and for data, either cells that can fail computed eagerly or
+errors kept as values; and the engine's own checks as values too, which
+the probe did for the cycle at a switch's move and not for the rest.
+
+**Are a rolled-back construct's nodes freed at once, or left for
+collection, and does the live count return to its baseline?** At once,
+under both mechanisms, and the live count is back with no collection
+between: every test's `assert_as_before`, under the manual collection
+policy. Unlinking them can't wait, since a linked orphan runs at later
+events; freeing could, at the cost of the count. Freeing at once runs
+their `Drop` inside the roll back, where a panic poisons.
+
+**For data events, what stance would I bring to the grilling, and what
+does each alternative cost?** Errors as values, carried by the engine as
+an error lane beside each node's value, for data events; refusal for
+edits. It's the only stance that drops no event and shows nothing stale,
+it recovers by itself when the input moves on, it needs nothing handed
+back to the I/O side, and it doesn't care whether anyone is watching,
+where refusal does. Its costs are an error state for every node, a
+branch on every read, a `sample` that can return an error, and listeners
+that hear errors; with closures that panic, a catch around every
+function as well. The section on data events costs the other four.
+That's a recommendation; the choice is the grilling's.
+
+## Questions for RFD 5 and the real engine
+
+- **Abortability.** RFD 5 chose atomicity of visibility, not
+  abortability, because a failure was a bug by definition. In a live
+  environment it isn't. Should the transaction be built around a point
+  of no return, with every check and every user function that can fail
+  before commit, and commit unable to fail?
+- **Laziness.** Refusal needs the failure inside the transaction, and a
+  lazy cell fails at whichever read comes first. Should a watched cell
+  be computed before commit, as force does, through the evaluation order
+  rather than `prepare`'s recursion? Should a cell whose function can
+  fail be eager? Under refusal, whether a tick is dropped depends on
+  whether anything watches the failing cell, and watching shouldn't
+  change what a program does.
+- **What a user function is.** A closure that panics, or a function that
+  returns a `Result`? The answer decides whether rollback works on the
+  web at all.
+- **`accumulate_mut`.** It runs user code at commit and mutates state in
+  place, so it defeats both mechanisms, and anything read from it can be
+  computed only after commit. Keep it, require its function not to fail,
+  or run it on a copy before commit, which needs `Clone`?
+- **A unit's atomicity.** A child instant commits and dispatches on its
+  own, so a unit refused in a child is part undone. Should a unit's
+  listeners wait for its last child, or is a refusal per instant right?
+- **The engine's own failures as values.** A cycle found by a read, a
+  second linear consumer, a loop left open, a stale token in graph code:
+  each still panics.
+- **Telling the sender.** A refused unit's sender isn't told: a remote
+  `send` returned `Ok` when it queued, and the refusal goes to whoever
+  pumps. Would Mema's no-drop input pipeline need each unit's outcome?
+- **Names.** Every refusal here names node numbers. The REPL note's
+  question about labels stands, with one more reason.
+- **The panic hook.** A caught panic has already printed. A runtime that
+  refuses would want the hook too.
+
+## Choices made along the way
+
+- **Branch.** Both repositories' `claude/admiring-pasteur-3n8ryp`, a new
+  branch from `claude/probe-crate-implementation-m4utf9`: bough from
+  `2b72e30`, the RFD repository from `bb9f809`.
+- **Compute before commit first.** It was chosen after the first read
+  of the code, once watchers were seen printing for transactions that
+  then failed.
+- **Features, and a switch.** Each mechanism is a cargo feature, so the
+  unchanged engine stays measurable and every existing test runs as it
+  did. Rollback is a runtime switch, off by default, so a runtime that
+  doesn't ask still poisons; the features compose, and the suite passes
+  with all of them on.
+- **How a refusal comes back.** `try_send` and `try_pump` return it.
+  `send`, `transaction` and `pump` panic with it and leave the runtime
+  usable. `try_transaction`'s error type wasn't widened, so it panics
+  too.
+- **Freed at once.** See the questions above.
+- **`tx` is never rolled back**, so every stamp a failed instant left is
+  stale.
+- **A child instant is rolled back alone**, and the unit comes back
+  refused.
+- **B's errors refuse.** `try_construct` turns an `Err` into a refusal of
+  the instant, not an event, because F5's criterion is all or nothing.
+- **B stages only links from an older node to a new one.** Links among
+  new nodes are made at once, since a loop's cycle check walks them.
+- **`boom` skips 0**, so a tick, which starts at 0, can be watched
+  through it.
+- **"As before" is a snapshot.** A hidden `Runtime::topology` records
+  every live node's structure, and the tests compare it, not only the
+  live count.
+- **Counts, not times**, for cost, since the machine is shared.
+
+## Follow-ups
+
+- Moving the REPL's checks into an in-graph command processor, as
+  planned; with rollback, a refusal could be its answer.
+- Labels on nodes, so a refusal names a binding.
+- Computing watched cells in the evaluation order rather than through
+  `prepare`, and measuring it against force.
+- Cells that can fail, computed eagerly, with refusal: what laziness
+  costs to give up.
+- Errors as values in the engine, as an error lane, if the grilling
+  picks it.
+- The engine's remaining panics as values, under B.
+- A refused unit's outcome reported to its sender.
+- `try_transaction` returning a refusal.
+- Slots connected inside a refused construct, which the roll back
+  doesn't disconnect.
+- `has_linear_switch` under staging.

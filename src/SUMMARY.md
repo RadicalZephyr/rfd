@@ -40,3 +40,4 @@
 - [Bough as the composition layer for IO-less protocols](./notes/2026-10-06-io-less-composition.md)
 - [Middleware is just a pattern; edge composition is the real gap](./notes/2026-10-06-middleware-and-edge-composition.md)
 - [Swappable edges: client/server as two graphs, migration, and a free differential test](./notes/2026-10-06-swappable-edges.md)
+- [What the expressibility port has to express](./notes/2026-10-08-mema-expressibility-scope.md)

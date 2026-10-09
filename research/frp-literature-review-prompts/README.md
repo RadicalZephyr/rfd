@@ -9,6 +9,8 @@ says when each was used.
 - `verify/brief.md`: the brief every verifier got, with
   `verify/claims-task.md` for the seven claims slices and
   `verify/probes-task.md` for the probe re-runs.
+- `triage.md`: the brief for the triage of the review and the notes
+  that the pre-build grilling works from. Its output isn't kept here.
 
 Paths outside this repo are placeholders:
 
@@ -19,3 +21,4 @@ Paths outside this repo are placeholders:
 - `<scratch>`: a scratch directory outside every repo, not kept.
 - `<sodium-book>`: a private markdown copy of the Sodium book, which the
   review cites by chapter.
+- `<out>`: the file the triage is written to, outside this repo.

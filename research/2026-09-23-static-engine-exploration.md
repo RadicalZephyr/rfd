@@ -1,9 +1,11 @@
 # A no-allocator core for Bough: static engine, bounded dynamic engine, or neither
 
 _2026-09-23. An exploration for the Bough design session, answering
-`HANDOFF-static-engine.md` and its addendum. Transient working state, not a
-record: nothing here has authority over the RFDs. Experiments live in
-`bough-static/experiments/`, outside the Bough repositories._
+[the static engine handoff](./2026-09-23-static-engine-handoff.md) and its
+addendum. Transient working state, not a record: nothing here has authority
+over the RFDs. Experiments live in `experiments/` in
+`bough-frp/bough-static-experiments@daf7ab8e0f9154fc9284abc85fdef923649dc2ee`,
+outside the Bough repositories._
 
 ## The answer first
 
@@ -592,8 +594,8 @@ existing crates.
 
 ## Keeping the experiments
 
-`bough-static/experiments/` is a scratch workspace outside the Bough
-repositories: `e0-alloc-baseline`, `dyn-core`, `e1-bump`, `e2-slot`,
+`experiments/` in `bough-frp/bough-static-experiments` is a scratch
+workspace outside the Bough repositories: `e0-alloc-baseline`, `dyn-core`, `e1-bump`, `e2-slot`,
 `e3-static`, `e4-builder`, `firmware`, `gen/` with the generators and
 timing scripts, and `results/` with the recorded errors and measurements.
 The one piece worth keeping is `e2-slot`, as the seed of (d)'s storage and

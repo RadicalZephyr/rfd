@@ -1,7 +1,6 @@
 # Handoff: exploring a static, no-alloc core for Bough
 
-_Written 2026-09-23 from the Bough design session
-(https://claude.ai/code/session_01XZ4jSiBN5gqeLQL1Q79TYd). Transient working
+_Written 2026-09-23 from the Bough design session. Transient working
 state, not a record: nothing here has authority over the RFDs._
 
 ## Your goal
@@ -46,7 +45,8 @@ I/O. Everything below is a pointer; the design itself lives here:
   licence at
   <https://github.com/RadicalZephyr/bevy-sodium/tree/main/docs/reference/sodium>.
 - The requirements and the design history, which Zefira has as files
-  (`REQUIREMENTS.md`, `PLAN.md`, `GRILLING-TRANSCRIPT.md`); ask her for
+  ([the design requirements](../notes/2026-09-21-design-requirements.md),
+  and a plan and a grilling transcript, not kept); ask her for
   them if you need the reasoning behind a settled decision. Do not reopen a
   settled decision without a new fact.
 

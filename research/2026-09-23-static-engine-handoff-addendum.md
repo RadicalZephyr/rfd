@@ -1,7 +1,7 @@
 # Addendum: a second compile target and a third engine shape
 
 _Written 2026-09-23 in a claude.ai conversation with Zefira. Extends
-`HANDOFF-static-engine.md`: its goal, constraints, voice, working style and
+[the static engine handoff](./2026-09-23-static-engine-handoff.md): its goal, constraints, voice, working style and
 deliverable all stay in force. Transient working state, not a record:
 nothing here has authority over the RFDs._
 

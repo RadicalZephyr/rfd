@@ -13,7 +13,8 @@ _The sources are in the private `literature` repository, one record per
 source with reading notes by page, cited here by stem. `p. N` is the
 stored PDF's page index, counted from 1, never the printed page. The
 Sodium book is cited by chapter and section. The probes are in
-`experiments`, and every number this note establishes carries the
+`experiments`, published as `bough-frp/experiments` and cited as
+`experiments@COMMIT`, and every number this note establishes carries the
 provenance line and command of the result file it comes from, in the
 section that quotes it. A paper's number is that paper's claim, marked
 "not reproduced". Bough's own numbers are cited to the research note that

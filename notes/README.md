@@ -10,5 +10,9 @@ here is authoritative, and nothing here is a commitment.
 - A note graduates to [`research/`](../research/README.md) when someone
   runs the experiment, and to an RFD when something costly to undo is
   about to depend on it.
+- A graduated note is deleted, after its trade-offs and the
+  alternatives it rejected have moved into the research or the RFD. A
+  document that still mentions it names the note and a commit that
+  holds it, never a link.
 - The book carries every note under Notes, through an include from
   `src/notes/`.

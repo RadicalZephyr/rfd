@@ -25,8 +25,8 @@ land before code depends on the RFDs, RFD 3 and RFD 5 above all.
   `origin/rfd/revision-after-the-spikes` at `1b30f27`, the unpublished
   revision of RFDs 1 to 7 (RadicalZephyr/rfd#3). This handoff is its
   first commit. No worktree exists yet. Make one before anything else:
-  `git worktree add ~/prog/bough/rfd-literature-review
-  research/frp-literature-review`, run inside `~/prog/bough/rfd`. Work
+  `git worktree add <rfd>
+  research/frp-literature-review`, run inside the main checkout. Work
   only in the worktree. The main checkout is on
   `spike/engine-feasibility` and stays untouched.
 - **What the review audits.** The revised RFDs, `src/rfd-000*.md`, and
@@ -38,23 +38,26 @@ land before code depends on the RFDs, RFD 3 and RFD 5 above all.
   `research/2026-09-24-engine-feasibility-spike.md`, and the open risks in
   §10 of `research/2026-09-24-engine-architecture-brief.md`. A dogfooding
   note on construction cost is on the local branch `notes/oort-fighter`.
-- **Scope and goals.** `~/prog/bough/claude-planning/REQUIREMENTS.md` and
-  `PLAN.md`. Zefira's own open review notes on the RFDs:
-  `~/prog/bough/claude-planning/Changes to Bough RFDs.md`.
+- **Scope and goals.** [The design
+  requirements](../notes/2026-09-21-design-requirements.md), and a
+  development plan, not kept. Zefira's own open review notes on the RFDs:
+  [Changes to Bough RFDs](../notes/2026-09-25-changes-to-the-rfds.md).
 - **Sodium.** The Manning book as markdown in
-  `~/prog/sodium/frp-mdbook/src/`; cite it by chapter, and never store a
+  `<sodium-book>/src/`; cite it by chapter, and never store a
   copy. Its semantics appendix is `src/appendix/denotational-semantics.md`.
-  Three bugs in the semantics text: `~/prog/sodium/sodium-denotational-bugs/`.
-  The vendored `Denotational.hs` and the oracle:
-  `~/prog/bough/bough/bough-oracle/`.
-- **literature.** `~/prog/bough/literature`, one commit (`1e3d79c`), a
+  Three bugs in the semantics text:
+  [the issue drafts](./2026-09-25-sodium-issue-drafts.md).
+  The vendored `Denotational.hs` and the oracle: `bough-oracle/` in
+  `RadicalZephyr/bough@4dc2ff45c9bbc5a118fa89b36f69295429d0b98a`.
+- **literature.** `<literature>`, one commit (`1e3d79c`), a
   README only. It has no remote; if it ever gets one, it must be private,
   because publisher PDFs can't be redistributed.
-- **experiments.** `~/prog/bough/experiments`, one commit (`adc7b76`),
+- **experiments.** `<experiments>`, one commit (`adc7b76`),
   an empty package `bough-experiments`.
-- **Conventions.** `~/prog/decisions/docs/decisions/README.md`, its
-  Research section and "Dating claims that will not age well", and
-  `~/prog/decisions/docs/decisions/experiments/README.md`. Follow them
+- **Conventions.** `docs/decisions/README.md` in
+  `RadicalZephyr/decisions@05633f9318c9c75f7552d8b918c6c316a9efd52c`,
+  its Research section and "Dating claims that will not age well", and
+  `docs/decisions/experiments/README.md` beside it. Follow them
   for experiments and evidence. Ignore everything about writing decision
   records. This repo's own rules for research and notes are in
   `research/README.md` and `notes/README.md`.
@@ -165,9 +168,9 @@ against the Claude Code version in the container.
       "Bash(git show:*)", "Bash(curl:*)", "Bash(sudo dnf:*)",
       "Bash(pdftotext:*)", "Bash(chromium-browser:*)",
       "WebSearch", "WebFetch",
-      "Edit(~/prog/bough/literature/**)",
-      "Edit(~/prog/bough/experiments/**)",
-      "Edit(~/prog/bough/rfd-literature-review/**)"
+      "Edit(<literature>/**)",
+      "Edit(<experiments>/**)",
+      "Edit(<rfd>/**)"
     ],
     "deny": ["Bash(git push:*)", "Bash(cargo publish:*)"]
   }
@@ -576,13 +579,13 @@ Every item in the setup was checked:
 - OpenAlex, arXiv and DBLP answer. Semantic Scholar answers 429 without
   a key, and there is no key. Back off and retry on it, and lean on
   OpenAlex and DBLP.
-- The scratch directory is `~/prog/bough/research-scratch-space`. It is
+- The scratch directory is `<scratch>`. It is
   outside every repo, and its disk has 1.7 TB free.
 - Git's identity is set.
 
 The main `rfd` checkout was on this branch, so the worktree couldn't be
 made. It was switched back to `spike/engine-feasibility` at `9afae4c`,
-and the worktree is now `~/prog/bough/rfd-literature-review`, as the
+and the worktree is now `<rfd>`, as the
 handoff says.
 
 Commit signing is off in `rfd`, `literature` and `experiments`. Each has
@@ -591,7 +594,7 @@ Commit signing is off in `rfd`, `literature` and `experiments`. Each has
 the three went through unsigned with no passphrase prompt, and was
 removed with a soft reset. Nothing else was committed.
 
-The permissions are in `research-scratch-space/.claude/settings.json`,
+The permissions are in `<scratch>/.claude/settings.json`,
 and phase 1 starts from that directory. They are the handoff's list with
 these changes:
 
@@ -635,7 +638,7 @@ Done:
   how many of the dimension's seeds each work links to. Nothing has been
   ranked or kept yet.
 
-The tooling, in `~/prog/bough/research-scratch-space/trace/`:
+The tooling, in `<scratch>/trace/`:
 
 - `oa.py`: OpenAlex lookups (`get`, `refs`, `cites`, `search`) and a
   Crossref search (`xref`), with a disk cache in `trace/cache/`.
@@ -666,7 +669,7 @@ Phase 1 of the FRP literature review was started on the host instead of
 the Fedora container, and was stopped before any PDF work. The literature
 repo's README and index script are committed. The seeds are checked, and
 the first snowball hop has run, with its output and tooling in the
-scratch directory `~/prog/bough/research-scratch-space/trace/`.
+scratch directory `<scratch>/trace/`.
 
 ### ❓ **Where phase 1 resumes**
 
@@ -689,11 +692,11 @@ cache saves most of today's budget.
 Zefira chose (a). A fresh session in the Fedora container resumes phase
 1 at step 4, from the scratch directory's `trace/` tooling and hop 1
 outputs. If the scratch directory isn't mounted at
-`~/prog/bough/research-scratch-space` in the container, that's a
+`<scratch>` in the container, that's a
 blocker. Nothing else is open.
 
-Zefira has an OpenAlex account now. Its API key is in
-`~/.config/openalex/api_key`, mode 600, one line, outside every repo.
+Zefira has an OpenAlex account now. Its API key is in a file outside
+every repo.
 Never print it, log it or commit it. Before any other OpenAlex call, the
 next session changes `trace/oa.py` to use it:
 
@@ -706,7 +709,7 @@ next session changes `trace/oa.py` to use it:
 - Confirm the account's budget from the `x-ratelimit-*` headers of one
   free singleton lookup.
 
-Check that `~/.config/openalex/api_key` is visible inside the container.
+Check that the key's file is visible inside the container.
 If it isn't, ask Zefira; don't go on with the free allowance.
 
 ### 2026-09-27 10:43 -07:00, phase 1 done: the fetch list
@@ -715,7 +718,7 @@ Phase 1 ran in the Fedora container from the scratch directory, resuming
 at step 4 as the last addition said. It stops here for the fetch.
 
 `trace/oa.py` now reads the OpenAlex key from `OPENALEX_API_KEY` or
-`~/.config/openalex/api_key`, and sends it as `api_key`, the name
+its file, and sends it as `api_key`, the name
 OpenAlex's authentication page gives. The key is added after the cache
 key is hashed, so hop 1's cached responses still hit, and an error
 message shows the URL without it. One free singleton lookup's headers
@@ -797,14 +800,14 @@ Learned about the services, as of this date:
   but serve plain `curl`. CiteSeerX now redirects to the Wayback Machine.
   The Yale Haskell group's site is down.
 
-The tooling is in `~/prog/bough/research-scratch-space/trace/`, outside
+The tooling is in `<scratch>/trace/`, outside
 every repo, as before: `manifest.py` (the ranking and its reasons),
 `build.py` (`records`, `fetch`, `missing`) and `store.py` (stores a
 found-URL list with the same checks).
 
 The fetch list. The Sodium book isn't on it: its row has no file by
-design, and it's read in `~/prog/sodium/frp-mdbook/src/`. Save each copy
-into `~/prog/bough/literature` under the filename given. Phase 3 then
+design, and it's read in `<sodium-book>/src/`. Save each copy
+into `<literature>` under the filename given. Phase 3 then
 fills in `file`, `version` and `source_url`.
 
 1. **`shiple-constructive-analysis-of-cyclic-circuits.pdf`**, core,
@@ -962,7 +965,8 @@ How the reading ran, and the choices made inside the plan:
   Bough is in `synthesis/`, which the README describes. A line that is
   the reader's inference ends in `(reading)`.
 - **One sub-agent per batch, one at a time,** each with the same brief:
-  `research-scratch-space/reading/briefing.md`, with the batches in
+  `<scratch>/reading/briefing.md` (now in
+  `research/frp-literature-review-prompts/`), with the batches in
   `reading/batches.md` and the page-marked text in `reading/text/`. After
   each batch I checked claims against their pages before committing,
   three or four per batch, and fixed the synthesis twice where it said
@@ -974,7 +978,7 @@ How the reading ran, and the choices made inside the plan:
   Its `id` is still the ICFP 2023 DOI. The verifier should decide whether
   the `id` follows the copy.
 - **The crates are cloned and pinned** in
-  `research-scratch-space/crates/PINS.md`. salsa's `v*` tags stop at
+  `<scratch>/crates/PINS.md`. salsa's `v*` tags stop at
   0.16.1 in 2021, so it's pinned at `salsa-v0.28.5`, the crates.io
   latest. carboxyl moved to `milibopp/carboxyl`, and its 0.2.2 has no tag,
   so it's pinned at master, `2a80080`. They haven't been read.
@@ -1727,7 +1731,7 @@ What's there:
   file named for its target and run. Timings taken during phase 5 are
   in the scratch directory only, marked indicative.
 - The orchestrator's log of every report, with its numbers, is
-  `research-scratch-space/probes/reports.md`. Drafting can start there;
+  `<scratch>/probes/reports.md`. Drafting can start there;
   every number in it is in a committed result file.
 - `cargo fmt` and clippy with warnings as errors are clean across the
   workspace. `cargo test --release --workspace` passes but for one
@@ -1816,7 +1820,7 @@ Choices made inside the plan:
 
 #### Phase 6: the commands
 
-Run from `~/prog/bough/experiments` on the idle machine: boost off,
+Run from `<experiments>` on the idle machine: boost off,
 governor `performance`, nothing else running, as this night's first
 addition describes. Save each command's full output as
 `results/<target>-<date>.txt` with the provenance line, and commit.
@@ -1932,7 +1936,7 @@ How the run went, and the choices made inside the plan:
   `results/<name>-timed-<date>.txt`.
 - **Each bench starts from an empty `target/criterion`,** and its
   samples are moved to
-  `research-scratch-space/phase6-criterion/<target>/` straight after.
+  `<scratch>/phase6-criterion/<target>/` straight after.
   So no bench's ratios can pick up another's samples, whatever the group
   names, and the raw samples are kept for verification. Phase 5's
   indicative samples, left in `target/criterion`, are in
@@ -1940,7 +1944,7 @@ How the run went, and the choices made inside the plan:
   `phase6-criterion/run.log`.
 - **A smoke run came first,** with `PHASE6_SMOKE=1`: Criterion's
   `--quick`, the materializer's `--quick`, and the two long binaries
-  skipped, everything written to `research-scratch-space/phase6-smoke/`.
+  skipped, everything written to `<scratch>/phase6-smoke/`.
   Its numbers aren't results.
 - **The load average reads 2 to 5 during the run.** That's Criterion's
   analysis, which bootstraps its statistics across all cores with rayon
@@ -2070,11 +2074,13 @@ handoff's stop, and the idle machine the wall-clock needs. The note's
 header says where verification stands.
 
 How it ran. The brief every verifier got is
-`research-scratch-space/verify/brief.md`, with `claims-task.md` and
-`probes-task.md` beside it. Each verifier was a fresh sub-agent given the
-note, `literature`, `experiments`, Bough's notes and the crate clones,
-and none of the drafting. At most two ran at once: the probe verifier
-throughout, and the claims verifiers one at a time.
+`<scratch>/verify/brief.md`, with `claims-task.md` and
+`probes-task.md` beside it, all three now in
+`research/frp-literature-review-prompts/`. Each verifier was a fresh
+sub-agent given the note, `literature`, `experiments`, Bough's notes
+and the crate clones, and none of the drafting. At most two ran at
+once: the probe verifier throughout, and the claims verifiers one at a
+time.
 
 - **Claims, in seven slices:** semantics with verification and testing;
   switching with loops; scheduling; memory; values with concurrency;
@@ -2091,7 +2097,7 @@ throughout, and the claims verifiers one at a time.
 - **Probes:** all 66 result files that don't need wall-clock, re-run
   from a scratch clone, each at the commit it cites. 62 reproduce, every
   instruction count within 1%; `same_key_conflict` passes at `daa6419`.
-  The re-runs and scripts are in `research-scratch-space/verify/probes/`.
+  The re-runs and scripts are in `<scratch>/verify/probes/`.
 
 What the probe re-runs found besides:
 
@@ -2236,7 +2242,7 @@ machine was idle. Done since:
   throughout; the container can't read the tuned profile, so the log
   doesn't claim one. Nothing else ran but one read-only verifier for a
   few minutes. The script, results, log and Criterion samples are in
-  `research-scratch-space/verify/wallclock/`.
+  `<scratch>/verify/wallclock/`.
 - **A fresh verifier compared** every wall-clock number the note quotes
   with the re-run, 168 numbers and derived claims. Its report is
   `verify/wallclock/report.md`.
@@ -2359,3 +2365,22 @@ possible link. It isn't one.
 The review is done. The must-read is the note's "## The must-read":
 `research/2026-09-28-frp-literature-review.md`. What to grill first, it
 says, is RFD 3 and RFD 5, since they gate the build. Nothing is open.
+
+### 2026-10-09, local paths replaced
+
+This repo is self-contained now, so the paths above that pointed outside
+it changed. Where something moved into this repo or has a published
+home, the text links it or names it at a commit. Everything else is a
+placeholder:
+
+- `<rfd>`: this repo, in the worktree the review ran in.
+- `<literature>`: the private literature corpus.
+- `<experiments>`: the probes' repository, which the review's header
+  names.
+- `<scratch>`: the scratch directory, outside every repo, not kept. Its
+  four prompts are in
+  `research/frp-literature-review-prompts/`.
+- `<sodium-book>`: a private markdown copy of the Sodium book, which the
+  review cites by chapter.
+
+The OpenAlex key's path is gone. Nothing else changed.

@@ -166,7 +166,7 @@ engine left it.
 
 Any executable oracle meets these, whether it runs under GHC or is a Rust port.
 
-- **F1. The text hangs on a legal loop.** `c = Hold 0 (Filter (<= 10)
+- <a id="f1"></a>**F1. The text hangs on a legal loop.** `c = Hold 0 (Filter (<= 10)
   (Snapshot (\_ n -> n + 1) ticks c)) [0]`, a counter that stops at ten, never
   returns. `at` walks the whole step list, and the filter cannot decide the
   event at t without `at c t`; `takeWhile` in `at` does not help. The oracle
@@ -176,33 +176,33 @@ Any executable oracle meets these, whether it runs under GHC or is a Rust port.
   most one round per distinct loop time, plus one, and where lazy knot-tying
   terminates the two agree. A Rust port, which RFD 1 plans, would need explicit
   laziness to tie any knot, and would then meet the same wall.
-- **F6. `SwitchC` goes wrong for a switch created after its outer stepped.**
+- <a id="f6"></a>**F6. `SwitchC` goes wrong for a switch created after its outer stepped.**
   Its steps come out of time order, include times before its creation, and
   start from the old inner. Bough reaches it by building a `switch_cell` of an
   older outer inside `construct`. The oracle switches over the outer chopped at
   creation, as Sodium's Java does.
-- **F7. `Split` is out of time order when a split is fed by its own
+- <a id="f7"></a>**F7. `Split` is out of time order when a split is fed by its own
   children.** `concatMap` gives 1, 2, 10, 11, 20, 21 where time order is 1, 10,
   11, 2, 20, 21, and a merge downstream then sees two events at one instant.
   The oracle sorts by time, stably.
-- **F89. `Split` built at a child instant replays events from before it
+- <a id="f89"></a>**F89. `Split` built at a child instant replays events from before it
   existed.** A split built at `[1,0]` turns the event of `[1]` into children
   `[1,1]` and `[1,2]`, which come after the split exists, so they are
   observable. The engine and Java give none of them. The oracle is not patched
   for it; the generator keeps splits and defers out of bodies that may run at a
   child instant, and a fixed test pins both answers. Question 8.
-- **F44. `Execute` and `SwitchS` have no creation time either**, but for them
+- <a id="f44"></a>**F44. `Execute` and `SwitchS` have no creation time either**, but for them
   the events before a node exists are unobservable: nothing built later sees
   them.
-- **F22. A loop through `defer` with no filter never ends**, in the text and in
+- <a id="f22"></a>**F22. A loop through `defer` with no filter never ends**, in the text and in
   the engine: `send` never returns. The loop rule does not bound a transaction.
-- **F2.** Sodium's common tests put both split children at `[0,0]`; the text
+- <a id="f2"></a>**F2.** Sodium's common tests put both split children at `[0,0]`; the text
   gives `[0,0]` and `[0,1]`. They compare values per instant only, so it is
   harmless there.
-- **F21.** The PDF has no numbered sections, only figures E.1 to E.20; the
+- <a id="f21"></a>**F21.** The PDF has no numbered sections, only figures E.1 to E.20; the
   markdown in bevy-sodium numbers the book's Appendix E and transcribes the
   book, not the PDF. A test cites the text's clause and figure.
-- **F20.** Upstream sodium-rust loses health's step only at instants where heal
+- <a id="f20"></a>**F20.** Upstream sodium-rust loses health's step only at instants where heal
   and damage both fire into the merge; "stopped updating at all" (RFD 1, record
   0003) overstates it.
 
@@ -224,7 +224,7 @@ Any executable oracle meets these, whether it runs under GHC or is a Rust port.
 
 ### RFD 2
 
-- **F3. The loop rule.** "Every path from the definition back to the forward
+- <a id="f3"></a>**F3. The loop rule.** "Every path from the definition back to the forward
   token passes through a hold, an accumulator, a split or a defer" accepts
   `c = hold 0 (merge ticks (map (+1) (steps c)))`, since the path passes
   through the hold. The text diverges on it and no evaluation order exists: a
@@ -236,28 +236,28 @@ Any executable oracle meets these, whether it runs under GHC or is a Rust port.
   program at close with the cycle's nodes. A test rewires one loop in every
   random program into a same-instant cycle, and the engine refuses every one.
   Question 2.
-- **F58.** A `construct`'s nodes are linked at creation, not at commit. A new
+- <a id="f58"></a>**F58.** A `construct`'s nodes are linked at creation, not at commit. A new
   node can close a cycle only through a close or a switch, where it is refused.
-- **F59. RFD 2 and RFD 4 conflict.** One `construct` cannot both put a linear
+- <a id="f59"></a>**F59. RFD 2 and RFD 4 conflict.** One `construct` cannot both put a linear
   screen stream in the hold for the `Clone`-free `switch_stream` and send that
   screen's input token to I/O. The construct's output is linear, and sharing a
   `(Stream<Ev>, Input<u32>)` is E0277. It works with `Shared` screens, which
   need `Ev: Clone`, or with a `Clone`-free materializer that splits a stream of
   pairs. Question 4.
-- **F12.** Coalescing inputs are not new: Java has `StreamSink(f)` and
+- <a id="f12"></a>**F12.** Coalescing inputs are not new: Java has `StreamSink(f)` and
   `CellSink(init, f)`, both folding left.
-- **F27.** `apply` needs `Leaf`: a cell cannot hold a bare `Box<dyn Fn>`, which
+- <a id="f27"></a>**F27.** `apply` needs `Leaf`: a cell cannot hold a bare `Box<dyn Fn>`, which
   is not `Trace`; `Leaf<Box<dyn Fn(&A) -> B>>` works with `|f, a| f(a)`.
 
 ### RFD 3
 
-- **F62. "Upstream captures need no declaration" is false through switches.**
+- <a id="f62"></a>**F62. "Upstream captures need no declaration" is false through switches.**
   A capture that is upstream only through a switch's current selection needs
   one. A navigation `construct` captures `clicks`; a quiet page is selected;
   nothing reaches `clicks`; the construct's next run is a stale-token panic.
   `map_to(token)` needs one too: it is not a closure, and its value is not
   traced.
-- **F61, F85, F92. The declaration burden is heavy** where code selects among
+- <a id="f61"></a><a id="f85"></a><a id="f92"></a>**F61, F85, F92. The declaration burden is heavy** where code selects among
   tokens. The engine's own tests needed 68 `depends` calls, 10 anchors for
   tokens a `construct` built, and 13 nodes returned from build closures; 23 of
   33 switch tests failed until declared. The ordinary switch idiom, a closure
@@ -266,59 +266,59 @@ Any executable oracle meets these, whether it runs under GHC or is a Rust port.
   random shard failed within four programs. Constructs need three kinds: a
   captured shared stream, a sampled outer cell, and the cells a pick lists.
   Question 3.
-- **F64. The automatic trigger never fires on allocation.** "Nodes allocated
+- <a id="f64"></a>**F64. The automatic trigger never fires on allocation.** "Nodes allocated
   plus roots released since the last collection exceed the live count"
   compares with a live count that already includes every node allocated since
   then. The engine compares with the count the last collection left.
-- **F65. Collecting "after a transaction" breaks receive-then-wire** (RFD 4).
+- <a id="f65"></a>**F65. Collecting "after a transaction" breaks receive-then-wire** (RFD 4).
   It frees an input a `construct` built and a listener just delivered, before
   I/O code can anchor it. The engine collects when the next transaction opens.
   So the first transaction after the build collects whatever the build closure
   did not root, and an undeclared capture fails at the first send, without the
   stress setting. Question 5.
-- **F63.** `depends` has no inverse: a declaration made on a long-lived node
+- <a id="f63"></a>**F63.** `depends` has no inverse: a declaration made on a long-lived node
   from inside a `construct` kept fifty screens instead of one.
-- **F66.** Garbage is evaluated until it is collected. After 9,000 screens the
+- <a id="f66"></a>**F66.** Garbage is evaluated until it is collected. After 9,000 screens the
   navigation costs 596 µs per transaction without collection and 528 ns with
   it. A dropped handle counts as one released root however much it unrooted.
-- **F86.** A same-instant cycle that no root reaches is collected before a
+- <a id="f86"></a>**F86.** A same-instant cycle that no root reaches is collected before a
   switch can move into it, so it is never refused.
-- **F69.** "A token upstream of itself" is not a cycle a count cannot see; the
+- <a id="f69"></a>**F69.** "A token upstream of itself" is not a cycle a count cannot see; the
   cycle needs the token's node to depend on the cell. Both shapes are
   collected.
 
 ### RFD 4
 
-- **F9. The build-time panic on a steps view of an in-place accumulator
+- <a id="f9"></a>**F9. The build-time panic on a steps view of an in-place accumulator
   cannot be complete.** A loop closed later, or a `switch_cell` selecting one
   at run time, puts a steps view over it. Decided: `State<S>`, the answer RFD 4
   already named.
-- **F14. A `switch_stream`'s outer is neither a dependency nor reach alone.**
+- <a id="f14"></a>**F14. A `switch_stream`'s outer is neither a dependency nor reach alone.**
   As a dependency it refuses the legal navigation loop through its selection.
   As reach alone, a selector step while the old inner is quiet never relinks.
   It is a watcher: marking follows it only to queue a relink.
-- **F36. Fusion costs compile time per chain shape.** Every materializer is
+- <a id="f36"></a>**F36. Fusion costs compile time per chain shape.** Every materializer is
   compiled again for each nested chain type. A program built from data must
   bound the depth: two adapters gave 182 chain types per mode and a 36 s
   release build of the test binary; three gave 1,640 and 367 s. Typing
   `Snapshot` and `Gate` by token kind, `Cell` or `State`, multiplies the chain
   types by 1.65 at depth two (F37).
-- **F51.** "A second `switch_stream` on a cell of linear streams is a
+- <a id="f51"></a>**F51.** "A second `switch_stream` on a cell of linear streams is a
   build-time error" holds only for the same cell and its loop aliases; through
   a `switch_cell` it is a run-time panic that poisons.
 
 ### RFD 5
 
-- **F4, F16. "Cell listeners run for every marked cell" over-fires.** Marking
+- <a id="f4"></a><a id="f16"></a>**F4, F16. "Cell listeners run for every marked cell" over-fires.** Marking
   reaches more than what steps: a hold behind a filter that rejects is marked
   and does not step. Read-through cells are ordered, not merely marked, and
   settle "stepped if and only if a dependency stepped" without running user
   code; listeners and memo clears use stepped. The random tests catch a
   mutation that steps every marked cell within the first ten programs.
-- **F15.** Nodes created during a transaction run by pull over their
+- <a id="f15"></a>**F15.** Nodes created during a transaction run by pull over their
   dependencies, not in creation order: a loop's forward token is created
   before its definition.
-- **F46. Relinking one switch at a time refuses a legal program:** two
+- <a id="f46"></a>**F46. Relinking one switch at a time refuses a legal program:** two
   switches that reverse a dependency between them in one instant. A's forward;
   p = A + 10; B switching from p to a constant; y = B + 100; A switching from x
   to y. Checked one move at a time it reads as a cycle, and GHC gives A 1 → 102
@@ -327,7 +327,7 @@ Any executable oracle meets these, whether it runs under GHC or is a Rust port.
   (F88). F47: the one-consumer claims on linear streams are all released before
   any is made, or two switches trading streams panic in one queue order. F48: a
   `switch_stream`'s first link runs its inner at that instant.
-- **F19, F56, F57, F87. A cycle through a switch's read past the instant
+- <a id="f19"></a><a id="f56"></a><a id="f57"></a><a id="f87"></a>**F19, F56, F57, F87. A cycle through a switch's read past the instant
   overflows the stack** unless each read guards it. All three designs
   overflowed on one. `construct` reaches another with no sample in graph code,
   since a closure's own stream fires at its instant, and a snapshot at
@@ -335,9 +335,9 @@ Any executable oracle meets these, whether it runs under GHC or is a Rust port.
   them. Each read now carries Brent's cycle detection over the `switch_cell`s
   it passes, three integers down the call stack, and panics, which poisons. It
   costs about 2 ns per `switch_cell` passed.
-- **F11.** Transaction zero has child transactions: a `defer` of a
+- <a id="f11"></a>**F11.** Transaction zero has child transactions: a `defer` of a
   `steps_with_current` built in the build fires at `[0,0]`.
-- **F72, F73. The error enums fit, with three additions.**
+- <a id="f72"></a><a id="f73"></a>**F72, F73. The error enums fit, with three additions.**
   `PumpError::ForeignGraph`, since a remote transaction's closure runs on the
   driver, and `GraphDropped` on both remote enums. "The offending unit is
   dropped" makes a stale send observable when the unit also carries a live
@@ -349,40 +349,40 @@ Any executable oracle meets these, whether it runs under GHC or is a Rust port.
 
 ### RFD 6
 
-- **F74. The guard, armed "when a transaction begins", refuses I/O code:**
+- <a id="f74"></a>**F74. The guard, armed "when a transaction begins", refuses I/O code:**
   `graph.transaction(|tx| { tx.send(a, 1); remote.send(a, 2) })`, and a remote
   transaction's own sends. The engine arms it around graph code only:
   evaluation, commit, construct closures and a split's iterator. It costs 12
   instructions per transaction on the share shape, and covers its own graph
   only (F75). Question 6.
-- **F77.** A pump runs the units queued when it reaches it. A unit a listener
+- <a id="f77"></a>**F77.** A pump runs the units queued when it reaches it. A unit a listener
   queues runs at the next pump; otherwise a listener that always sends keeps
   one pump from returning.
-- **F23, F38. A helper generic over the mode cannot write its own closures.**
+- <a id="f23"></a><a id="f38"></a>**F23, F38. A helper generic over the mode cannot write its own closures.**
   `fn f<M: Mode + Accepts<u32>>(b: &mut Build<M>, s: Stream<u32>) -> Cell<u32>
   { s.map(|x| x + 1).hold(b, 0) }` is E0277, since the bound it needs names a
   closure type. It works with the caller's closures, with function pointers, or
   through a per-mode trait one macro implements, which is how the oracle's
   builder runs every program in both modes.
-- **F71.** `RemoteTransaction` gains a lifetime, so its sends go straight into
+- <a id="f71"></a>**F71.** `RemoteTransaction` gains a lifetime, so its sends go straight into
   the transaction the driver opened, unboxed.
-- **F79.** The core's thread driver stays in a test. RFD 6 does not say how it
+- <a id="f79"></a>**F79.** The core's thread driver stays in a test. RFD 6 does not say how it
   stops or what it does when a transaction panics, and those would be its API.
 
 ### RFD 7
 
-- **F70. `Remote` needs a lock, not only pointer atomics.** `core` and `alloc`
+- <a id="f70"></a>**F70. `Remote` needs a lock, not only pointer atomics.** `core` and `alloc`
   have no safe lock to share between threads, and a spin lock needs `unsafe`
   and deadlocks against an interrupt. `InputSlot` and `connect` need `std` or
   `critical-section`; `Remote` needs that and pointer atomics. A thumbv7m build
   with neither keeps `pump` and `set_waker` only. Question 7.
-- **F76.** A slot feeds one input of one graph: `connect` panics on a connected
+- <a id="f76"></a>**F76.** A slot feeds one input of one graph: `connect` panics on a connected
   slot, and a dropped graph disconnects its slots. `InputSlot::set_waker` is
   redundant with `Graph::set_waker` once a slot is connected.
-- **F42.** The child scheduler must be iterative: a recursive one overflows a
+- <a id="f42"></a>**F42.** The child scheduler must be iterative: a recursive one overflows a
   256 KiB stack on a countdown 100,000 levels deep. The iterative one keeps one
   empty buffer per depth ever reached.
-- **F78.** std's mutex is unfair: a writer hammering a slot held off the
+- <a id="f78"></a>**F78.** std's mutex is unfair: a writer hammering a slot held off the
   driver's drain for a whole 20,000-write burst. The slot never grows; only
   latency suffers.
 
@@ -489,52 +489,52 @@ oracle's review findings.
 - F3. RFD 2's loop rule accepts a same-instant cycle through a steps view; the dependency graph must stay acyclic.
 - F4. "Every marked cell" over-fires; cells use stepped.
 - F11. Transaction zero has children.
-- F13. The skeleton's `defer` documentation said "a child transaction of its own"; `defer` shares index 0.
+- <a id="f13"></a>F13. The skeleton's `defer` documentation said "a child transaction of its own"; `defer` shares index 0.
 - F15. New nodes run by pull, not in creation order.
 - F16. Read-through cells are ordered.
-- F17. A read-through function runs once per step with a steps view.
+- <a id="f17"></a>F17. A read-through function runs once per step with a steps view.
 - F19. A cycle through a post-instant read overflowed the stack in every design.
-- F40. The engine matched GHC on every child-transaction scenario.
-- F41. The design's sketch read an iterator past its first `None`.
+- <a id="f40"></a>F40. The engine matched GHC on every child-transaction scenario.
+- <a id="f41"></a>F41. The design's sketch read an iterator past its first `None`.
 - F42. The child scheduler must be iterative.
-- F45. The engine matched GHC on every switch program.
+- <a id="f45"></a>F45. The engine matched GHC on every switch program.
 - F46. Relinking one switch at a time refuses a legal program.
-- F47. Linear-stream claims must be released before any is made.
-- F48. A `switch_stream`'s first link runs its inner.
-- F49. A read of a `switch_cell` before its first link overflowed the stack (see F56).
-- F50. The relink check costs about 9 ns per upstream node.
+- <a id="f47"></a>F47. Linear-stream claims must be released before any is made.
+- <a id="f48"></a>F48. A `switch_stream`'s first link runs its inner.
+- <a id="f49"></a>F49. A read of a `switch_cell` before its first link overflowed the stack (see F56).
+- <a id="f50"></a>F50. The relink check costs about 9 ns per upstream node.
 - F51. The one-switch rule is partly a run-time check.
-- F55. `construct` works as `Execute` with no design change.
+- <a id="f55"></a>F55. `construct` works as `Execute` with no design change.
 - F56. F49 is reachable with no sample; Brent's cycle detection guards every read.
 - F57. Relink read new selections before checking them.
 - F58. A construct's nodes are linked at creation.
 
 **Values, cells and the API**
 
-- F8. The skeleton's `Threaded` mode was unsound; erasure inside `Accepts` makes `Send` a compiler fact.
+- <a id="f8"></a>F8. The skeleton's `Threaded` mode was unsound; erasure inside `Accepts` makes `Send` a compiler fact.
 - F9. The build-time panic for in-place accumulators cannot be complete; `State<S>`.
-- F10. `Source` and `Node` are sealed with hidden methods.
+- <a id="f10"></a>F10. `Source` and `Node` are sealed with hidden methods.
 - F12. Coalescing inputs are not new.
 - F14. A `switch_stream`'s outer is a watcher.
-- F18. `once` is the only adapter whose denotation needs a creation time.
+- <a id="f18"></a>F18. `once` is the only adapter whose denotation needs a creation time.
 - F23. A helper generic over the mode cannot write its own closures.
-- F25. Where a foreign token poisons and where it does not.
-- F26. `#[must_use]` on `Listener` is worth adding.
+- <a id="f25"></a>F25. Where a foreign token poisons and where it does not.
+- <a id="f26"></a>F26. `#[must_use]` on `Listener` is worth adding.
 - F27. `apply` needs `Leaf`.
-- F28. The glossary's read-through entry and token count.
-- F29. A promoted memo is reused across inputs.
-- F30. What `State<S>` cost.
-- F31. `Snapshot` and `Gate` carry the token type.
-- F32. The engine matches GHC on the sodium-rust#52 shape and the health-and-shield slice.
-- F33. `StateLoop` is new.
-- F34. The allocation test counted libtest's own thread.
-- F37. Typing adapters by token kind multiplies chain types.
+- <a id="f28"></a>F28. The glossary's read-through entry and token count.
+- <a id="f29"></a>F29. A promoted memo is reused across inputs.
+- <a id="f30"></a>F30. What `State<S>` cost.
+- <a id="f31"></a>F31. `Snapshot` and `Gate` carry the token type.
+- <a id="f32"></a>F32. The engine matches GHC on the sodium-rust#52 shape and the health-and-shield slice.
+- <a id="f33"></a>F33. `StateLoop` is new.
+- <a id="f34"></a>F34. The allocation test counted libtest's own thread.
+- <a id="f37"></a>F37. Typing adapters by token kind multiplies chain types.
 - F38. A per-mode trait lets a builder run in both modes.
-- F39. The settle rule governs transaction zero too.
-- F43. `split` and `defer` need `Accepts` bounds.
-- F52. `switch_stream` needs an `Accepts` bound.
+- <a id="f39"></a>F39. The settle rule governs transaction zero too.
+- <a id="f43"></a>F43. `split` and `defer` need `Accepts` bounds.
+- <a id="f52"></a>F52. `switch_stream` needs an `Accepts` bound.
 - F59. RFD 2 and RFD 4 conflict over screens that carry their own inputs.
-- F60. A swapped build context is caught by the nested build.
+- <a id="f60"></a>F60. A swapped build context is caught by the nested build.
 
 **Memory**
 
@@ -544,8 +544,8 @@ oracle's review findings.
 - F64. The automatic trigger never fires on allocation.
 - F65. Collecting after a transaction breaks receive-then-wire.
 - F66. Garbage is evaluated until collected.
-- F67. `anchor` takes any `&T: Trace`.
-- F68. The error enums fit collection.
+- <a id="f67"></a>F67. `anchor` takes any `&T: Trace`.
+- <a id="f68"></a>F68. The error enums fit collection.
 - F69. RFD 3's cycle wording.
 - F85. The switch idiom needs every candidate declared.
 - F86. An unrooted cycle is collected before it can be refused.
@@ -558,28 +558,28 @@ oracle's review findings.
 - F72. `PumpError::ForeignGraph` and `GraphDropped`.
 - F73. Dropping a unit whole makes a stale send observable.
 - F74. The guard is armed around graph code.
-- F75. The guard covers its own graph.
+- <a id="f75"></a>F75. The guard covers its own graph.
 - F76. The slot rules RFD 7 leaves open.
 - F77. A pump runs the units queued when it reaches them.
 - F78. std's mutex is unfair.
 - F79. Drivers are a few dozen lines, and the edge composes.
-- F80. The edge allocates only on the sending side.
-- F81. Where the edge departs from the brief.
-- F82. Fifty `compile_fail` tests refuse `Rc` in `Threaded`.
-- F83. thumbv6m keeps input slots and `pump` with `critical-section`.
-- F91. The fold law holds against GHC.
+- <a id="f80"></a>F80. The edge allocates only on the sending side.
+- <a id="f81"></a>F81. Where the edge departs from the brief.
+- <a id="f82"></a>F82. Fifty `compile_fail` tests refuse `Rc` in `Threaded`.
+- <a id="f83"></a>F83. thumbv6m keeps input slots and `pump` with `critical-section`.
+- <a id="f91"></a>F91. The fold law holds against GHC.
 
 **Performance and the tests**
 
-- F24. The share shape is 2.47 times its baseline.
-- F35. Tens of thousands of first-order programs agree with GHC; twelve mutations caught.
+- <a id="f24"></a>F24. The share shape is 2.47 times its baseline.
+- <a id="f35"></a>F35. Tens of thousands of first-order programs agree with GHC; twelve mutations caught.
 - F36. Fusion costs compile time per chain shape.
-- F53. Programs with loops and children agree; nine mutations caught.
-- F54. More materializers raise the build time of the test binary.
-- F84. Programs with switches agree; twelve mutations caught.
+- <a id="f53"></a>F53. Programs with loops and children agree; nine mutations caught.
+- <a id="f54"></a>F54. More materializers raise the build time of the test binary.
+- <a id="f84"></a>F84. Programs with switches agree; twelve mutations caught.
 - F87. The random tests found both switch overflows independently.
-- F88. The generator never makes F46's legal reversal.
-- F90. Programs with constructs agree.
+- <a id="f88"></a>F88. The generator never makes F46's legal reversal.
+- <a id="f90"></a>F90. Programs with constructs agree.
 
 **The oracle**
 
@@ -634,19 +634,19 @@ a filter's captures for one, at one reach entry each.
 
 ### What changed on the spike
 
-- **F93. Chains are `Trace`.** `Source` requires `Trace` in place of
+- <a id="f93"></a>**F93. Chains are `Trace`.** `Source` requires `Trace` in place of
   `read_cells`. `snapshot` and `gate` visit their cell, `map_to` its
   value, and the other adapters pass the walk to their source. A
   materializer traces the chain once, when it builds the node, and records
   what the walk finds besides the dependency. A chain never changes after
   it is built, so once is enough. No node's reach changed. (`cb8b274`)
-- **F94. `map_to` requires `Trace` of its value.** RFD 3 puts the bound on
+- <a id="f94"></a>**F94. `map_to` requires `Trace` of its value.** RFD 3 puts the bound on
   the operations that persist a value, and `map_to` is one. A token in the
   value is in the node's reach with no declaration. The program that was a
   stale token without a declaration now runs without one. Every `map_to`
   in the repository already passed a `Trace` value; a foreign type goes in
   a `Leaf`. (`99458fe`)
-- **F95. `depends` takes any `Trace` value, as `anchor` does (F67).** A
+- <a id="f95"></a>**F95. `depends` takes any `Trace` value, as `anchor` does (F67).** A
   struct or a `Vec` of tokens a closure captures is declared as one value.
   A new test moves a struct of panels, one of them in a `Vec`, into a
   closure that picks among them. One declaration keeps every panel, and
@@ -731,3 +731,108 @@ pins the text's answer beside Bough's. F6, F7 and F89 are its three cases
 so far. It qualifies RFD 1's "exact fidelity means we inherit the
 corners". The three are drafted as issues for Sodium in
 [the drafts](./2026-09-25-sodium-issue-drafts.md), and none is posted.
+
+## Addendum, 2026-10-09: findings by number
+
+_Every finding, in order. Each link goes to the finding's fullest
+discussion above. `scripts/findings_index.py` writes this table and the
+anchors; run it after adding a finding._
+
+<!-- findings-index:start -->
+| Finding | Label |
+|---|---|
+| [F1](#f1) | The text hangs on a legal loop whose events depend on values; loops are computed by fixed point. |
+| [F2](#f2) | Sodium's common tests give split children the wrong times. |
+| [F3](#f3) | RFD 2's loop rule accepts a same-instant cycle through a steps view; the dependency graph must stay acyclic. |
+| [F4](#f4) | "Every marked cell" over-fires; cells use stepped. |
+| [F6](#f6) | `SwitchC` for a switch created after its outer stepped is out of time order; patched. |
+| [F7](#f7) | `Split` fed by its own children is out of time order; patched. |
+| [F8](#f8) | The skeleton's `Threaded` mode was unsound; erasure inside `Accepts` makes `Send` a compiler fact. |
+| [F9](#f9) | The build-time panic for in-place accumulators cannot be complete; `State<S>`. |
+| [F10](#f10) | `Source` and `Node` are sealed with hidden methods. |
+| [F11](#f11) | Transaction zero has children. |
+| [F12](#f12) | Coalescing inputs are not new. |
+| [F13](#f13) | The skeleton's `defer` documentation said "a child transaction of its own"; `defer` shares index 0. |
+| [F14](#f14) | A `switch_stream`'s outer is a watcher. |
+| [F15](#f15) | New nodes run by pull, not in creation order. |
+| [F16](#f16) | Read-through cells are ordered. |
+| [F17](#f17) | A read-through function runs once per step with a steps view. |
+| [F18](#f18) | `once` is the only adapter whose denotation needs a creation time. |
+| [F19](#f19) | A cycle through a post-instant read overflowed the stack in every design. |
+| [F20](#f20) | sodium-rust#52 loses steps only where heal and damage fire together. |
+| [F21](#f21) | The PDF has no numbered sections. |
+| [F22](#f22) | A loop through `defer` with no filter never ends. |
+| [F23](#f23) | A helper generic over the mode cannot write its own closures. |
+| [F24](#f24) | The share shape is 2.47 times its baseline. |
+| [F25](#f25) | Where a foreign token poisons and where it does not. |
+| [F26](#f26) | `#[must_use]` on `Listener` is worth adding. |
+| [F27](#f27) | `apply` needs `Leaf`. |
+| [F28](#f28) | The glossary's read-through entry and token count. |
+| [F29](#f29) | A promoted memo is reused across inputs. |
+| [F30](#f30) | What `State<S>` cost. |
+| [F31](#f31) | `Snapshot` and `Gate` carry the token type. |
+| [F32](#f32) | The engine matches GHC on the sodium-rust#52 shape and the health-and-shield slice. |
+| [F33](#f33) | `StateLoop` is new. |
+| [F34](#f34) | The allocation test counted libtest's own thread. |
+| [F35](#f35) | Tens of thousands of first-order programs agree with GHC; twelve mutations caught. |
+| [F36](#f36) | Fusion costs compile time per chain shape. |
+| [F37](#f37) | Typing adapters by token kind multiplies chain types. |
+| [F38](#f38) | A per-mode trait lets a builder run in both modes. |
+| [F39](#f39) | The settle rule governs transaction zero too. |
+| [F40](#f40) | The engine matched GHC on every child-transaction scenario. |
+| [F41](#f41) | The design's sketch read an iterator past its first `None`. |
+| [F42](#f42) | The child scheduler must be iterative. |
+| [F43](#f43) | `split` and `defer` need `Accepts` bounds. |
+| [F44](#f44) | `Execute` and `SwitchS` have no creation time; unobservable. |
+| [F45](#f45) | The engine matched GHC on every switch program. |
+| [F46](#f46) | Relinking one switch at a time refuses a legal program. |
+| [F47](#f47) | Linear-stream claims must be released before any is made. |
+| [F48](#f48) | A `switch_stream`'s first link runs its inner. |
+| [F49](#f49) | A read of a `switch_cell` before its first link overflowed the stack (see F56). |
+| [F50](#f50) | The relink check costs about 9 ns per upstream node. |
+| [F51](#f51) | The one-switch rule is partly a run-time check. |
+| [F52](#f52) | `switch_stream` needs an `Accepts` bound. |
+| [F53](#f53) | Programs with loops and children agree; nine mutations caught. |
+| [F54](#f54) | More materializers raise the build time of the test binary. |
+| [F55](#f55) | `construct` works as `Execute` with no design change. |
+| [F56](#f56) | F49 is reachable with no sample; Brent's cycle detection guards every read. |
+| [F57](#f57) | Relink read new selections before checking them. |
+| [F58](#f58) | A construct's nodes are linked at creation. |
+| [F59](#f59) | RFD 2 and RFD 4 conflict over screens that carry their own inputs. |
+| [F60](#f60) | A swapped build context is caught by the nested build. |
+| [F61](#f61) | `Trace` plus `depends` suffice; the burden is heavy. |
+| [F62](#f62) | Captures reached through a switch need a declaration. |
+| [F63](#f63) | `depends` has no inverse. |
+| [F64](#f64) | The automatic trigger never fires on allocation. |
+| [F65](#f65) | Collecting after a transaction breaks receive-then-wire. |
+| [F66](#f66) | Garbage is evaluated until collected. |
+| [F67](#f67) | `anchor` takes any `&T: Trace`. |
+| [F68](#f68) | The error enums fit collection. |
+| [F69](#f69) | RFD 3's cycle wording. |
+| [F70](#f70) | `Remote` and input slots need a lock. |
+| [F71](#f71) | `RemoteTransaction` has a lifetime. |
+| [F72](#f72) | `PumpError::ForeignGraph` and `GraphDropped`. |
+| [F73](#f73) | Dropping a unit whole makes a stale send observable. |
+| [F74](#f74) | The guard is armed around graph code. |
+| [F75](#f75) | The guard covers its own graph. |
+| [F76](#f76) | The slot rules RFD 7 leaves open. |
+| [F77](#f77) | A pump runs the units queued when it reaches them. |
+| [F78](#f78) | std's mutex is unfair. |
+| [F79](#f79) | Drivers are a few dozen lines, and the edge composes. |
+| [F80](#f80) | The edge allocates only on the sending side. |
+| [F81](#f81) | Where the edge departs from the brief. |
+| [F82](#f82) | Fifty `compile_fail` tests refuse `Rc` in `Threaded`. |
+| [F83](#f83) | thumbv6m keeps input slots and `pump` with `critical-section`. |
+| [F84](#f84) | Programs with switches agree; twelve mutations caught. |
+| [F85](#f85) | The switch idiom needs every candidate declared. |
+| [F86](#f86) | An unrooted cycle is collected before it can be refused. |
+| [F87](#f87) | The random tests found both switch overflows independently. |
+| [F88](#f88) | The generator never makes F46's legal reversal. |
+| [F89](#f89) | `Split` has no creation time, and that is observable at child instants. |
+| [F90](#f90) | Programs with constructs agree. |
+| [F91](#f91) | The fold law holds against GHC. |
+| [F92](#f92) | Constructs need three kinds of declaration. |
+| [F93](#f93) | Chains are `Trace`. |
+| [F94](#f94) | `map_to` requires `Trace` of its value. |
+| [F95](#f95) | `depends` takes any `Trace` value, as `anchor` does (F67). |
+<!-- findings-index:end -->

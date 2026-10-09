@@ -84,7 +84,11 @@ its tokens. Its clones share one root, which ends with the last clone.
 only way to get a plain `Anchor`. `Anchored` isn't `Trace`, so a hold
 of one doesn't compile. The build's return value is anchored like any
 other, which is why its type must implement `Trace`: `build` returns it
-`Anchored`.
+`Anchored`. That's a cost we took: the build's return can be freed by
+accident. A setup function that copies its tokens into closures and
+then drops the `Anchored` has freed them; a debug build panics at the
+first send, listen or anchor on a collected token, and at the next pump
+for a slot.
 
 A connected input slot doesn't root its input. Keep the build's return,
 or the part that holds the input, while its slots are connected; on

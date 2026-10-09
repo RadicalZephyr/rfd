@@ -74,12 +74,12 @@ and come first.
   nodes. An order-maintenance list that places new nodes before the
   switch costs 0.02 to 0.6 of the walk there, and more than the walk on
   adversarial shapes. Leaning: keep the walk, and Brent's guard.
-- F22 is liveness, outside the loop rule.
+- [F22](./2026-09-24-engine-feasibility-spike.md#f22) is liveness, outside the loop rule.
 
 **RFD 3.**
 
 - *"An undeclared capture cannot be made a compile error" doesn't hold.*
-  A lifetime brand on tokens makes F62 a compile error on stable, soundly,
+  A lifetime brand on tokens makes [F62](./2026-09-24-engine-feasibility-spike.md#f62) a compile error on stable, soundly,
   with no `unsafe`, and tokens stay usable as data. It costs a lifetime
   on every token-holding type, I/O inside callbacks, a copy per read of a
   token-bearing collection (1.9 times an event at a thousand tokens)
@@ -94,17 +94,17 @@ and come first.
   fired. Leaning: add the work term; find a release term.
 - *Counting with a backup trace sees cycles.* RFD 3's other reason,
   `Copy` tokens, carries the rejection.
-- Modal types catch F62, not F63: explicit leaks stay legal. Every
-  GC-based FRP has F66. Safe `Trace` is sound for checked indices.
+- Modal types catch [F62](./2026-09-24-engine-feasibility-spike.md#f62), not [F63](./2026-09-24-engine-feasibility-spike.md#f63): explicit leaks stay legal. Every
+  GC-based FRP has [F66](./2026-09-24-engine-feasibility-spike.md#f66). Safe `Trace` is sound for checked indices.
 - A fixed-budget incremental mark cuts the worst pause eightfold for 16%
   more time.
 
 **RFD 1.**
 
-- *F89 is a semantics change.* The text states its creation rule for
+- *[F89](./2026-09-24-engine-feasibility-spike.md#f89) is a semantics change.* The text states its creation rule for
   four primitives, not `Split`. Forgetfulness is the principled reason
-  for the cut (FRPNow's Lemmas 1 and 2), and it covers F6 too. The probe
-  finds the text leaking at every F89-shaped node and the cut at none; a
+  for the cut (FRPNow's Lemmas 1 and 2), and it covers [F6](./2026-09-24-engine-feasibility-spike.md#f6) too. The probe
+  finds the text leaking at every [F89](./2026-09-24-engine-feasibility-spike.md#f89)-shaped node and the cut at none; a
   creation time on state-holders and time-movers alone suffices.
   Leaning: restate the exceptions as "the text is leaky; Bough is
   forgetful".
@@ -119,15 +119,15 @@ and come first.
 
 **RFD 2.** Acyclicity is Esterel v4's, Lustre's and Keating and Gale's
 rule, sound and knowingly incomplete. The census of refused loops finds
-nothing a program would want that a switch can't write. F3 needs `steps`,
-which ties questions 3 and 10. A one-bit decoupledness mark refuses F3
+nothing a program would want that a switch can't write. [F3](./2026-09-24-engine-feasibility-spike.md#f3) needs `steps`,
+which ties questions 3 and 10. A one-bit decoupledness mark refuses [F3](./2026-09-24-engine-feasibility-spike.md#f3)
 at compile time for 2% to 16% more compile time, but it and rows accept
 a loop smuggled through a switch. Only a `Switched` mark on switch outputs
 catches that, at the price of nested switches, so the run-time check
 stays. Leaning: keep plain acyclicity; hold the mark.
 
 **RFD 4.** Streams are affine, "at most one consumer", not linear.
-Erasing a fused chain at its materializer builds F36's shapes in about
+Erasing a fused chain at its materializer builds [F36](./2026-09-24-engine-feasibility-spike.md#f36)'s shapes in about
 two-fifths of the time for 2% an event. For cells of collections, a
 patch-carrying cell wins from small sizes, its data structure matters
 most, and Z-set composition fails when two sources upsert one key.
@@ -201,7 +201,7 @@ from its creation instant, inclusive".
 The counter-position is Elliott's. His `joinE` moves an inner event's
 earlier occurrences forward to the time the inner was generated, instead
 of dropping them (elliott-push-pull-functional-reactive-programming
-p. 3). That is the text's F89 behaviour in miniature, and FRPNow is the
+p. 3). That is the text's [F89](./2026-09-24-engine-feasibility-spike.md#f89) behaviour in miniature, and FRPNow is the
 paper that calls it leaky. Time order doesn't settle the question. The
 text's replay moves `[1]`'s event to `[1,1]` and `[1,2]`, after the split
 exists, so both answers keep time order (murray-naiad-a-timely-dataflow-system
@@ -215,9 +215,9 @@ constructed" (blackheath-functional-reactive-programming, App. E, §E.4).
 `Split` is a pure function on streams with no creation time (App. E,
 §E.4, §E.5.10), and App. E has no `Defer` at all. Time order is stated as
 an invariant of the domains, "for increasing T values" (App. E, §E.4). So
-F6 and F7 break a rule the text states: their outputs aren't values of
-the domain it declares, and F6 also contradicts SwitchC's own initial
-value (App. E, §E.5.15). F89 breaks none. In the text, a split built at a
+[F6](./2026-09-24-engine-feasibility-spike.md#f6) and [F7](./2026-09-24-engine-feasibility-spike.md#f7) break a rule the text states: their outputs aren't values of
+the domain it declares, and [F6](./2026-09-24-engine-feasibility-spike.md#f6) also contradicts SwitchC's own initial
+value (App. E, §E.5.15). [F89](./2026-09-24-engine-feasibility-spike.md#f89) breaks none. In the text, a split built at a
 child instant has no "before it existed", and its answer is what its
 equation says. Bough's cut is Bough extending the creation rule to
 `split` and `defer`.
@@ -253,7 +253,7 @@ fixed-point termination needs a well-ordering on closed intervals, which
 is "immediate" in discrete time (jeffrey-ltl-types-frp p. 7). So a Bough
 argument by induction or fixed point must range over the instants a run
 creates, not over the type. That set is finite per transaction exactly
-when no `defer` loop chatters, which is F22, and Lee's non-Zeno condition
+when no `defer` loop chatters, which is [F22](./2026-09-24-engine-feasibility-spike.md#f22), and Lee's non-Zeno condition
 is the side condition to state.
 
 **Clock refinement points the other way.** The model nearest to child
@@ -268,14 +268,14 @@ when a split built at `[1,0]` replays `[1]`'s event. Bough's cut follows
 instead from treating every stream as living on the finest clock, where
 each event is one point of the total order and `[1] < [1,0]`. Clock
 refinement has no node creation inside a substep, so it can't settle
-F89 either way. Berry's incarnations come closer. Re-entering a scope
+[F89](./2026-09-24-engine-feasibility-spike.md#f89) either way. Berry's incarnations come closer. Re-entering a scope
 within one reaction makes a fresh incarnation that doesn't see the old
 one's events, and a translation that lets the old emission through is
 simply wrong (berry-the-constructive-semantics-of-pure-esterel
 pp. 133–134, 140–141). That reads like a node built at `t ++ [n]`, but it
 is an analogy, not a proof.
 
-**F1's iteration has a clean status, and it isn't "least fixpoint".** A
+**[F1](./2026-09-24-engine-feasibility-spike.md#f1)'s iteration has a clean status, and it isn't "least fixpoint".** A
 guarded definition is a contractive map with a unique fixed point, by
 Banach's theorem, and iterating from any start converges, with the first
 n instants right after n rounds
@@ -355,10 +355,10 @@ each node built after `[0]` is rebuilt over its arguments with their past
 chopped at its creation, and over three junk pasts.
 
 - On 3,000 random programs with two input histories each, the text leaks
-  in 859 of 6,000 runs, at 4,632 nodes. Every F89-shaped node leaks,
-  2,174 of 2,174, and 2,411 of 3,876 F6-shaped ones. The other 47 are
+  in 859 of 6,000 runs, at 4,632 nodes. Every [F89](./2026-09-24-engine-feasibility-spike.md#f89)-shaped node leaks,
+  2,174 of 2,174, and 2,411 of 3,876 [F6](./2026-09-24-engine-feasibility-spike.md#f6)-shaped ones. The other 47 are
   downstream of an out-of-order argument. Neither cut leaks at any node.
-- F7 is out of time order but forgetful. It's a time-order bug, not a
+- [F7](./2026-09-24-engine-feasibility-spike.md#f7) is out of time order but forgetful. It's a time-order bug, not a
   leak.
 - `cut-all` and `cut-stateful` differ at none of the 121,225 nodes they
   share. The 13,588 nodes only `cut-stateful` has are construct bodies
@@ -377,12 +377,12 @@ cargo run --release --bin rfd-0001-forgetful-cut
 
 ### Settled decisions the evidence contradicts
 
-One stated reason, not the decision. RFD 1 lists F89 as a place where
-"the text breaks its own rules". For F6 and F7 it does. For F89 the text
+One stated reason, not the decision. RFD 1 lists [F89](./2026-09-24-engine-feasibility-spike.md#f89) as a place where
+"the text breaks its own rules". For [F6](./2026-09-24-engine-feasibility-spike.md#f6) and [F7](./2026-09-24-engine-feasibility-spike.md#f7) it does. For [F89](./2026-09-24-engine-feasibility-spike.md#f89) the text
 states no rule that `Split` breaks. Zefira ruled on 2026-09-28 that the
-review treats F89 as a semantics change under RFD 1's own rule for
+review treats [F89](./2026-09-24-engine-feasibility-spike.md#f89) as a semantics change under RFD 1's own rule for
 changing an inherited corner, with forgetfulness as the reason that
-holds. The cut itself isn't questioned: FRPNow's Lemma 1 has F89's shape,
+holds. The cut itself isn't questioned: FRPNow's Lemma 1 has [F89](./2026-09-24-engine-feasibility-spike.md#f89)'s shape,
 and the probe finds the text leaking exactly there.
 
 Otherwise none found. Discrete time, fidelity to the text, GHC as the
@@ -390,12 +390,12 @@ oracle and Sodium's merge all hold against the batch.
 
 ### The options for Bough
 
-1. Keep RFD 1's wording and list F89 among the cases where the text
+1. Keep RFD 1's wording and list [F89](./2026-09-24-engine-feasibility-spike.md#f89) among the cases where the text
    breaks its rules.
-2. Restate the exceptions: the text's semantics is inherently leaky at F6
-   and F89, and Bough picks the forgetful one, with FRPNow's lemmas and
+2. Restate the exceptions: the text's semantics is inherently leaky at [F6](./2026-09-24-engine-feasibility-spike.md#f6)
+   and [F89](./2026-09-24-engine-feasibility-spike.md#f89), and Bough picks the forgetful one, with FRPNow's lemmas and
    CFRP's `runningInEB` as precedent and Elliott's `delayOccs` as the
-   named alternative. F7 stays a time-order fix. State one rule, a
+   named alternative. [F7](./2026-09-24-engine-feasibility-spike.md#f7) stays a time-order fix. State one rule, a
    creation time on every state-holder and every time-mover.
 3. Do 2 and prove the cut, as FRPNow did for one function, for Bough's
    primitives over `T = [Int]`. FRPNow's relation needs only a total
@@ -405,7 +405,7 @@ oracle and Sodium's merge all hold against the batch.
    (jeffrey-ltl-types-frp p. 5), which in Rust might be a lifetime per
    `construct` scope. That overlaps the memory section's brand.
 
-For F1, describe the iteration as reaching the unique fixed point of a
+For [F1](./2026-09-24-engine-feasibility-spike.md#f1), describe the iteration as reaching the unique fixed point of a
 guarded system, one loop time per round, or restate the oracle's round
 to start from "unknown after time 0" so that it is a real least fixpoint
 in the prefix order. For `steps`: keep it public, move it into an
@@ -419,7 +419,7 @@ semantics is leaky, and Bough chose the forgetful one", which is a
 reason with precedent and a probe behind it. Add to RFD 1's statement of
 `T` that arguments range over the instants a run creates, with non-Zeno
 as the side condition. Leave 3 unless something comes to rely on the cut
-formally, and treat 4 as part of the memory question. Describe F1 as
+formally, and treat 4 as part of the memory question. Describe [F1](./2026-09-24-engine-feasibility-spike.md#f1) as
 reaching the unique fixed point of a guarded system, and cite salsa's
 cycle iteration beside it. Keep `steps` public in an `operational`
 module: in App. E's model it is sound by definition, and a flag buys
@@ -427,9 +427,9 @@ little now that RFD 1 has given up equal-step elision.
 
 ### Questions to grill
 
-- Will you accept "the text is leaky at F6 and F89, and Bough picks the
+- Will you accept "the text is leaky at [F6](./2026-09-24-engine-feasibility-spike.md#f6) and [F89](./2026-09-24-engine-feasibility-spike.md#f89), and Bough picks the
   forgetful semantics" as RFD 1's reason, in place of "the text breaks
-  its own rules"? Does F89 then need its own RFD, or a reworded policy?
+  its own rules"? Does [F89](./2026-09-24-engine-feasibility-spike.md#f89) then need its own RFD, or a reworded policy?
 - Is every Bough stream on the finest clock, so that an event at `t` is
   simply absent at `t ++ [n]`? Would you ever want a value to stay
   constant across a transaction's child instants, as Gemünde's outer
@@ -440,7 +440,7 @@ little now that RFD 1 has given up equal-step elision.
   exactly at its own creation time.
 - Should RFD 1 say that Bough's semantics ranges over the instants a run
   creates, since `[Int]` isn't well ordered?
-- Should F1 be restated as a fault of the text's whole-history `at`
+- Should [F1](./2026-09-24-engine-feasibility-spike.md#f1) be restated as a fault of the text's whole-history `at`
   rather than of loops, and does that change how RFD 1 describes the
   oracle?
 - Is Bough's cell a step sequence, so `steps` is sound by definition, or
@@ -479,7 +479,7 @@ Never run here; each is for the real build to decide on.
   counter-position. Needs Haskell type classes and laziness.
 - lee-operational-semantics-of-hybrid-systems §§5, 7 and 8.3 for
   superdense time. Self-contained.
-- krishnaswami-ultrametric-semantics-of-reactive-programs for F1's
+- krishnaswami-ultrametric-semantics-of-reactive-programs for [F1](./2026-09-24-engine-feasibility-spike.md#f1)'s
   fixed point. Needs complete metric spaces and Banach's theorem.
 - aguado-denotational-fixed-point-semantics-for-constructive-scheduling-of
   §2 for the identifier order. Needs lattices at Davey and Priestley's
@@ -590,7 +590,7 @@ p. 19). That's the formal form of RFD 2's untried "check every candidate
 at build", and it works only because candidates can't come from anywhere
 but the typing context. `construct` makes new ones.
 
-**F46 needs only an order of operations.** If every deletion of a
+**[F46](./2026-09-24-engine-feasibility-spike.md#f46) needs only an order of operations.** If every deletion of a
 transaction is applied before any insertion, each intermediate graph is
 a subgraph of the final one. If the final graph is acyclic, so is every
 intermediate one, and no legal reversal is refused. That is my reading of
@@ -638,7 +638,7 @@ of their new inners during the instant: `settled`, `mixed`, `churn` and
   to a 10,101-node mark in instructions. It found no false positives.
 - **The upstream set is small on this shape.** A move to an existing
   view walks about 535 nodes (median upstream 503, most 1,138), not
-  F50's ten thousand (`rfd-0005-bounded-relink-check`).
+  [F50](./2026-09-24-engine-feasibility-spike.md#f50)'s ten thousand (`rfd-0005-bounded-relink-check`).
 - **A Pearce–Kelly array loses badly when inners are built during the
   instant.** It is 0.018 of the walk's time on `settled`, and 20, 91
   and 250 times worse on `mixed`, `churn` and `lazy`. A new node goes
@@ -778,7 +778,7 @@ switch-instant asymmetry and cite Reflex's reason for it.
 
 ### Questions to grill
 
-- Is the 121 µs of F50 a shape real programs hit, or is a real new
+- Is the 121 µs of [F50](./2026-09-24-engine-feasibility-spike.md#f50) a shape real programs hit, or is a real new
   inner's upstream a few hundred nodes, as the UI-shaped graph has it?
 - Would you pay a label per node and 14% per node built so that most
   moves cost a comparison, or only once a real program shows slow moves?
@@ -799,7 +799,7 @@ switch-instant asymmetry and cite Reflex's reason for it.
   know which of the four workloads real programs look like.
 - Count, on those same programs, how often a transaction moves more than
   one switch, and how often two of its moves touch the same region, to
-  see whether F46's order of operations ever matters in practice.
+  see whether [F46](./2026-09-24-engine-feasibility-spike.md#f46)'s order of operations ever matters in practice.
 
 ### Reading path
 
@@ -894,7 +894,7 @@ holds trivially
 pp. 19, 37). That is the formal reason a cell read is never an ordering
 dependency.
 
-**F3 isn't a program constructiveness would rescue.** In
+**[F3](./2026-09-24-engine-feasibility-spike.md#f3) isn't a program constructiveness would rescue.** In
 `c = hold 0 (merge ticks (map (+1) (steps c)))`, an instant without
 `ticks` gives x = x, which is Esterel's `present O then emit O`, whose
 least fixpoint is ⊥ (berry-… pp. 31, 41). SC's check, Keating's direct
@@ -933,7 +933,7 @@ only if the inner loop ends
 (gemunde-clock-refinement-in-imperative-synchronous-languages p. 9).
 Delayed actions in Quartz go to the next step
 (schneider-causality-analysis-of-synchronous-programs-with-delayed-actions
-pp. 5–6); Bough's child instants nest inside the transaction. So F22, a
+pp. 5–6); Bough's child instants nest inside the transaction. So [F22](./2026-09-24-engine-feasibility-spike.md#f22), a
 `defer` loop with no filter, is a liveness problem outside causality, and
 nothing in the batch bounds it.
 
@@ -988,9 +988,9 @@ programs that acyclicity refuses, of one to eight nodes over two inputs.
 (`rfd-0002-decoupled-marker`). Each stream and cell type carries a mark,
 decoupled or not, and `close` requires decoupled.
 
-- It refuses F3 at compile time, with the error "this loop's definition
+- It refuses [F3](./2026-09-24-engine-feasibility-spike.md#f3) at compile time, with the error "this loop's definition
   depends on a loop's forward reference in the same instant", and builds
-  F1's counter. On the first fixture set it refused all 6 illegal loops
+  [F1](./2026-09-24-engine-feasibility-spike.md#f1)'s counter. On the first fixture set it refused all 6 illegal loops
   and 3 of 10 legal ones: a helper returning `impl Source`, a helper
   taking a plain `Cell<u32>`, and two loops where one resets the other.
   Helpers generic over the mark fix the first two.
@@ -1071,7 +1071,7 @@ couldn't express.
 ### The options for Bough
 
 1. Keep run-time acyclicity alone, as RFD 2 has it.
-2. Add the one-bit marker at `close`, which makes F3 and its relatives a
+2. Add the one-bit marker at `close`, which makes [F3](./2026-09-24-engine-feasibility-spike.md#f3) and its relatives a
    compile error for a few percent of compile time, and keep the
    run-time check at a switch's first link and moves.
 3. Also mark switch outputs `Switched`, which makes the smuggle a compile
@@ -1079,7 +1079,7 @@ couldn't express.
    that reads an open forward.
 4. Go constructive: accept cycles through exclusive gates.
 
-For F22: accept it as the user's bug, bound child-instant depth at run
+For [F22](./2026-09-24-engine-feasibility-spike.md#f22): accept it as the user's bug, bound child-instant depth at run
 time, or require every `defer` loop to pass a filter or a bound.
 
 ### Claude's leaning
@@ -1090,8 +1090,8 @@ justification for opaque functions. Name the refused class, exclusive
 gates, and point to switching as how Bough writes it. Option 2 is cheap
 and catches a real mistake at compile time, but it covers `close` only,
 costs a mark parameter on every helper signature, and the run-time check
-stays whatever happens. I'd hold it until F3-shaped mistakes show up in
-real code. Treat F22 as liveness, bounded at run time in the embedded
+stays whatever happens. I'd hold it until [F3](./2026-09-24-engine-feasibility-spike.md#f3)-shaped mistakes show up in
+real code. Treat [F22](./2026-09-24-engine-feasibility-spike.md#f22) as liveness, bounded at run time in the embedded
 tier and left to the user elsewhere.
 
 ### Questions to grill
@@ -1102,12 +1102,12 @@ tier and left to the user elsewhere.
 - Have you wanted a Bough program whose only same-instant cycle runs
   through two exclusive gates that a `switch_stream` couldn't write
   acyclically?
-- Is F3 a `steps` problem, so that "every loop passes through a hold"
+- Is [F3](./2026-09-24-engine-feasibility-spike.md#f3) a `steps` problem, so that "every loop passes through a hold"
   holds for the core, and does that go into the case for fencing
   `steps`?
-- Would a marker that catches F3 at compile time be worth a mark
+- Would a marker that catches [F3](./2026-09-24-engine-feasibility-spike.md#f3) at compile time be worth a mark
   parameter on every helper, given that it can't cover switches?
-- Is F22 something to refuse statically, bound at run time, or leave as
+- Is [F22](./2026-09-24-engine-feasibility-spike.md#f22) something to refuse statically, bound at run time, or leave as
   the user's bug?
 
 ### Experiments this proposes for Bough
@@ -1404,7 +1404,7 @@ pure pull loses when all output is demanded
 Keep option 1 for the first build, with the rejection reworded, and
 treat option 2 as the first performance change to try once a real
 program's quiet share is known. The UI shape is where the relink check
-would bite (F50), though it is still unmeasured. A UI's marked regions
+would bite ([F50](./2026-09-24-engine-feasibility-spike.md#f50)), though it is still unmeasured. A UI's marked regions
 are plausibly mostly quiet, and heights would also give the relink check
 for free. But the flat loop is what
 RFD 5, the spike and the oracle work already assume, a height raise can
@@ -1454,13 +1454,13 @@ contradiction, and it rests on the probes' synthetic graphs.
 **Two failure modes, and every design picks which one it can see.**
 Rooting and tracing that under-approximate give use-after-free; ones that
 over-approximate give space leaks (jeffrey-josephine-using-javascript-to-safely-manage-the-lifetimes
-p. 8). In Bough those are a forgotten `depends`, F62, which ends in a
-stale token, and a `depends` with no inverse, F63, which kept fifty
+p. 8). In Bough those are a forgotten `depends`, [F62](./2026-09-24-engine-feasibility-spike.md#f62), which ends in a
+stale token, and a `depends` with no inverse, [F63](./2026-09-24-engine-feasibility-spike.md#f63), which kept fifty
 screens on the engine spike
 ([research](./2026-09-24-engine-feasibility-spike.md)). No source in
 the batch fixes the second one while keeping Sodium's semantics.
 
-**The modal line catches F62 and permits F63.** In the RaTT line a value
+**The modal line catches [F62](./2026-09-24-engine-feasibility-spike.md#f62) and permits [F63](./2026-09-24-engine-feasibility-spike.md#f63).** In the RaTT line a value
 is *stable* when it can't reach temporal data, and a closure stored in the
 graph, run at later instants, may capture only stable values
 (krishnaswami-higher-order-functional-reactive-programming-without-spacetime-leaks
@@ -1468,7 +1468,7 @@ pp. 3–4; bahr-modal-frp-for-all pp. 5–8). Read "temporal data" as "a
 Bough token". Then a `construct` builder capturing a cell token is
 Rattus's rejected `leakyMap` (bahr-modal-frp-for-all p. 8), and a closure
 that captures a delayed location and runs a step later dereferences a
-collected one, which is F62 caught by a type rule
+collected one, which is [F62](./2026-09-24-engine-feasibility-spike.md#f62) caught by a type rule
 (bahr-simply-ratt-a-fitch-style-modal-calculus-for pp. 8–9, 15). The
 rewrite is to pass the cell in as an argument, so the dependency becomes
 an edge. But holding what you asked to hold is an *explicit* leak, and
@@ -1481,7 +1481,7 @@ types "merely act as a set of guard rails"
 (krishnaswami-…-without-spacetime-leaks pp. 3–4). Async RaTT runs only
 computations reachable from an output whose clock contains the input
 (bahr-asynchronous-modal-frp pp. 15–17), which is scheduling bounded by
-liveness from the roots, and the one answer to F66 that keeps something
+liveness from the roots, and the one answer to [F66](./2026-09-24-engine-feasibility-spike.md#f66) that keeps something
 like persistent nodes. Rattus leaves collection to GHC's ordinary tracing
 collector once the types guarantee old data is unreferenced
 (bahr-modal-frp-for-all pp. 34–35).
@@ -1539,7 +1539,7 @@ field frees memory still reachable through a pointer
 jeffrey-josephine-… p. 9). None argues that a missed field is unsafe when
 handles are checked indices, which is RFD 3's distinction.
 
-**Every GC-based FRP has F66, and none fixes it but by collecting
+**Every GC-based FRP has [F66](./2026-09-24-engine-feasibility-spike.md#f66), and none fixes it but by collecting
 sooner.** Garbage is evaluated until it's collected. Elerea calls it its
 "biggest problem" (patai-efficient-and-compositional-higher-order-streams
 p. 13). In FrTime a strong update queue would keep about half the dead
@@ -1612,7 +1612,7 @@ With 9,000 abandoned screens a navigation costs 14,000 times a clean one
 until they are collected, and a collection costs 16,000. A mark that
 flags dead nodes without sweeping still leaves 377 times; a census that
 marks and prunes dependents without sweeping brings a transaction back to
-1.0. On F66's shape RFD 3's trigger collects about every second
+1.0. On [F66](./2026-09-24-engine-feasibility-spike.md#f66)'s shape RFD 3's trigger collects about every second
 navigation, so 9,000 screens pile up only under the manual policy.
 
 **RFD 3's trigger needs a work term** (`rfd-0003-work-paced-trigger`).
@@ -1634,7 +1634,7 @@ navigation:
 | uneven inputs, garbage on rare ones | 0.60 | 0.54 |
 
 So the work term is worth about ten times on `app`, and costs about a
-tenth on F66's `nav` shape, where there's little garbage to pace. Its
+tenth on [F66](./2026-09-24-engine-feasibility-spike.md#f66)'s `nav` shape, where there's little garbage to pace. Its
 fast path, a click on a clean arena, is unmeasurable (0.994). A term on
 every region node, `total`, collects spuriously when regions are large
 beside the live set, and costs 2.2 times on the same click, spurious
@@ -1679,7 +1679,7 @@ Pacing by debt lost to a fixed budget: allocation debt ran 2 cycles in
 region gave larger pauses at equal cost. With barriers compiled in and
 collection atomic, a whole run costs 1.007 of the unbarriered arena.
 
-**A lifetime brand makes F62 a compile error on stable**
+**A lifetime brand makes [F62](./2026-09-24-engine-feasibility-spike.md#f62) a compile error on stable**
 (`rfd-0003-branded-captures`, `rfd-0003-brand-erasure`). Tokens carry a
 fresh `'g` per `Runtime::mutate`, and captures go through `.with(env)`.
 
@@ -1689,7 +1689,7 @@ fresh `'g` per `Runtime::mutate`, and captures go through `.with(env)`.
   legal fixture builds, including a hold of a struct of tokens, a
   construct capturing three, anchoring, the RFD 4 screens example and a
   switch among captured tokens. `map_to` of a token still builds, which
-  is safe since F94 made `map_to` trace its value.
+  is safe since [F94](./2026-09-24-engine-feasibility-spike.md#f94) made `map_to` trace its value.
 - A brand on construct-minted tokens only, an era, catches one of the
   four. A nightly auto trait catches all four with a clear message, and
   refuses a capture of `dyn Fn` and of a generic `T`, so it spreads like
@@ -1882,7 +1882,7 @@ the rejection of weak references all stand.
 
 ### The options for Bough
 
-For F62:
+For [F62](./2026-09-24-engine-feasibility-spike.md#f62):
 
 1. Keep run-time `depends`, whose failure is a loud stale token.
 2. Brand tokens with a lifetime, captures through `.with(env)`, values
@@ -1891,7 +1891,7 @@ For F62:
 3. Scope lifetime to creation, as Leptos and Sycamore do. That gives
    `depends` an inverse and changes Sodium's semantics.
 
-For F63: nothing in the literature fixes it without 3. `once()`, which
+For [F63](./2026-09-24-engine-feasibility-spike.md#f63): nothing in the literature fixes it without 3. `once()`, which
 releases its upstream after one event, and logic that switches itself
 out are the book's two structural answers to the one case it shows, and
 it warns that `once()` may not free anything in practice.
@@ -1907,7 +1907,7 @@ For the trigger:
 
 ### Claude's leaning
 
-For F62, option 1, and rewrite the reason: the brand is possible and
+For [F62](./2026-09-24-engine-feasibility-spike.md#f62), option 1, and rewrite the reason: the brand is possible and
 costs more than the error it prevents. But the brand is the kind of
 change RFD 6 says must be decided before signatures set, because it puts
 a lifetime on every type that holds a token, so it has to be decided
@@ -1922,7 +1922,7 @@ lead with `Copy` tokens.
 - Would you put a lifetime on every token-holding type, and move I/O
   inside callbacks, to make a forgotten `depends` a compile error? If
   not now, then never, since retrofitting it touches every signature.
-- Is F63 a bug to prevent, or an explicit leak the program asked for,
+- Is [F63](./2026-09-24-engine-feasibility-spike.md#f63) a bug to prevent, or an explicit leak the program asked for,
   which the library should only make visible?
 - Should `once()`-style release, a primitive that lets go of its
   upstream, sit beside `depends` as a way to end a capture?
@@ -2001,7 +2001,7 @@ at most one event, the easy fragment; the hard cases, zip and nested
 normalize any switch-free chain to one loop over one pure function and
 one state, for 4.1 to 13.9 times over GHC's arrow translation
 (liu-causal-commutative-arrows-and-their-optimization pp. 5–6, 8; not
-reproduced). No source measures compile time, which is F36's problem, and
+reproduced). No source measures compile time, which is [F36](./2026-09-24-engine-feasibility-spike.md#f36)'s problem, and
 none bounds the number of instantiations. Lustre's modular compilation
 keeps generated code "linear in the size of the source program" because a
 node compiles once whatever its context
@@ -2099,8 +2099,8 @@ per-node construction cost to set beside Oort's.
 
 ### What the probes found
 
-**Erasing the chain at the materializer removes most of F36**
-(`rfd-0004-erased-materializer`). The probe generates F36's chain shapes
+**Erasing the chain at the materializer removes most of [F36](./2026-09-24-engine-feasibility-spike.md#f36)**
+(`rfd-0004-erased-materializer`). The probe generates [F36](./2026-09-24-engine-feasibility-spike.md#f36)'s chain shapes
 from data, 182 chain types at depth two and 1,640 at depth three, the
 spike's numbers, and builds each crate from clean three times.
 
@@ -2215,7 +2215,7 @@ cargo test --release --lib rfd_0004_patch_cell_crossover::tests::same_key_confli
 None found. "Linear" is a naming problem, not a broken reason: what
 `hold` and `merge` need is that no second consumer exists, which
 uniqueness gives. Fusion by monomorphization is supported, and its known
-cost is the one F36 found. Lazy read-through cells stand: pending deltas
+cost is the one [F36](./2026-09-24-engine-feasibility-spike.md#f36) found. Lazy read-through cells stand: pending deltas
 sum, so laziness survives even an incremental cell.
 
 ### The options for Bough
@@ -2223,7 +2223,7 @@ sum, so laziness survives even an incremental cell.
 On the word: keep "linear", or say "move-only" and "at most one
 consumer", with one line in the glossary on why it isn't linear.
 
-On F36:
+On [F36](./2026-09-24-engine-feasibility-spike.md#f36):
 
 1. Keep full monomorphization and bound chain depth where programs build
    chains from data, as RFD 4 has it.
@@ -2246,7 +2246,7 @@ On open question 9:
 ### Claude's leaning
 
 Say "move-only, at most one consumer", and keep the word "linear" out of
-the docs. For F36, option 2: about two-fifths of the build time for
+the docs. For [F36](./2026-09-24-engine-feasibility-spike.md#f36), option 2: about two-fifths of the build time for
 about 2% an event, in safe code, and full monomorphization stays
 available for programs that don't build chains from data. That leaning
 rests on a generated program, not a real one. For question 9, option 2.
@@ -2260,7 +2260,7 @@ eager fused upsert is the map operator to start from.
 
 - Do you mean "exactly one consumer" or "at most one"? Should dropping an
   unconsumed `Stream` warn?
-- Has any real program, not the data-driven test binary, hit F36?
+- Has any real program, not the data-driven test binary, hit [F36](./2026-09-24-engine-feasibility-spike.md#f36)?
 - Would one indirect call per chain per event be acceptable to compile
   every materializer once?
 - Should the patch cell's contract require an abelian group, which gives
@@ -2278,7 +2278,7 @@ eager fused upsert is the map operator to start from.
   B-tree, beside the cell-of-`Vec` version, and time a scroll and an
   insert at the list sizes it really has.
 - Measure release build time for Oort's fighter with full
-  monomorphization and with boxed materializers, to see whether F36 bites
+  monomorphization and with boxed materializers, to see whether [F36](./2026-09-24-engine-feasibility-spike.md#f36) bites
   a real program at all.
 
 ### Reading path
@@ -2484,7 +2484,7 @@ In instructions, the uncontended lock adds 39 and 18 a unit to about
   42 µs and 61 to 65 µs, over two days' runs. The tails are single
   draws: the longest wait was 165 µs in one run and 224 µs in the other,
   and one thread ran 11,087 units in a row in one and 451 in the other,
-  since std's mutex is unfair (F78). The queue's p99 send is 1.5 to 1.9
+  since std's mutex is unfair ([F78](./2026-09-24-engine-feasibility-spike.md#f78)). The queue's p99 send is 1.5 to 1.9
   µs at 2 producers and 17 to 18 µs at 8.
 - **The contended lock's extra cost is mostly a futex wake per unlock,
   not the graph's state moving between cores.** Grown to 256 KiB of state
@@ -2925,7 +2925,7 @@ switches:
   comparison with full times missed none.
 - Engine-wide bugs are another matter. Every defer at index 1 is caught
   by 15.5% of the programs it affects, indices not shared by 40.3%, and
-  every split collapsed, F2, by 33.4%. A suite of a thousand programs
+  every split collapsed, [F2](./2026-09-24-engine-feasibility-spike.md#f2), by 33.4%. A suite of a thousand programs
   catches all three with near certainty.
 
 So the comparison without child indices catches every misplacement a
@@ -3146,7 +3146,7 @@ Every kept source, by stem, with what it gave Bough. The records in
 `literature` hold the reading notes by page, the stored copy's version
 and where it came from. Sources on the lineage map only are marked there.
 
-- **abadi-foundations-of-differential-dataflow**. Martín Abadi, Frank McSherry, Gordon D. Plotkin. *Foundations of Differential Dataflow*. FoSSaCS 2015. Core, read in full. Product partial orders for nested loops; expressly excludes the lexicographic order `T = [Int]` is, and gives F1's loop equation a unique solution when feedback shifts the index.
+- **abadi-foundations-of-differential-dataflow**. Martín Abadi, Frank McSherry, Gordon D. Plotkin. *Foundations of Differential Dataflow*. FoSSaCS 2015. Core, read in full. Product partial orders for nested loops; expressly excludes the lexicographic order `T = [Int]` is, and gives [F1](./2026-09-24-engine-feasibility-spike.md#f1)'s loop equation a unique solution when feedback shifts the index.
 - **acar-adaptive-functional-programming**. Umut A. Acar, Guy E. Blelloch, Robert Harper. *Adaptive Functional Programming*. ACM TOPLAS 2006. Supporting, read in part. The ML library of the thesis's line of work; its one addition for Bough is why time stamps use order maintenance, integer ranks with re-ranking after Dietz and Sleator, rather than real-number tags or list positions.
 - **acar-self-adjusting-computation**. Umut A. Acar. *Self-Adjusting Computation*. PhD thesis, CMU 2005. Core, read in full. Change propagation over order-maintenance time stamps, and trace stability: why a cell of a collection is slow and a content-keyed structure isn't.
 - **aguado-denotational-fixed-point-semantics-for-constructive-scheduling-of**. Joaquín Aguado, Michael Mendler, Reinhard von Hanxleden, Insa Fuhrmann. *Denotational Fixed-Point Semantics for Constructive Scheduling of Synchronous Concurrency*. Acta Informatica 2015. Core, read in full. The closest formal precedent for the order on `T = [Int]`, and the shape a real least-fixpoint argument needs, which the oracle's rounds don't have.
@@ -3154,15 +3154,15 @@ and where it came from. Sources on the lineage map only are marked there.
 - **apfelmus-frp-release-of-reactive-banana-version-1-0**. Heinrich Apfelmus. *FRP — Release of reactive-banana version 1.0*. Blog post 2015. Supporting, read in full. Start-time generators shipped as reactive-banana's `Moment` monad; no simultaneous occurrences within one event.
 - **bacon-a-unified-theory-of-garbage-collection**. David F. Bacon, Perry Cheng, V. T. Rajan. *A unified theory of garbage collection*. OOPSLA 2004. Core, read in full. Tracing and counting as least and greatest fixpoints; counting with a backup trace sees cycles, so RFD 3's first reason is incomplete.
 - **bahr-asynchronous-modal-frp**. Patrick Bahr, Rasmus Ejlers Møgelberg. *Asynchronous Modal FRP*. ICFP 2023. Core, read in full. One input on one channel per step, with clocks per delayed value; runs only what an output's clock reaches, and statically bounds dependencies through switching.
-- **bahr-diamonds-are-not-forever**. Patrick Bahr, Christian Uldal Graulund, Rasmus Ejlers Møgelberg. *Diamonds are not forever: liveness in reactive programming with guarded recursion*. POPL 2021 (PACMPL 5, POPL). Supporting, read in part. A guarded fixed point can't promise that something happens; the formal form of F22.
+- **bahr-diamonds-are-not-forever**. Patrick Bahr, Christian Uldal Graulund, Rasmus Ejlers Møgelberg. *Diamonds are not forever: liveness in reactive programming with guarded recursion*. POPL 2021 (PACMPL 5, POPL). Supporting, read in part. A guarded fixed point can't promise that something happens; the formal form of [F22](./2026-09-24-engine-feasibility-spike.md#f22).
 - **bahr-modal-frp-for-all**. Patrick Bahr. *Modal FRP for all: Functional reactive programming without space leaks in Haskell*. JFP 2022. Core, read in full. Rattus: what a type-checked capture rule costs a host language, and the clearest statement that explicit leaks stay legal.
-- **bahr-simply-ratt-a-fitch-style-modal-calculus-for**. Patrick Bahr, Christian Uldal Graulund, Rasmus Ejlers Møgelberg. *Simply RaTT: A Fitch-style Modal Calculus for Reactive Programming Without Space Leaks*. ICFP 2019. Core, read in full. A closure that captures a delayed location and runs a step later is F62, caught by a type rule.
+- **bahr-simply-ratt-a-fitch-style-modal-calculus-for**. Patrick Bahr, Christian Uldal Graulund, Rasmus Ejlers Møgelberg. *Simply RaTT: A Fitch-style Modal Calculus for Reactive Programming Without Space Leaks*. ICFP 2019. Core, read in full. A closure that captures a delayed location and runs a step later is [F62](./2026-09-24-engine-feasibility-spike.md#f62), caught by a type rule.
 - **bainomugisha-a-survey-on-reactive-programming**. Engineer Bainomugisha, Andoni Lombide Carreton, Tom van Cutsem, Stijn Mostinckx, Wolfgang de Meuter. *A Survey on Reactive Programming*. ACM Computing Surveys 2013. Supporting, read in part. The standard taxonomy; which systems let glitches through.
 - **barenz-rhine-frp-with-type-level-clocks**. Manuel Bärenz, Ivan Perez. *Rhine: FRP with Type-Level Clocks*. Haskell Symposium 2018. Supporting, read in part. Simultaneity only on one clock, schedules and resampling buffers: vocabulary for input slots and the pump.
 - **bender-a-new-approach-to-incremental-cycle-detection-and**. Michael A. Bender, Jeremy T. Fineman, Seth Gilbert, Robert E. Tarjan. *A New Approach to Incremental Cycle Detection and Related Problems*. ACM TALG 2016. Core, read in full. Weak topological levels paid for by raising them; correct under deletions with no useful bound.
 - **bernardy-linear-haskell-practical-linearity-in-a-higher-order**. Jean-Philippe Bernardy, Mathieu Boespflug, Ryan R. Newton, Simon Peyton Jones, Arnaud Spiwack. *Linear Haskell: Practical Linearity in a Higher-Order Polymorphic Language*. POPL 2018. Supporting, read in part. Linear means exactly once, and Rust is a uniqueness language; the industrial case for one consumer per stream.
 - **berry-the-constructive-semantics-of-pure-esterel**. Gérard Berry. *The Constructive Semantics of Pure Esterel*. Draft book 2002. Core, read in full. Constructiveness, the class acyclicity undercuts; Bough's rule is Esterel v4's. Incarnations are the nearest model for creation at a child instant.
-- **biernacki-clock-directed-modular-code-generation-for-synchronous-data**. Dariusz Biernacki, Jean-Louis Colaço, Grégoire Hamon, Marc Pouzet. *Clock-directed Modular Code Generation for Synchronous Data-flow Languages*. LCTES 2008. Core, read in full. What Bough's rejected static engine would be; modular compilation keeps code linear in the source, unlike F36.
+- **biernacki-clock-directed-modular-code-generation-for-synchronous-data**. Dariusz Biernacki, Jean-Louis Colaço, Grégoire Hamon, Marc Pouzet. *Clock-directed Modular Code Generation for Synchronous Data-flow Languages*. LCTES 2008. Core, read in full. What Bough's rejected static engine would be; modular compilation keeps code linear in the source, unlike [F36](./2026-09-24-engine-feasibility-spike.md#f36).
 - **blackheath-functional-reactive-programming**. Stephen Blackheath, Anthony Jones. *Functional Reactive Programming*. Manning 2016. Core, read in part. The semantics Bough is held to. States its creation rule for four primitives only, hides steps for continuous time, and argues for threads.
 - **bourke-a-formally-verified-compiler-for-lustre**. Timothy Bourke, Lélio Brun, Pierre-Évariste Dagand, Xavier Leroy, Marc Pouzet, Lionel Rieg. *A Formally Verified Compiler for Lustre*. PLDI 2017. Core, read in full. Vélus: what mechanised fidelity to a dataflow semantics costs, and validation in place of proof for a scheduler.
 - **budiu-dbsp-automatic-incremental-view-maintenance-for-rich-query**. Mihai Budiu, Tej Chajed, Frank McSherry, Leonid Ryzhyk, Val Tannen. *DBSP: Automatic Incremental View Maintenance for Rich Query Languages*. VLDB 2023. Core, read in full. Integration and differentiation over an abelian group; which operators are free, and a strictness rule for feedback that is Bough's loop rule.
@@ -3179,8 +3179,8 @@ and where it came from. Sources on the lineage map only are marked there.
 - **drechsler-distributed-rescala-an-update-algorithm-for-distributed-reactive**. Joscha Drechsler, Guido Salvaneschi, Ragnar Mogk, Mira Mezini. *Distributed REScala: An Update Algorithm for Distributed Reactive Programming*. OOPSLA 2014. Core, read in full. Glitch freedom across hosts needs mutually exclusive turns, and so a coordinator at admission unless the application already serialises them; observer-linked networks aren't glitch-free as a whole.
 - **drechsler-thread-safe-reactive-programming**. Joscha Drechsler, Ragnar Mogk, Guido Salvaneschi, Mira Mezini. *Thread-Safe Reactive Programming*. OOPSLA 2018. Core, read in full. The one measurement of making propagation concurrent; its uncontended-lock claim is asserted, not measured.
 - **elliott-denotational-design-with-type-class-morphisms**. Conal Elliott. *Denotational design with type class morphisms (extended version)*. LambdaPix technical report 2009-01. Supporting, read in part. The principle behind fidelity: equal meanings must be indistinguishable, which makes `steps` a leak for a `T → A` model.
-- **elliott-push-pull-functional-reactive-programming**. Conal Elliott. *Push-Pull Functional Reactive Programming*. Haskell Symposium 2009. Core, read in full. The model App. E is based on; keeps simultaneous occurrences and replays inner events at generation time, the counter-position to F89's cut.
-- **gemunde-clock-refinement-in-imperative-synchronous-languages**. Mike Gemünde, Jens Brandt, Klaus Schneider. *Clock refinement in imperative synchronous languages*. EURASIP Journal on Embedded Systems 2013. Core, read in full. Substeps inside a step on a static clock tree; an outer-step event stays present through its substeps, as in the text's F89 replay, but it has no node creation, so it can't settle F89.
+- **elliott-push-pull-functional-reactive-programming**. Conal Elliott. *Push-Pull Functional Reactive Programming*. Haskell Symposium 2009. Core, read in full. The model App. E is based on; keeps simultaneous occurrences and replays inner events at generation time, the counter-position to [F89](./2026-09-24-engine-feasibility-spike.md#f89)'s cut.
+- **gemunde-clock-refinement-in-imperative-synchronous-languages**. Mike Gemünde, Jens Brandt, Klaus Schneider. *Clock refinement in imperative synchronous languages*. EURASIP Journal on Embedded Systems 2013. Core, read in full. Substeps inside a step on a static clock tree; an outer-step event stays present through its substeps, as in the text's [F89](./2026-09-24-engine-feasibility-spike.md#f89) replay, but it has no node creation, so it can't settle [F89](./2026-09-24-engine-feasibility-spike.md#f89).
 - **gerard-a-modular-memory-optimization-for-synchronous-data-flow**. Léonard Gérard, Adrien Guatto, Cédric Pasteur, Marc Pouzet. *A Modular Memory Optimization for Synchronous Data-Flow Languages: Application to Arrays in a Lustre Compiler*. LCTES 2012. Core, read in full. Evidence that a static engine grows into an optimising compiler.
 - **goregaokar-a-tour-of-safe-tracing-gc-designs-in**. Manish Goregaokar. *A Tour of Safe Tracing GC Designs in Rust*. Blog post 2021. Core, read in full. The Rust GC design space; every `Trace` there is `unsafe` because every design names objects by pointer.
 - **haeupler-incremental-cycle-detection-topological-ordering-and-strong-component**. Bernhard Haeupler, Telikepalli Kavitha, Rogers Mathew, Siddhartha Sen, Robert E. Tarjan. *Incremental Cycle Detection, Topological Ordering, and Strong Component Maintenance*. ACM TALG 2012. Core, read in full. Every efficient cycle detector keeps an order; limited search is Bough's walk bounded by it, and deletions void the bounds.
@@ -3190,17 +3190,17 @@ and where it came from. Sources on the lineage map only are marked there.
 - **helbling-juniper-a-functional-reactive-programming-language-for-the**. Caleb Helbling, Samuel Z. Guyer. *Juniper: A Functional Reactive Programming Language for the Arduino*. FARM 2016. Core, read in full. The one embedded FRP with a dynamic graph, and no memory bound; its case against tracing is asserted.
 - **hydro-dfir**. Hydro Project. *DFIR*. Hydro documentation 2026. Supporting, read in full. DFIR's introduction page only; the crate at source answers the questions it can't.
 - **ischard-a-mechanized-formalization-of-an-frp-language-with**. Jordan Ischard, Frédéric Dabrowski, Jules Chouquet, Frédéric Loulergue. *A Mechanized Formalization of an FRP Language with Effects*. SAC 2025. Supporting, read in full. A price point: mechanising a small switching-free arrow language took 5 kLOC and found broken proof sketches.
-- **jeffrey-josephine-using-javascript-to-safely-manage-the-lifetimes**. Alan Jeffrey. *Josephine: Using JavaScript to safely manage the lifetimes of Rust data*. arXiv 2018. Supporting, read in full. Under-approximate rooting is use-after-free, over-approximate is a leak: F62 and F63.
+- **jeffrey-josephine-using-javascript-to-safely-manage-the-lifetimes**. Alan Jeffrey. *Josephine: Using JavaScript to safely manage the lifetimes of Rust data*. arXiv 2018. Supporting, read in full. Under-approximate rooting is use-after-free, over-approximate is a leak: [F62](./2026-09-24-engine-feasibility-spike.md#f62) and [F63](./2026-09-24-engine-feasibility-spike.md#f63).
 - **jeffrey-ltl-types-frp**. Alan Jeffrey. *LTL types FRP: Linear-time Temporal Logic Propositions as Types, Proofs as Functional Reactive Programs*. PLPV 2012. Supporting, read in part. Decoupled functions as LTL's constrains; fixed points need a well-ordering, which `[Int]` lacks.
 - **kaiabachev-e-frp-with-priorities**. Roumen Kaiabachev, Walid Taha, Angela Zhu, Jun Inoue. *E-FRP With Priorities*. Rice University technical report (extended version of the EMSOFT 2007 paper). Core, read in full. Pre-emption by abort and restart, with a permutation theorem; the latency cost of Bough's non-pre-emptive drain.
 - **keating-this-is-driving-me-loopy**. Finnbar Keating, Michael B. Gale. *This Is Driving Me Loopy: Efficient Loops in Arrowized Functional Reactive Programs*. Haskell Symposium 2023. Core, read in full. No direct dependency cycle means a static order exists, with opaque functions: acyclicity is exactly right there.
 - **kiselyov-stream-fusion-to-completeness**. Oleg Kiselyov, Aggelos Biboudis, Nick Palladinos, Yannis Smaragdakis. *Stream Fusion, to Completeness*. POPL 2017. Core, read in full. Fusion by staging, what's hard (zip, nesting), and the risk of trusting a general-purpose compiler.
 - **krishnaswami-higher-order-functional-reactive-programming-in-bounded-space**. Neelakantan R. Krishnaswami, Nick Benton, Jan Hoffmann. *Higher-order functional reactive programming in bounded space*. POPL 2012. Core, read in full. Affine allocation permissions bound the graph statically; too precise to use, by its authors' own later account.
 - **krishnaswami-higher-order-functional-reactive-programming-without-spacetime-leaks**. Neelakantan R. Krishnaswami. *Higher-order functional reactive programming without spacetime leaks*. ICFP 2013. Core, read in full. Stability, and the machine that deletes the past, with types as guard rails; persistent two-way nodes defeat reachability GC.
-- **krishnaswami-ultrametric-semantics-of-reactive-programs**. Neelakantan R. Krishnaswami, Nick Benton. *Ultrametric Semantics of Reactive Programs*. LICS 2011. Supporting, read in part. Guarded definitions have unique fixed points by Banach's theorem, which is F1's status.
+- **krishnaswami-ultrametric-semantics-of-reactive-programs**. Neelakantan R. Krishnaswami, Nick Benton. *Ultrametric Semantics of Reactive Programs*. LICS 2011. Supporting, read in part. Guarded definitions have unique fixed points by Banach's theorem, which is [F1](./2026-09-24-engine-feasibility-spike.md#f1)'s status.
 - **kyren-gc-arena**. kyren. *gc-arena*. Repository README 2026. Supporting, read in full. Mutation xor collection, allocation-debt pacing, and a branded pointer that can't escape the mutation callback.
 - **laddad-flo-a-semantic-foundation-for-progressive-stream-processing**. Shadaj Laddad, Alvin Cheung, Joseph M. Hellerstein, Mae Milano. *Flo: a Semantic Foundation for Progressive Stream Processing*. POPL 2025. Core, read in full. Eager execution as the law patch composition must obey; no global instant.
-- **lee-operational-semantics-of-hybrid-systems**. Edward A. Lee, Haiyang Zheng. *Operational Semantics of Hybrid Systems*. HSCC 2005. Core, read in full. Superdense time, the depth-two case of `T = [Int]`, and non-Zeno as the side condition F22 breaks.
+- **lee-operational-semantics-of-hybrid-systems**. Edward A. Lee, Haiyang Zheng. *Operational Semantics of Hybrid Systems*. HSCC 2005. Core, read in full. Superdense time, the depth-two case of `T = [Int]`, and non-Zeno as the side condition [F22](./2026-09-24-engine-feasibility-spike.md#f22) breaks.
 - **lee-the-problem-with-threads**. Edward A. Lee. *The Problem with Threads*. IEEE Computer 2006. Core, read in full. Deterministic ends by deterministic means; the handle queue is the one nondeterministic merge.
 - **liu-causal-commutative-arrows-and-their-optimization**. Hai Liu, Eric Cheng, Paul Hudak. *Causal commutative arrows and their optimization*. ICFP 2009. Core, read in full. Any switch-free arrow program normalizes to one loop, one function and one state; no compile-time cost reported.
 - **liu-plugging-a-space-leak-with-an-arrow**. Hai Liu, Paul Hudak. *Plugging a Space Leak with an Arrow*. ENTCS 2007. Supporting, read in part. A laziness leak Bough's loops through a node can't have: a feedback combinator must reuse its node.
@@ -3219,7 +3219,7 @@ and where it came from. Sources on the lineage map only are marked there.
 - **nilsson-functional-reactive-programming-continued**. Henrik Nilsson, Antony Courtney, John Peterson. *Functional Reactive Programming, Continued*. Haskell Workshop 2002. Supporting, read in part. Yampa: second-class signals, both switch timings, and switched-out signal functions as frozen continuations.
 - **oeyen-reactive-programming-without-functions**. Bjarno Oeyen, Joeri De Koster, Wolfgang De Meuter. *Reactive Programming without Functions*. Programming 2024. Supporting, read in part. Strongly, eventually and weakly reactive; Bough with `construct` is weakly reactive.
 - **ousterhout-why-threads-are-a-bad-idea-for-most**. John Ousterhout. *Why Threads Are A Bad Idea (for most purposes)*. USENIX ATC invited talk 1996. Core, read in full. Asserts events are faster, with no data; its better slide is that callbacks don't work with locks.
-- **patai-efficient-and-compositional-higher-order-streams**. Gergely Patai. *Efficient and Compositional Higher-Order Streams*. WFLP 2010 (LNCS 6559, 2011). Core, read in full. Start-time generators, a creation-time semantics, and F66 as its own biggest problem.
+- **patai-efficient-and-compositional-higher-order-streams**. Gergely Patai. *Efficient and Compositional Higher-Order Streams*. WFLP 2010 (LNCS 6559, 2011). Core, read in full. Start-time generators, a creation-time semantics, and [F66](./2026-09-24-engine-feasibility-spike.md#f66) as its own biggest problem.
 - **pearce-a-batch-algorithm-for-maintaining-a-topological-order**. David J. Pearce, Paul H. J. Kelly. *A Batch Algorithm for Maintaining a Topological Order*. ACSC 2010 (CRPIT Vol. 102). Core, read in full. Batch insertion pays only for large batches.
 - **pearce-a-dynamic-topological-sort-algorithm-for-directed-acyclic**. David J. Pearce, Paul H. J. Kelly. *A Dynamic Topological Sort Algorithm for Directed Acyclic Graphs*. ACM Journal of Experimental Algorithmics, Vol. 11, Article No. 1.7, 2006. Core, read in full. One integer per node and a search of the affected region; the probes found it loses when inners are built in the instant.
 - **perez-testing-and-debugging-functional-reactive-programming**. Ivan Perez, Henrik Nilsson. *Testing and Debugging Functional Reactive Programming*. ICFP 2017 (Proc. ACM Program. Lang. 1, ICFP). Core, read in full. Record and replay, and bugs that appear only on long traces.
@@ -3237,7 +3237,7 @@ and where it came from. Sources on the lineage map only are marked there.
 - **shiple-constructive-analysis-of-cyclic-circuits**. Thomas R. Shiple, Gérard Berry, Hervé Touati. *Constructive Analysis of Cyclic Circuits*. ED&TC 1996. Core, read in full. The algorithm behind constructiveness, and why it needs reachability over states.
 - **tc39-javascript-signals-standard-proposal**. Rob Eisenberg, Daniel Ehrenberg. *JavaScript Signals standard proposal*. TC39 proposal 2024. Core, read in full. Push-then-pull colouring, glitch-free because pull-based, with lossiness the flipside; unsafe features fenced by name.
 - **vanderploeg-monadic-functional-reactive-programming**. Atze van der Ploeg. *Monadic Functional Reactive Programming*. Haskell Symposium 2013. Supporting, read in part. Emissions as the semantics, so observing steps is primitive; weak references a non-solution.
-- **vanderploeg-practical-principled-frp**. Atze van der Ploeg, Koen Claessen. *Practical Principled FRP: Forget the past, change the future, FRPNow!*. ICFP 2015. Core, read in full. Forgetfulness: a combinator taking its start from the past is inherently leaky. The reason F89's cut holds.
+- **vanderploeg-practical-principled-frp**. Atze van der Ploeg, Koen Claessen. *Practical Principled FRP: Forget the past, change the future, FRPNow!*. ICFP 2015. Core, read in full. Forgetfulness: a combinator taking its start from the past is inherently leaky. The reason [F89](./2026-09-24-engine-feasibility-spike.md#f89)'s cut holds.
 - **vonbehren-why-events-are-a-bad-idea-for-high**. Rob von Behren, Jeremy Condit, Eric Brewer. *Why Events Are A Bad Idea (for high-concurrency servers)*. HotOS 2003. Supporting, read in full. The rebuttal, about independent server requests; it bears on Bough's I/O side, not the engine.
 - **vonhanxleden-sccharts-sequentially-constructive-statecharts-for-safety-critical-applications**. Reinhard von Hanxleden, Björn Duderstadt, Christian Motika, Steven Smyth, Michael Mendler, Joaquín Aguado, Stephen Mercer, Owen O'Brien. *SCCharts: sequentially constructive statecharts for safety-critical applications: HW/SW-synthesis for a conservative extension of synchronous statecharts*. PLDI 2014. Supporting, read in part. Whole-program evaluation beat active-parts-only on speed and jitter for small models.
 - **vonhanxleden-sequentially-constructive-concurrency-a-conservative-extension-of-the**. Reinhard von Hanxleden, Michael Mendler, Joaquín Aguado, Björn Duderstadt, Insa Fuhrmann, Christian Motika, Stephen Mercer, Owen O'Brien, Partha Roop. *Sequentially Constructive Concurrency—A Conservative Extension of the Synchronous Model of Computation*. ACM TECS 2014. Core, read in full. Program order widens constructiveness, and Bough has none; names "reads before writes" and relative writes.

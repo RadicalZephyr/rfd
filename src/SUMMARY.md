@@ -30,7 +30,9 @@
 
 # Notes
 
+- [Requirements for the Bough FRP engine](./notes/2026-09-21-design-requirements.md)
 - [Slot churn simulation](./notes/2026-09-23-slot-churn-simulation.md)
+- [Changes to Bough RFDs](./notes/2026-09-25-changes-to-the-rfds.md)
 - [What an Oort fighter found first](./notes/2026-09-26-oort-fighter-first-findings.md)
 - [A core that doesn't know its mode](./notes/2026-09-27-mode-generic-core.md)
 - [Incremental Collection Propagation](./notes/2026-09-29-incremental-collection-propagation.md)

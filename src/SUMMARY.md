@@ -49,3 +49,4 @@
 - [Oort bot: graph-build cost is a constant factor, not structural](./notes/2026-10-07-oort-bot-build-cost.md)
 - [Shared Ports and Owned Edges](./notes/2026-10-08-shared-ports-and-owned-edges.md)
 - [What the expressibility port has to express](./notes/2026-10-08-mema-expressibility-scope.md)
+- [Continuous time comes back, through latched inputs](./notes/2026-10-09-continuous-time.md)

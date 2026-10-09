@@ -2,13 +2,17 @@
 
 _2026-09-27. A research note for the Bough design, answering one question:
 can the I/O edge that
-[One rule for the I/O edge](../notes/2026-09-26-io-edge-one-rule.md)
+"One rule for the I/O edge"
+(`notes/2026-09-26-io-edge-one-rule.md` at commit
+`75b20520260c43a3e0f1e0b29787e9fdda9587ad`)
 settled be built as it says, and what does it cost? The spike that answers
 it is on `spike/io-edge` in the `bough` repository, the 33 commits
 `e14c2a2..205ac13`, and it is not meant to merge. It followed the
 note's plan in nine steps, each step's interface and tests agreed before
 its code, and then ported bough-gtk to the result.
-[Where the I/O edge spike landed](../notes/2026-09-27-io-edge-spike.md) is
+"Where the I/O edge spike landed"
+(`notes/2026-09-27-io-edge-spike.md` at commit
+`0d333f191420b29f299ab931f630a71b92f5f538`) is
 the short version. Nothing here has authority over the RFDs; the questions
 at the end are for Zefira._
 

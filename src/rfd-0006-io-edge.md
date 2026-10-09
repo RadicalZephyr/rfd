@@ -321,7 +321,7 @@ last pump. That would come later.
 ## What We Considered, and What It Costs
 
 The one rule, every call at the next pump, came after four other
-shapes ([the one-rule note](./notes/2026-09-26-io-edge-one-rule.md)):
+shapes:
 
 - A send-only `Remote`, as this RFD first had it. Its routing table is
   still the pattern for many subscribers, but that isn't a reason to

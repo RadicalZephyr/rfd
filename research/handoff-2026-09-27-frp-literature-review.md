@@ -31,7 +31,8 @@ land before code depends on the RFDs, RFD 3 and RFD 5 above all.
   `spike/engine-feasibility` and stays untouched.
 - **What the review audits.** The revised RFDs, `src/rfd-000*.md`, and
   `GLOSSARY.md` on this branch. Where the revision landed:
-  `notes/2026-09-27-rfd-revision-landed.md`.
+  `notes/2026-09-27-rfd-revision-landed.md`, at commit
+  `1b30f27e58921dec68f34895d5b6ea74b1aa8766`.
 - **Bough's evidence.** `research/`, especially the engine spike's
   findings (F1, F3, F36, F46, F62, F89 and the rest) in
   `research/2026-09-24-engine-feasibility-spike.md`, and the open risks in

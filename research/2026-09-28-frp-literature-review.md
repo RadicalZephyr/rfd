@@ -3086,10 +3086,25 @@ nowhere else: Bough is discrete.
 
 ## The crate table
 
-The six crates read at source, pinned in
-`literature/synthesis/14-crates-pins.md`, then the rest from docs.rs,
-READMEs and single files at a named commit. Read on 2026-09-28. "Not
-stated" means the source read was silent.
+The six crates read at source, at the pins below, then the rest from
+docs.rs, READMEs and single files at a named commit. Read on 2026-09-28.
+"Not stated" means the source read was silent.
+
+The pins, shallow clones at the latest stable release tag on 2026-09-27:
+
+| Repo | Tag | Commit | Crate path |
+|---|---|---|---|
+| github.com/leptos-rs/leptos | v0.8.21 | 584c3a2d884b0e4dba9e3f822a9b6982cff072c7 | reactive_graph/ |
+| github.com/sycamore-rs/sycamore | 0.9.3 | 48e55bb7e699ab4975b3d49401ec93cd9dca58b1 | packages/sycamore-reactive/ |
+| github.com/kyren/gc-arena | v0.7.0 | d527c45c93794e4788b484a89cca56c9d52e61ec | src/ |
+| github.com/salsa-rs/salsa | salsa-v0.28.5 | d434f8805c60ac60dce5f367ca91c5a7cd3e4c86 | src/ |
+| github.com/hydro-project/hydro | dfir_rs-v0.16.0 | 118b356447d92e778313d72a351e5a8d2814aa1a | dfir_rs/, dfir_lang/ |
+| github.com/milibopp/carboxyl | master (0.2.2, untagged) | 2a80080ee2e9f18e2202c6c57d88bfdc69d1fc23 | src/ |
+
+salsa's `v*` tags stop at 0.16.1 (2021); later releases are tagged
+`salsa-v*`. carboxyl moved from aepsil0n to milibopp, and its 0.2.2 on
+crates.io has no tag. reactive_graph at leptos v0.8.21 is 0.2.15, the
+crates.io latest.
 
 | Crate | Version | Semantics | Glitch freedom | Memory strategy | Threading | Source |
 |---|---|---|---|---|---|---|

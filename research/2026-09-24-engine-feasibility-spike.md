@@ -689,8 +689,12 @@ has changed yet._
 
 1. **The oracle: (a).** GHC stays the oracle and runs in CI. Porting the
    semantics to Rust is shelved entirely, and `bough-oracle` is kept. RFD
-   1's policy line changes. The oracle work that follows is in
-   [its handoff](./handoff-2026-09-25-oracle-work-for-the-real-build.md).
+   1's policy line changes. The oracle work that follows is in its
+   handoff, `research/handoff-2026-09-25-oracle-work-for-the-real-build.md`
+   at commit `185597cbd1840c1abf58059898395b1f01dd4ec7`, and is now
+   [bough-frp/bough#11](https://github.com/bough-frp/bough/issues/11),
+   [#12](https://github.com/bough-frp/bough/issues/12) and
+   [#13](https://github.com/bough-frp/bough/issues/13).
 2. **The loop rule: yes.** RFD 2's rule and the glossary's become the
    dependency-graph rule of F3. The check runs at close, at a switch's
    first link and at every move, as the engine does it. A move that closes

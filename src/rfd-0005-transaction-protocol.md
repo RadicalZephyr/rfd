@@ -81,7 +81,7 @@ runs, so the difference isn't observable, but a loop inside such a
 closure can fail to settle in the oracle, so its random programs keep
 loops out of construct closures. Giving the oracle's `construct` the
 engine's cut, and then letting loops in, is an experiment still open
-([the oracle handoff](./research/handoff-2026-09-25-oracle-work-for-the-real-build.md)).
+([bough-frp/bough#13](https://github.com/bough-frp/bough/issues/13)).
 
 Time is a list of integers. `Split` produces children `t ++ [n]`,
 which run after t and before t's successor, depth first, and every

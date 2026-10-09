@@ -35,3 +35,7 @@
 - [What an Oort fighter found first](./notes/2026-09-26-oort-fighter-first-findings.md)
 - [A core that doesn't know its mode](./notes/2026-09-27-mode-generic-core.md)
 - [Incremental Collection Propagation](./notes/2026-09-29-incremental-collection-propagation.md)
+- [The cost: edge complexity gets concentrated](./notes/2026-10-06-edge-complexity-cost.md)
+- [Bough as the composition layer for IO-less protocols](./notes/2026-10-06-io-less-composition.md)
+- [Middleware is just a pattern; edge composition is the real gap](./notes/2026-10-06-middleware-and-edge-composition.md)
+- [Swappable edges: client/server as two graphs, migration, and a free differential test](./notes/2026-10-06-swappable-edges.md)
